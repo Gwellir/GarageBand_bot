@@ -15,3 +15,7 @@ async def test_start(client: TelegramClient):
         resp: Message = await conv.get_response()
 
         assert "приёма заявок Garage Band" in resp.raw_text
+        assert resp.button_count == 3
+        assert resp.buttons[0][0].text == "Создать новую заявку"
+        assert resp.buttons[1][0].text == "Поиск заявок"
+        assert resp.buttons[1][1].text == "Разместить рекламу"
