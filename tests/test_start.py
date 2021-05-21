@@ -4,8 +4,6 @@ from pytest import mark
 from telethon import TelegramClient
 from telethon.tl.custom.message import Message
 
-from tgbot.bot.strings import stage1_text
-
 BOT_ID = os.getenv("tested_bot_id")
 
 
@@ -16,4 +14,4 @@ async def test_start(client: TelegramClient):
 
         resp: Message = await conv.get_response()
 
-        assert resp.raw_text == stage1_text
+        assert "приёма заявок Garage Band" in resp.raw_text
