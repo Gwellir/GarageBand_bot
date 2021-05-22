@@ -1,5 +1,5 @@
-from tgbot.models import BotUser
 from tgbot.bot.dialog import Dialog
+from tgbot.models import BotUser
 
 
 def message_processor(update, context):

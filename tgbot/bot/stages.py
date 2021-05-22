@@ -1,7 +1,7 @@
 import telegram
 
 import tgbot.bot.strings as strings
-from tgbot.models import DialogStage, WorkRequest, RequestPhoto
+from tgbot.models import DialogStage, RequestPhoto, WorkRequest
 
 
 def build_button_markup(buttons_data):
@@ -17,15 +17,20 @@ def build_button_markup(buttons_data):
 
 def get_reply_for_stage(stage):
     num = stage.value - 1
-    text = strings.stages_info[num]['text']
-    markup = build_button_markup(strings.stages_info[num]['buttons'])
+    text = strings.stages_info[num]["text"]
+    markup = build_button_markup(strings.stages_info[num]["buttons"])
 
     return dict(text=text, reply_markup=markup)
 
 
 def get_summary_for_request(request):
-    text = strings.summary['text'] % (request.title, request.description, request.phone, request.user.username)
-    markup = build_button_markup(strings.summary['buttons'])
+    text = strings.summary["text"] % (
+        request.title,
+        request.description,
+        request.phone,
+        request.user.username,
+    )
+    markup = build_button_markup(strings.summary["buttons"])
     photo = request.photos.all()[0].tg_file_id
 
     return dict(caption=text, reply_markup=markup, photo=photo)
@@ -60,7 +65,7 @@ def set_request_description(context, update, user, request: WorkRequest):
 def store_photo(context, update, user, request: WorkRequest):
     description = update.effective_message.caption
     if not description:
-        description = ''
+        description = ""
     if update.effective_message.photo:
         photo_file_id = update.effective_message.photo[-1].file_id
         photo = RequestPhoto(
@@ -91,7 +96,7 @@ def set_phone(context, update, user, request):
 
 def ready_request(context, update, user, request):
     request.set_ready(context.bot)
-    
+
     return user, request
 
 

@@ -1,9 +1,9 @@
-import dotenv
 import os
-
 from pathlib import Path
-from telethon.sync import TelegramClient
+
+import dotenv
 from telethon.sessions import StringSession
+from telethon.sync import TelegramClient
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

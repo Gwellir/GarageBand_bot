@@ -1,9 +1,14 @@
-from .stages import (get_reply_for_stage, get_summary_for_request, NEXT_STAGE, CALLBACK_TO_STAGE, PROCESSORS)
 from ..models import DialogStage
+from .stages import (
+    CALLBACK_TO_STAGE,
+    NEXT_STAGE,
+    PROCESSORS,
+    get_reply_for_stage,
+    get_summary_for_request,
+)
 
 
 class SingletonByUserID(type):
-
     def __init__(cls, name, bases, attrs, **kwargs):
         super().__init__(name, bases, attrs)
         cls.__instance = {}
@@ -22,7 +27,6 @@ class SingletonByUserID(type):
 
 
 class Dialog(metaclass=SingletonByUserID):
-
     def __init__(self, user):
         self.user = user
         self.request = None
@@ -40,7 +44,9 @@ class Dialog(metaclass=SingletonByUserID):
 
     def operate_data(self, context, update):
         if self.stage in PROCESSORS.keys():
-            self.user, self.request = PROCESSORS[self.stage](context, update, self.user, self.request)
+            self.user, self.request = PROCESSORS[self.stage](
+                context, update, self.user, self.request
+            )
 
     def process(self, update, context):
         self.bot = context.bot

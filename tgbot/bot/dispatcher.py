@@ -1,5 +1,11 @@
 import telegram
-from telegram.ext import Updater, Dispatcher, CallbackQueryHandler, MessageHandler, Filters
+from telegram.ext import (
+    CallbackQueryHandler,
+    Dispatcher,
+    Filters,
+    MessageHandler,
+    Updater,
+)
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from tgbot.bot.handlers import message_processor

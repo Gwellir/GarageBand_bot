@@ -1,7 +1,8 @@
 import os
+
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'garage_band_bot.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "garage_band_bot.settings")
 django.setup()
 
 from tgbot.bot.dispatcher import run_pooling
