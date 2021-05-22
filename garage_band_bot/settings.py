@@ -134,3 +134,6 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "media/"
