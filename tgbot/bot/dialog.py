@@ -1,4 +1,5 @@
-from .stages import get_reply_for_stage, NEXT_STAGE, CALLBACK_TO_STAGE, PROCESSORS
+from .stages import (get_reply_for_stage, get_summary_for_request, NEXT_STAGE, CALLBACK_TO_STAGE, PROCESSORS)
+from ..models import DialogStage
 
 
 class SingletonByUserID(type):
@@ -37,15 +38,20 @@ class Dialog(metaclass=SingletonByUserID):
         self.user.dialog_stage = self.stage
         self.user.save()
 
-    def operate_input(self, update):
+    def operate_data(self, context, update):
         if self.stage in PROCESSORS.keys():
-            PROCESSORS[self.stage](update, self.user, self.request)
+            self.user, self.request = PROCESSORS[self.stage](context, update, self.user, self.request)
 
     def process(self, update, context):
         self.bot = context.bot
-        self.operate_input(update)
+        self.operate_data(context, update)
         self.change_stage(update)
         self.send_reply(get_reply_for_stage(self.stage))
+        if self.stage == DialogStage.STAGE10_CHECK_DATA:
+            self.show_summary(get_summary_for_request(self.request))
 
     def send_reply(self, reply, params=None):
         self.bot.send_message(chat_id=self.user.user_id, **reply)
+
+    def show_summary(self, summary):
+        self.bot.send_photo(chat_id=self.user.user_id, **summary)

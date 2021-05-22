@@ -1,7 +1,12 @@
+from io import BytesIO, BufferedWriter, BufferedReader
+
+from django.core.files import File
 from django.db import models
+from django.dispatch import receiver
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
+from garage_band_bot.settings import MEDIA_ROOT
 from .bot.utils import extract_user_data_from_update
 
 
@@ -9,7 +14,14 @@ class DialogStage(models.IntegerChoices):
     STAGE1_WELCOME = 1, _("Стадия 1. Приветствие")
     STAGE2_CONFIRM_START = 2, _("Стадия 2. Подтвердить создание заявки")
     STAGE3_GET_NAME = 3, _("Стадия 3. Получить имя")
-    STAGE4_GET_REQUEST_NAME = 4, _("Стадия 4. Получить название заявки")
+    STAGE4_GET_REQUEST_TITLE = 4, _("Стадия 4. Получить название заявки")
+    STAGE5_GET_REQUEST_DESC = 5, _("Стадия 5. Получить описание заявки")
+    STAGE6_REQUEST_PHOTOS = 6, _("Стадия 6. Предложить отправить фотографии")
+    STAGE7_GET_PHOTOS = 7, _("Стадия 7. Получить фотографии")
+    STAGE8_GET_LOCATION = 8, _("Стадия 8. Получить местоположение")
+    STAGE9_GET_PHONE = 9, _("Стадия 9. Получить телефон")
+    STAGE10_CHECK_DATA = 10, _("Стадия 10. Проверить заявку")
+    STAGE11_DONE = 11, _("Стадия 11. Работа завершена")
 
 
 class BotUser(models.Model):
@@ -48,7 +60,7 @@ class BotUser(models.Model):
         return user, created
 
 
-class Request(models.Model):
+class WorkRequest(models.Model):
     """Класс с заявками"""
 
     title = models.CharField(verbose_name="Наименование задачи", max_length=255, blank=False)
@@ -57,12 +69,25 @@ class Request(models.Model):
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE)
     location = models.CharField(verbose_name="Местоположение для ремонта", blank=True, max_length=200)
     phone = models.CharField(verbose_name="Номер телефона", blank=True, max_length=50)
+    is_complete = models.BooleanField(verbose_name="Флаг готовности заявки", default=False)
     # photos backref
+
+    def set_ready(self, bot):
+        for photo in self.photos.all():
+            file = bot.get_file(file_id=photo.tg_file_id)
+            wpo = BytesIO()
+            w_write = BufferedWriter(wpo)
+            w_read = BufferedReader(wpo)
+            file.download(out=w_write)
+            photo.image.save(f'{photo.tg_file_id}.jpg', w_read)
+        self.is_complete = True
+        self.save()
 
 
 class RequestPhoto(models.Model):
     """Модель для хранения сопровождающих фотографий"""
 
-    description = models.CharField(verbose_name="Описание фото", max_length=255, blank=True)
-    image = models.ImageField(verbose_name="Фотография", blank=False)
-    request = models.ForeignKey(Request, on_delete=models.CASCADE, related_name='photos')
+    description = models.CharField(verbose_name="Описание фото", max_length=255, null=True)
+    tg_file_id = models.CharField(verbose_name="ID файла в ТГ", max_length=100, blank=False)
+    image = models.ImageField(verbose_name="Фотография", upload_to='user_photos')
+    request = models.ForeignKey(WorkRequest, on_delete=models.CASCADE, related_name='photos')
