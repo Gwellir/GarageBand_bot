@@ -1,5 +1,5 @@
 import telegram
-from telegram.ext import Updater, Dispatcher, MessageHandler, Filters
+from telegram.ext import Updater, Dispatcher, CallbackQueryHandler, MessageHandler, Filters
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from tgbot.bot.handlers import message_processor
@@ -9,6 +9,7 @@ def setup_dispatcher(dp):
     """Adding handlers for events"""
 
     dp.add_handler(MessageHandler(Filters.all, message_processor))
+    dp.add_handler(CallbackQueryHandler(message_processor))
 
 
 def run_pooling():
