@@ -1,9 +1,11 @@
 import telegram
 from django.core.files import File
 
-from .constants import DEFAULT_LOGO_FILE
 import tgbot.bot.strings as strings
 from tgbot.models import DialogStage, RequestPhoto, WorkRequest
+
+from ..exceptions import NoTextProvidedError
+from .constants import DEFAULT_LOGO_FILE, MAX_CAPTION_LENGTH
 
 
 def build_button_markup(buttons_data):
@@ -28,7 +30,7 @@ def get_reply_for_stage(stage):
 def get_summary_for_request(request):
     text = strings.summary["text"] % (
         request.title,
-        request.description,
+        f"{request.description[:700]}...",
         request.phone,
         request.user.username,
     )
@@ -36,13 +38,16 @@ def get_summary_for_request(request):
     if request.photos.all():
         photo = request.photos.all()[0].tg_file_id
     else:
-        photo = File(open(DEFAULT_LOGO_FILE, 'rb'))
+        photo = File(open(DEFAULT_LOGO_FILE, "rb"))
 
-    return dict(caption=text, reply_markup=markup, photo=photo)
+    return dict(caption=text[:MAX_CAPTION_LENGTH], reply_markup=markup, photo=photo)
 
 
 def set_name(context, update, user, request: WorkRequest):
-    user.name = update.effective_message.text
+    name = update.effective_message.text
+    if not name:
+        raise NoTextProvidedError
+    user.name = name
     user.save()
 
     return user, request
@@ -50,6 +55,8 @@ def set_name(context, update, user, request: WorkRequest):
 
 def init_request_by_title(context, update, user, request: WorkRequest):
     title = update.effective_message.text
+    if not title:
+        raise NoTextProvidedError
     request = WorkRequest.objects.create(
         user=user,
         title=title,
@@ -61,6 +68,8 @@ def init_request_by_title(context, update, user, request: WorkRequest):
 
 def set_request_description(context, update, user, request: WorkRequest):
     desc = update.effective_message.text
+    if not desc:
+        raise NoTextProvidedError
     request.description = desc
     request.save()
 
@@ -85,6 +94,8 @@ def store_photo(context, update, user, request: WorkRequest):
 
 def set_location(context, update, user, request):
     location = update.effective_message.text
+    if not location:
+        raise NoTextProvidedError
     request.location = location
     request.save()
 
@@ -93,6 +104,8 @@ def set_location(context, update, user, request):
 
 def set_phone(context, update, user, request):
     phone_number = update.effective_message.text
+    if not phone_number:
+        raise NoTextProvidedError
     request.phone = phone_number
     request.save()
 

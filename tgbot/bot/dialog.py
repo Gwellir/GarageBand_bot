@@ -1,4 +1,8 @@
+from django.db import IntegrityError
+
+from ..exceptions import BotProcessingError
 from ..models import DialogStage
+from .patterns import SingletonByUserID
 from .stages import (
     CALLBACK_TO_STAGE,
     NEXT_STAGE,
@@ -6,24 +10,6 @@ from .stages import (
     get_reply_for_stage,
     get_summary_for_request,
 )
-
-
-class SingletonByUserID(type):
-    def __init__(cls, name, bases, attrs, **kwargs):
-        super().__init__(name, bases, attrs)
-        cls.__instance = {}
-
-    def __call__(cls, *args, **kwargs):
-        if args:
-            user_id = args[0].id
-        else:
-            return
-
-        if user_id in cls.__instance:
-            return cls.__instance[user_id]
-        else:
-            cls.__instance[user_id] = super().__call__(*args, **kwargs)
-            return cls.__instance[user_id]
 
 
 class Dialog(metaclass=SingletonByUserID):
@@ -51,11 +37,20 @@ class Dialog(metaclass=SingletonByUserID):
 
     def process(self, update, context):
         self.bot = context.bot
-        self.operate_data(context, update)
-        self.change_stage(update)
+        try:
+            self.operate_data(context, update)
+            self.change_stage(update)
+        except (IntegrityError, BotProcessingError):
+            self.send_got_wrong_data()
         self.send_reply(get_reply_for_stage(self.stage))
         if self.stage == DialogStage.STAGE10_CHECK_DATA:
             self.show_summary(get_summary_for_request(self.request))
+
+    def send_got_wrong_data(self):
+        self.bot.send_message(
+            chat_id=self.user.user_id,
+            text="Отправлены неверные данные, попробуйте ещё раз!",
+        )
 
     def send_reply(self, reply, params=None):
         self.bot.send_message(chat_id=self.user.user_id, **reply)
