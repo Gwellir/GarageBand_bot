@@ -78,7 +78,7 @@ class WorkRequest(models.Model):
     )
     description = models.TextField(verbose_name="Подробное описание", blank=True)
     formed_at = models.DateTimeField(verbose_name="Время составления", auto_now=True)
-    user = models.ForeignKey(BotUser, on_delete=models.CASCADE)
+    user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE)
     location = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=200
     )

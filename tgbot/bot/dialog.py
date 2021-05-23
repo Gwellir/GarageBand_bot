@@ -15,7 +15,7 @@ from .stages import (
 class Dialog(metaclass=SingletonByUserID):
     def __init__(self, user):
         self.user = user
-        # implement reloading request drafts
+        # todo implement reloading request drafts
         self.request = None
         self.bot = None
         self.stage = DialogStage.STAGE1_WELCOME
