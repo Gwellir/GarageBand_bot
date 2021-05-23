@@ -5,7 +5,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "garage_band_bot.settings")
 django.setup()
 
-from tgbot.bot.dispatcher import run_pooling
+from tgbot.bot.dispatcher import run_polling
 
 if __name__ == "__main__":
-    run_pooling()
+    run_polling()
