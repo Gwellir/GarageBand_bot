@@ -30,9 +30,9 @@ def get_reply_for_stage(stage):
 def get_summary_for_request(request: WorkRequest):
     text = strings.summary["text"] % (
         request.title,
-        f"{request.description[:700]}...",
+        f"{request.description[:700]}{' <...>' if len(request.description) > 700 else ''}",
         request.location,
-        request.user.get_fullname,
+        request.user.name,
         request.phone,
         request.user.username,
     )
