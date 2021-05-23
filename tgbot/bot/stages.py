@@ -27,10 +27,12 @@ def get_reply_for_stage(stage):
     return dict(text=text, reply_markup=markup)
 
 
-def get_summary_for_request(request):
+def get_summary_for_request(request: WorkRequest):
     text = strings.summary["text"] % (
         request.title,
         f"{request.description[:700]}...",
+        request.location,
+        request.user.get_fullname,
         request.phone,
         request.user.username,
     )
@@ -115,6 +117,8 @@ def set_phone(context, update, user, request):
 
 def ready_request(context, update, user, request):
     request.set_ready(context.bot)
+    # чтобы заявка, прикреплённая к диалогу, сбросилась
+    request = None
 
     return user, request
 
