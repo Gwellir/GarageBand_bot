@@ -102,6 +102,7 @@ def set_location(context, update, user, request):
     return user, request
 
 
+# todo add validation
 def set_phone(context, update, user, request):
     phone_number = update.effective_message.text
     if not phone_number:

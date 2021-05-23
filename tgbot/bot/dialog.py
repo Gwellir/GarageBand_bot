@@ -40,7 +40,8 @@ class Dialog(metaclass=SingletonByUserID):
         try:
             self.operate_data(context, update)
             self.change_stage(update)
-        except (IntegrityError, BotProcessingError):
+        except (IntegrityError, BotProcessingError) as e:
+            print(e.args)
             self.send_got_wrong_data()
         self.send_reply(get_reply_for_stage(self.stage))
         if self.stage == DialogStage.STAGE10_CHECK_DATA:
