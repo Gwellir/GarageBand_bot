@@ -44,6 +44,12 @@ class Dialog(metaclass=SingletonByUserID):
         except (IntegrityError, BotProcessingError) as e:
             print(e.args)
             self.send_got_wrong_data()
+        except AttributeError as e:
+            # происходит, когда request не существует, например,
+            # когда нажата кнопка из прошлых стадий диалога
+            print(e.args)
+            self.user.dialog_stage = self.stage = DialogStage.STAGE1_WELCOME
+            self.user.save()
         self.send_reply(get_reply_for_stage(self.stage))
         if self.stage == DialogStage.STAGE10_CHECK_DATA:
             self.show_summary(get_summary_for_request(self.request))
