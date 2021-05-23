@@ -1,5 +1,7 @@
 import telegram
+from django.core.files import File
 
+from .constants import DEFAULT_LOGO_FILE
 import tgbot.bot.strings as strings
 from tgbot.models import DialogStage, RequestPhoto, WorkRequest
 
@@ -16,7 +18,7 @@ def build_button_markup(buttons_data):
 
 
 def get_reply_for_stage(stage):
-    num = stage.value - 1
+    num = stage - 1
     text = strings.stages_info[num]["text"]
     markup = build_button_markup(strings.stages_info[num]["buttons"])
 
@@ -31,7 +33,10 @@ def get_summary_for_request(request):
         request.user.username,
     )
     markup = build_button_markup(strings.summary["buttons"])
-    photo = request.photos.all()[0].tg_file_id
+    if request.photos.all():
+        photo = request.photos.all()[0].tg_file_id
+    else:
+        photo = File(open(DEFAULT_LOGO_FILE, 'rb'))
 
     return dict(caption=text, reply_markup=markup, photo=photo)
 

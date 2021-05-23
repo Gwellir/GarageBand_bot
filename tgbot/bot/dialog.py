@@ -29,16 +29,17 @@ class SingletonByUserID(type):
 class Dialog(metaclass=SingletonByUserID):
     def __init__(self, user):
         self.user = user
+        # implement reloading request drafts
         self.request = None
         self.bot = None
-        self.stage = user.dialog_stage
+        self.stage = DialogStage.STAGE1_WELCOME
 
     def change_stage(self, update):
         callback = update.callback_query
         if callback is not None:
             self.stage = CALLBACK_TO_STAGE[callback.data]
         else:
-            self.stage = NEXT_STAGE[self.stage]
+            self.stage = NEXT_STAGE.get(self.stage, self.stage)
         self.user.dialog_stage = self.stage
         self.user.save()
 
