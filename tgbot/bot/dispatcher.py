@@ -18,8 +18,8 @@ def setup_dispatcher(dp):
     dp.add_handler(CallbackQueryHandler(message_processor))
 
 
-def run_pooling():
-    """run in pooling mode"""
+def run_polling():
+    """Run in polling mode"""
 
     updater = Updater(TELEGRAM_TOKEN, use_context=True)
 
@@ -27,8 +27,8 @@ def run_pooling():
     dp = setup_dispatcher(dp)
 
     bot_info = telegram.Bot(TELEGRAM_TOKEN).get_me()
-    bot_link = f"https://t.me" + bot_info["username"]
+    bot_link = f"https://t.me/" + bot_info["username"]
 
-    print(f"Pooling of '{bot_link}' started")
+    print(f"Polling of '{bot_link}' started")
     updater.start_polling()
     updater.idle()

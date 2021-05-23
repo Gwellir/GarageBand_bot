@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from telegram import ParseMode
 
 from ..exceptions import BotProcessingError
 from ..models import DialogStage
@@ -15,7 +16,7 @@ from .stages import (
 class Dialog(metaclass=SingletonByUserID):
     def __init__(self, user):
         self.user = user
-        # implement reloading request drafts
+        # todo implement reloading request drafts
         self.request = None
         self.bot = None
         self.stage = DialogStage.STAGE1_WELCOME
@@ -54,7 +55,11 @@ class Dialog(metaclass=SingletonByUserID):
         )
 
     def send_reply(self, reply, params=None):
-        self.bot.send_message(chat_id=self.user.user_id, **reply)
+        self.bot.send_message(
+            chat_id=self.user.user_id, parse_mode=ParseMode.MARKDOWN_V2, **reply
+        )
 
     def show_summary(self, summary):
-        self.bot.send_photo(chat_id=self.user.user_id, **summary)
+        self.bot.send_photo(
+            chat_id=self.user.user_id, parse_mode=ParseMode.MARKDOWN, **summary
+        )
