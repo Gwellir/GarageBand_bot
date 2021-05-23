@@ -19,7 +19,7 @@ def setup_dispatcher(dp):
 
 
 def run_polling():
-    """run in polling mode"""
+    """Run in polling mode"""
 
     updater = Updater(TELEGRAM_TOKEN, use_context=True)
 
@@ -29,6 +29,6 @@ def run_polling():
     bot_info = telegram.Bot(TELEGRAM_TOKEN).get_me()
     bot_link = f"https://t.me/" + bot_info["username"]
 
-    print(f"Pooling of '{bot_link}' started")
+    print(f"Polling of '{bot_link}' started")
     updater.start_polling()
     updater.idle()
