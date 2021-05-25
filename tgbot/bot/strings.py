@@ -101,11 +101,11 @@ stages_info = [
         ],
     },
     {  # stage 7
-        "text": 'Загрузите фото, когда закончите — нажмите "Следующий этап"\n\(отправляйте файлы по одному\)',
+        "text": 'Загрузите фото и нажмите "Далее"',
         "buttons": [
             [
                 {
-                    "text": "Следующий этап",
+                    "text": "Далее",
                     "callback_data": "photos_confirm",
                 },
                 {
@@ -158,9 +158,8 @@ summary = {
     "text": "*#%s %s*\n\n"  # request.pk, request.title
     "🛠️ %s\n\n"  # request.description
     "📍 %s\n\n"  # request.location
-    "%s\n\n"  # request.user.get_fullname()
-    "📞 %s \t"  # request.phone
-    "🖋 @%s",  # request.user.username
+    "🖋 @%s - %s\n\n"  # request.user.username, request.user.get_fullname()
+    "📞 %s \t",  # request.phone
     "buttons": [
         [
             {
