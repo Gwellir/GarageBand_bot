@@ -100,9 +100,12 @@ class DialogProcessor:
             self.show_summary(self.get_summary_for_request(), bot)
         if self.dialog.stage == DialogStage.STAGE11_DONE:
             self.publish_summary(self.get_summary_for_request(), bot)
-            self.dialog.delete()
-            # чтобы заявка, прикреплённая к диалогу, сбросилась
-            self.request = None
+            self.restart()
+
+    def restart(self):
+        self.dialog.delete()
+        # чтобы заявка, прикреплённая к диалогу, сбросилась
+        self.request = None
 
     def change_stage(self, input_data):
         callback = input_data["callback"]
@@ -113,7 +116,12 @@ class DialogProcessor:
         self.dialog.save()
 
     def operate_data(self, input_data):
-        if self.dialog.stage in PROCESSORS.keys():
+        callback = input_data["callback"]
+        # todo по всему коду контроль критических состояний разбросан...
+        # если меняем стадию на первую, то реинициализируемся
+        if callback and callback.data == "restart":
+            self.restart()
+        elif self.dialog.stage in PROCESSORS.keys():
             PROCESSORS[self.dialog.stage]()(self, input_data)
 
     def get_summary_for_request(self):
@@ -122,9 +130,9 @@ class DialogProcessor:
             self.request.title,
             f"{self.request.description[:700]}{' <...>' if len(self.request.description) > 700 else ''}",
             self.request.location,
+            self.user.username,
             self.user.name,
             self.request.phone,
-            self.user.username,
         )
         markup = build_button_markup(strings.summary["buttons"])
         if self.request.photos.all():
