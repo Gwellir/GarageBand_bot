@@ -1,3 +1,6 @@
+import telegram
+
+
 def extract_user_data_from_update(update):
     """python-telegram-bot's Update instance --> User info"""
     if update.message is not None:
@@ -26,3 +29,14 @@ def extract_user_data_from_update(update):
             if k in user and user[k] is not None
         },
     )
+
+
+def build_button_markup(buttons_data):
+    layout = []
+    if buttons_data:
+        for row in buttons_data:
+            layout.append([telegram.InlineKeyboardButton(**item) for item in row])
+
+        return telegram.InlineKeyboardMarkup(layout)
+
+    return None

@@ -14,7 +14,7 @@ from tgbot.bot.handlers import message_processor
 def setup_dispatcher(dp):
     """Adding handlers for events"""
 
-    dp.add_handler(MessageHandler(Filters.all, message_processor))
+    dp.add_handler(MessageHandler(Filters.chat_type.private, message_processor))
     dp.add_handler(CallbackQueryHandler(message_processor))
 
 

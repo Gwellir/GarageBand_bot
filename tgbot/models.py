@@ -1,10 +1,8 @@
 from io import BufferedReader, BufferedWriter, BytesIO
 
-from django.db import models
+from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
-
-from .bot.utils import extract_user_data_from_update
 
 
 class DialogStage(models.IntegerChoices):
@@ -40,12 +38,6 @@ class BotUser(models.Model):
     location = models.CharField(
         verbose_name="Указанное местоположение", null=True, max_length=200
     )
-    dialog_stage = models.PositiveSmallIntegerField(
-        verbose_name="Состояние диалога",
-        choices=DialogStage.choices,
-        null=False,
-        default=DialogStage.STAGE1_WELCOME,
-    )
     last_active = models.DateTimeField(
         verbose_name="Время последней активности", default=now
     )
@@ -57,12 +49,11 @@ class BotUser(models.Model):
     def __str__(self):
         return (
             f"#{self.pk} {self.name if self.name else self.get_fullname} "
-            f"TG: #{self.user_id} @{self.username}, stage: {self.dialog_stage}"
+            f"TG: #{self.user_id} @{self.username}, stage: {self.stage}"
         )
 
     @classmethod
-    def get_or_create(cls, update, context):
-        data = extract_user_data_from_update(update)
+    def get_or_create(cls, data):
         user, created = cls.objects.update_or_create(
             user_id=data["user_id"], defaults=data
         )
@@ -74,7 +65,7 @@ class WorkRequest(models.Model):
     """Класс с заявками"""
 
     title = models.CharField(
-        verbose_name="Наименование задачи", max_length=255, blank=False
+        verbose_name="Наименование задачи", max_length=255, blank=True
     )
     description = models.TextField(verbose_name="Подробное описание", blank=True)
     formed_at = models.DateTimeField(verbose_name="Время составления", auto_now=True)
@@ -88,6 +79,12 @@ class WorkRequest(models.Model):
     )
     # photos backref
 
+    @classmethod
+    def get_or_create(cls, user):
+        # странное решение, может быть, завести модель уникальных черновиков заявок по пользователям?
+        return WorkRequest.objects.get_or_create(user=user, is_complete=False)
+
+    @transaction.atomic
     def set_ready(self, bot):
         for photo in self.photos.all():
             file = bot.get_file(file_id=photo.tg_file_id)
@@ -113,3 +110,35 @@ class RequestPhoto(models.Model):
     request = models.ForeignKey(
         WorkRequest, on_delete=models.CASCADE, related_name="photos"
     )
+
+
+class Dialog(models.Model):
+    user = models.OneToOneField(
+        BotUser, on_delete=models.CASCADE, related_name="dialog"
+    )
+    request = models.OneToOneField(
+        WorkRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="dialog",
+        default=None,
+    )
+    stage = models.PositiveSmallIntegerField(
+        verbose_name="Состояние диалога",
+        choices=DialogStage.choices,
+        null=False,
+        default=DialogStage.STAGE1_WELCOME,
+    )
+
+    @classmethod
+    @transaction.atomic()
+    def get_or_create(cls, update):
+        user, u_created = BotUser.get_or_create(update)
+        request, r_created = WorkRequest.get_or_create(user)
+        dialog, d_created = cls.objects.update_or_create(
+            user=user,
+            request=request,
+        )
+        # todo implement reloading request drafts
+
+        return dialog
