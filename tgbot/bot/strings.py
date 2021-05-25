@@ -155,7 +155,7 @@ stages_info = [
 ]
 
 summary = {
-    "text": "*# %s*\n\n"  # request.title
+    "text": "*%s# %s*\n\n"  # request.title
     "🛠️ %s\n\n"  # request.description
     "📍 %s\n\n"  # request.location
     "%s\n\n"  # request.user.get_fullname()

@@ -115,6 +115,7 @@ class DialogProcessor:
 
     def get_summary_for_request(self):
         text = strings.summary["text"] % (
+            self.request.pk,
             self.request.title,
             f"{self.request.description[:700]}{' <...>' if len(self.request.description) > 700 else ''}",
             self.request.location,
