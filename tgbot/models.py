@@ -49,7 +49,7 @@ class BotUser(models.Model):
     def __str__(self):
         return (
             f"#{self.pk} {self.name if self.name else self.get_fullname} "
-            f"TG: #{self.user_id} @{self.username}, stage: {self.stage}"
+            f"TG: #{self.user_id} @{self.username}"
         )
 
     @classmethod
