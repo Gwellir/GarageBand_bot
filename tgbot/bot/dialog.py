@@ -36,6 +36,9 @@ PROCESSORS = {
 CALLBACK_TO_STAGE = {
     "new_request": DialogStage.STAGE2_CONFIRM_START,
     "restart": DialogStage.STAGE1_WELCOME,
+    # placeholders
+    "search_request": DialogStage.STAGE1_WELCOME,
+    "propose_ads": DialogStage.STAGE1_WELCOME,
     "stage2_confirm": DialogStage.STAGE3_GET_NAME,
     "have_photos": DialogStage.STAGE7_GET_PHOTOS,
     "skip_photos": DialogStage.STAGE8_GET_LOCATION,
