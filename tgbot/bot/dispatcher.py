@@ -8,6 +8,7 @@ from telegram.ext import (
 )
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
+from logger.log_config import BOT_LOG
 from tgbot.bot.handlers import message_processor
 
 
@@ -16,6 +17,7 @@ def setup_dispatcher(dp):
 
     dp.add_handler(MessageHandler(Filters.chat_type.private, message_processor))
     dp.add_handler(CallbackQueryHandler(message_processor))
+    BOT_LOG.debug("Event handlers initialized.")
 
 
 def run_polling():
@@ -29,6 +31,6 @@ def run_polling():
     bot_info = telegram.Bot(TELEGRAM_TOKEN).get_me()
     bot_link = f"https://t.me/" + bot_info["username"]
 
-    print(f"Polling of '{bot_link}' started")
+    BOT_LOG.info(f"Polling of '{bot_link}' started")
     updater.start_polling()
     updater.idle()
