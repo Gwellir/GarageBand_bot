@@ -1,8 +1,9 @@
 from django.core.files import File
-from django.db import IntegrityError
 from telegram import ParseMode
 
 import tgbot.bot.strings as strings
+from logger.log_config import BOT_LOG
+from logger.log_strings import LogStrings
 from tgbot.bot.constants import (
     DEFAULT_LOGO_FILE,
     MAX_CAPTION_LENGTH,
@@ -83,18 +84,25 @@ class DialogProcessor:
             "photo": msg.photo,
             "callback": update.callback_query,
         }
+        BOT_LOG.debug(
+            LogStrings.DIALOG_INCOMING_MESSAGE.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+                input_data=input_data,
+            )
+        )
         try:
             self.operate_data(input_data)
             self.change_stage(input_data)
-        except (IntegrityError, BotProcessingError) as e:
-            print(e.args)
-            self.send_got_wrong_data(bot)
-        except AttributeError as e:
-            # происходит, когда request не существует, например,
-            # когда нажата кнопка из прошлых стадий диалога
-            print(e.args)
-            self.dialog.stage = DialogStage.STAGE1_WELCOME
-            self.dialog.save()
+        except BotProcessingError as e:
+            BOT_LOG.debug(
+                LogStrings.DIALOG_INPUT_ERROR.format(
+                    user_id=self.user.username,
+                    stage=self.dialog.stage,
+                    args=e.args,
+                )
+            )
+            self.send_reply({"text": f"{e.args[0]}\!"}, bot)
         self.send_reply(get_reply_for_stage(self.dialog.stage), bot)
         if self.dialog.stage == DialogStage.STAGE10_CHECK_DATA:
             self.show_summary(self.get_summary_for_request(), bot)
@@ -103,16 +111,29 @@ class DialogProcessor:
             self.restart()
 
     def restart(self):
+        BOT_LOG.debug(
+            LogStrings.DIALOG_RESTART.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+            )
+        )
         self.dialog.delete()
-        # чтобы заявка, прикреплённая к диалогу, сбросилась
-        self.request = None
 
     def change_stage(self, input_data):
         callback = input_data["callback"]
         if callback is not None:
-            self.dialog.stage = CALLBACK_TO_STAGE[callback.data]
+            new_stage = CALLBACK_TO_STAGE[callback.data]
         else:
-            self.dialog.stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
+            new_stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
+        BOT_LOG.debug(
+            LogStrings.DIALOG_CHANGE_STAGE.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+                new_stage=new_stage,
+                callback=callback.data if callback else None,
+            )
+        )
+        self.dialog.stage = new_stage
         self.dialog.save()
 
     def operate_data(self, input_data):
@@ -142,24 +163,39 @@ class DialogProcessor:
 
         return dict(caption=text[:MAX_CAPTION_LENGTH], reply_markup=markup, photo=photo)
 
-    def send_got_wrong_data(self, bot):
-        bot.send_message(
-            chat_id=self.user.user_id,
-            text="Отправлены неверные данные, попробуйте ещё раз!",
-        )
-
     def send_reply(self, reply, bot):
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SEND_MESSAGE.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+                reply=reply,
+            )
+        )
         bot.send_message(
             chat_id=self.user.user_id, parse_mode=ParseMode.MARKDOWN_V2, **reply
         )
 
     def show_summary(self, summary, bot):
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SEND_MESSAGE.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+                reply=summary,
+            )
+        )
         bot.send_photo(
             chat_id=self.user.user_id, parse_mode=ParseMode.MARKDOWN, **summary
         )
 
     def publish_summary(self, summary, bot):
         del summary["reply_markup"]
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SEND_MESSAGE.format(
+                user_id=self.user.username,
+                stage=self.dialog.stage,
+                reply=summary,
+            )
+        )
         bot.send_photo(
             chat_id=PUBLISHING_CHANNEL_ID, parse_mode=ParseMode.MARKDOWN, **summary
         )

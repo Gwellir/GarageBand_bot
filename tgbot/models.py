@@ -4,6 +4,9 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
+from logger.log_strings import LogStrings
+from logger.log_config import BOT_LOG
+
 
 class DialogStage(models.IntegerChoices):
     STAGE1_WELCOME = 1, _("Стадия 1. Приветствие")
@@ -77,23 +80,42 @@ class WorkRequest(models.Model):
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности заявки", default=False
     )
+    dialog = models.OneToOneField(
+        "Dialog",
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="request",
+        default=None,
+    )
     # photos backref
 
     @classmethod
-    def get_or_create(cls, user):
+    def get_or_create(cls, user, dialog):
         # странное решение, может быть, завести модель уникальных черновиков заявок по пользователям?
-        return WorkRequest.objects.get_or_create(user=user, is_complete=False)
+        return WorkRequest.objects.get_or_create(
+            user=user, dialog=dialog, is_complete=False
+        )
 
     @transaction.atomic
     def set_ready(self, bot):
         for photo in self.photos.all():
             file = bot.get_file(file_id=photo.tg_file_id)
+            # todo в целом, копипаста с бессмысленным усложнением
             wpo = BytesIO()
             w_write = BufferedWriter(wpo)
             w_read = BufferedReader(wpo)
             file.download(out=w_write)
             photo.image.save(f"{photo.tg_file_id}.jpg", w_read)
+            wpo.close()
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SET_READY.format(
+                user_id=self.user.username,
+                request_id=self.pk,
+                photos_count=self.photos.count(),
+            )
+        )
         self.is_complete = True
+        self.dialog = None
         self.save()
 
 
@@ -116,13 +138,6 @@ class Dialog(models.Model):
     user = models.OneToOneField(
         BotUser, on_delete=models.CASCADE, related_name="dialog"
     )
-    request = models.OneToOneField(
-        WorkRequest,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="dialog",
-        default=None,
-    )
     stage = models.PositiveSmallIntegerField(
         verbose_name="Состояние диалога",
         choices=DialogStage.choices,
@@ -134,11 +149,11 @@ class Dialog(models.Model):
     @transaction.atomic()
     def get_or_create(cls, update):
         user, u_created = BotUser.get_or_create(update)
-        request, r_created = WorkRequest.get_or_create(user)
         dialog, d_created = cls.objects.update_or_create(
             user=user,
-            request=request,
         )
+        request, r_created = WorkRequest.get_or_create(user, dialog)
+
         # todo implement reloading request drafts
 
         return dialog
