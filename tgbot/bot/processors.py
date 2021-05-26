@@ -1,6 +1,6 @@
 import abc
 
-from logger.bot_strings import LogStrings
+from logger.log_strings import LogStrings
 from logger.log_config import BOT_LOG
 from tgbot.models import RequestPhoto
 
