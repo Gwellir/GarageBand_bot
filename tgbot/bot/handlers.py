@@ -1,5 +1,5 @@
 from tgbot.bot.dialog import DialogProcessor
-from tgbot.bot.senders import send_telegram_messages
+from tgbot.bot.senders import send_telegram_message
 from tgbot.bot.utils import extract_user_data_from_update
 from tgbot.models import Dialog
 
@@ -23,4 +23,5 @@ def message_handler(update, context):
     dialog_processor = DialogProcessor(dialog, input_data)
     replies = dialog_processor.process()
 
-    send_telegram_messages(replies, update.effective_user, context.bot)
+    for reply in replies:
+        send_telegram_message(reply, update.effective_user, context.bot)
