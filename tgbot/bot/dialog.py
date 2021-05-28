@@ -123,6 +123,7 @@ class DialogProcessor:
         callback = input_data["callback"]
         if callback is not None:
             new_stage = CALLBACK_TO_STAGE[callback.data]
+            callback.answer()
         else:
             new_stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
         BOT_LOG.debug(
@@ -190,10 +191,10 @@ class DialogProcessor:
     def publish_summary(self, summary, bot):
         del summary["reply_markup"]
         BOT_LOG.debug(
-            LogStrings.DIALOG_SEND_MESSAGE.format(
+            LogStrings.DIALOG_PUBLISH_REQUEST.format(
                 user_id=self.user.username,
-                stage=self.dialog.stage,
-                reply=summary,
+                channel=PUBLISHING_CHANNEL_ID,
+                summary=summary,
             )
         )
         bot.send_photo(
