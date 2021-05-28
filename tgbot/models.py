@@ -4,8 +4,8 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from logger.log_strings import LogStrings
 from logger.log_config import BOT_LOG
+from logger.log_strings import LogStrings
 
 
 class DialogStage(models.IntegerChoices):
@@ -41,8 +41,14 @@ class BotUser(models.Model):
     location = models.CharField(
         verbose_name="Указанное местоположение", null=True, max_length=200
     )
+    # todo move to some base TrackableModelMixin?
     last_active = models.DateTimeField(
-        verbose_name="Время последней активности", default=now
+        verbose_name="Время последней активности",
+        auto_now=True,
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Время создания",
+        auto_now_add=True,
     )
 
     @property
