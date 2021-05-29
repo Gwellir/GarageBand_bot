@@ -1,10 +1,11 @@
 import abc
+import re
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.models import RequestPhoto
 
-from ..exceptions import NoCallbackProvidedError, NoTextProvidedError, NoImageProvidedError
+from ..exceptions import NoCallbackProvidedError, NoTextProvidedError, NoImageProvidedError, WrongPhoneNumberError
 
 
 class AbstractInputProcessor(metaclass=abc.ABCMeta):
@@ -18,20 +19,23 @@ class TextInputProcessor(AbstractInputProcessor):
     def __call__(self, dialog, data):
         self.dialog = dialog
         self.model = dialog.request
-        self.set_field(data)
+        self.set_field(self.get_cleaned_text(data))
 
-    def set_field(self, data):
+    def get_cleaned_text(self, data):
         if not data["text"]:
             raise NoTextProvidedError
+        return data.get("text")
+
+    def set_field(self, text):
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=self.dialog.user.username,
                 stage=self.dialog.dialog.stage,
                 model=self.model,
-                data=data["text"],
+                data=text,
             )
         )
-        setattr(self.model, self.attr_name, data["text"])
+        setattr(self.model, self.attr_name, text)
         self.model.save()
 
 
@@ -59,6 +63,13 @@ class LocationInputProcessor(TextInputProcessor):
 class PhoneNumberInputProcessor(TextInputProcessor):
     attr_name = "phone"
 
+    def get_cleaned_text(self, data):
+        text = super().get_cleaned_text(data)
+        cleaned_text = re.sub(r'[^+0-9]', '', text)
+        if not (7 < len(cleaned_text) < 15) or cleaned_text.find('+', 1) >= 0:
+            raise WrongPhoneNumberError
+        return cleaned_text
+
 
 class StorePhotoInputProcessor(AbstractInputProcessor):
     def __call__(self, dialog, data):
@@ -73,6 +84,9 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
                 tg_file_id=photo_file_id,
             )
             photo.save()
+        # todo плохой flow-control
+        elif not data["callback"]:
+            raise NoImageProvidedError
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=dialog.user.username,
