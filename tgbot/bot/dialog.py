@@ -112,8 +112,7 @@ class DialogProcessor:
     def change_stage(self):
         callback = self.message_data["callback"]
         if callback is not None:
-            new_stage = CALLBACK_TO_STAGE[callback.data]
-            callback.answer()
+            new_stage = CALLBACK_TO_STAGE[callback]
         else:
             new_stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
         BOT_LOG.debug(
@@ -121,7 +120,7 @@ class DialogProcessor:
                 user_id=self.user.username,
                 stage=self.dialog.stage,
                 new_stage=new_stage,
-                callback=callback.data if callback else None,
+                callback=callback,
             )
         )
         self.dialog.stage = new_stage
@@ -131,7 +130,7 @@ class DialogProcessor:
         callback = self.message_data["callback"]
         # todo по всему коду контроль критических состояний разбросан...
         # если меняем стадию на первую, то реинициализируемся
-        if callback and callback.data == "restart":
+        if callback == "restart":
             self.restart()
         elif self.dialog.stage in PROCESSORS.keys():
             PROCESSORS[self.dialog.stage]()(self, self.message_data)
