@@ -4,7 +4,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.models import RequestPhoto
 
-from ..exceptions import NoCallbackProvidedError, NoTextProvidedError
+from ..exceptions import NoCallbackProvidedError, NoTextProvidedError, NoImageProvidedError
 
 
 class AbstractInputProcessor(metaclass=abc.ABCMeta):
@@ -66,7 +66,7 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
         if not description:
             description = ""
         if data["photo"]:
-            photo_file_id = data["photo"][-1].file_id
+            photo_file_id = data["photo"]
             photo = RequestPhoto(
                 description=description,
                 request=dialog.request,
