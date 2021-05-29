@@ -1,18 +1,18 @@
 import abc
 
-from logger.log_strings import LogStrings
 from logger.log_config import BOT_LOG
+from logger.log_strings import LogStrings
 from tgbot.models import RequestPhoto
 
-from ..exceptions import NoCallbackProvidedError, NoTextProvidedError
+from ..exceptions import NoCallbackProvidedError, NoTextProvidedError, NoImageProvidedError
 
 
-class AbstractProcessor(metaclass=abc.ABCMeta):
+class AbstractInputProcessor(metaclass=abc.ABCMeta):
     def __call__(self, dialog, data):
         pass
 
 
-class DialogTextProcessor(AbstractProcessor):
+class TextInputProcessor(AbstractInputProcessor):
     attr_name = None
 
     def __call__(self, dialog, data):
@@ -35,7 +35,7 @@ class DialogTextProcessor(AbstractProcessor):
         self.model.save()
 
 
-class NameProcessor(DialogTextProcessor):
+class NameInputProcessor(TextInputProcessor):
     attr_name = "name"
 
     def set_field(self, data):
@@ -43,30 +43,30 @@ class NameProcessor(DialogTextProcessor):
         super().set_field(data)
 
 
-class TitleProcessor(DialogTextProcessor):
+class TitleInputProcessor(TextInputProcessor):
     attr_name = "title"
 
 
-class DescriptionProcessor(DialogTextProcessor):
+class DescriptionInputProcessor(TextInputProcessor):
     attr_name = "description"
 
 
-class LocationProcessor(DialogTextProcessor):
+class LocationInputProcessor(TextInputProcessor):
     attr_name = "location"
 
 
 # todo add validation
-class PhoneNumberProcessor(DialogTextProcessor):
+class PhoneNumberInputProcessor(TextInputProcessor):
     attr_name = "phone"
 
 
-class StorePhotoProcessor(AbstractProcessor):
+class StorePhotoInputProcessor(AbstractInputProcessor):
     def __call__(self, dialog, data):
         description = data["caption"]
         if not description:
             description = ""
         if data["photo"]:
-            photo_file_id = data["photo"][-1].file_id
+            photo_file_id = data["photo"]
             photo = RequestPhoto(
                 description=description,
                 request=dialog.request,
@@ -83,7 +83,7 @@ class StorePhotoProcessor(AbstractProcessor):
         )
 
 
-class SetReadyProcessor(AbstractProcessor):
+class SetReadyInputProcessor(AbstractInputProcessor):
     def __call__(self, dialog, data):
         if not data["callback"]:
             raise NoCallbackProvidedError
