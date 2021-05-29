@@ -13,21 +13,12 @@ def get_callback_data(callback_query):
         return None
 
 
-def is_image(file_data):
-    if file_data.mime_type in ["image/jpeg", "image/png"]:
-        return True
-    return False
-
-
+# todo make this prepare a file object?
 def get_photo_data(message_data, bot):
     if message_data.photo:
-        photo_file_id = message_data.photo[-1].file_id
-    elif message_data.document and is_image(message_data.document):
-        photo_file_id = message_data.document.file_id
+        return message_data.photo[-1].file_id
     else:
-        photo_file_id = None
-
-    return photo_file_id
+        return None
 
 
 def post_handler(update, context):

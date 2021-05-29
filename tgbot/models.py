@@ -88,7 +88,7 @@ class WorkRequest(models.Model):
     )
     dialog = models.OneToOneField(
         "Dialog",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="request",
         default=None,
@@ -121,7 +121,6 @@ class WorkRequest(models.Model):
             )
         )
         self.is_complete = True
-        self.dialog = None
         self.save()
 
 
