@@ -18,3 +18,5 @@ class LogStrings:
     DIALOG_SET_READY = (
         "READY: User: {user_id}, request: {request_id}, saved {photos_count} photos"
     )
+
+    CHANNEL_POST = "POST: channel: {channel_id}"

@@ -174,7 +174,7 @@ summary = {
         [
             {
                 "text": "Перейти в канал Автосервис Украина",
-                "url": "https://t.me/GarageBandTest",
+                "url": "https://t.me/GarageBandKharkov",
             }
         ],
     ],
