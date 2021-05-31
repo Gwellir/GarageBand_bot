@@ -9,7 +9,7 @@ class NoTextProvidedError(BotProcessingError):
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
-        super().__init__(f"Запрошенный текст не введён")
+        super().__init__(f"Запрошенный текст не введён!")
 
 
 class NoCallbackProvidedError(BotProcessingError):
@@ -17,7 +17,7 @@ class NoCallbackProvidedError(BotProcessingError):
 
     # происходит, когда на стадии запроса нажатия кнопки передаётся сообщение
     def __init__(self):
-        super().__init__(f"Ожидается нажатие на кнопку")
+        super().__init__(f"Ожидается нажатие на кнопку!")
 
 
 class NoImageProvidedError(BotProcessingError):
@@ -25,4 +25,12 @@ class NoImageProvidedError(BotProcessingError):
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
-        super().__init__(f"Запрошенное изображение не загружено")
+        super().__init__(f"Запрошенное изображение не загружено!\n_Возможно, при загрузке не выставлена галочка сжатия._")
+
+
+class WrongPhoneNumberError(BotProcessingError):
+    """Возникает, когда пользователь не предоставляет изображение в ответ за запрос загрузки изображения"""
+
+    # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
+    def __init__(self):
+        super().__init__(f"Введён неправильный номер телефона, повторите попытку ещё раз!")

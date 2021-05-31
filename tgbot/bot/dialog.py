@@ -22,7 +22,7 @@ PROCESSORS = {
     DialogStage.STAGE3_GET_NAME: NameInputProcessor,
     DialogStage.STAGE4_GET_REQUEST_TITLE: TitleInputProcessor,
     DialogStage.STAGE5_GET_REQUEST_DESC: DescriptionInputProcessor,
-    DialogStage.STAGE7_GET_PHOTOS: StorePhotoInputProcessor,
+    DialogStage.STAGE6_REQUEST_PHOTOS: StorePhotoInputProcessor,
     DialogStage.STAGE8_GET_LOCATION: LocationInputProcessor,
     DialogStage.STAGE9_GET_PHONE: PhoneNumberInputProcessor,
     DialogStage.STAGE10_CHECK_DATA: SetReadyInputProcessor,
@@ -47,7 +47,7 @@ NEXT_STAGE = {
     DialogStage.STAGE3_GET_NAME: DialogStage.STAGE4_GET_REQUEST_TITLE,
     DialogStage.STAGE4_GET_REQUEST_TITLE: DialogStage.STAGE5_GET_REQUEST_DESC,
     DialogStage.STAGE5_GET_REQUEST_DESC: DialogStage.STAGE6_REQUEST_PHOTOS,
-    DialogStage.STAGE7_GET_PHOTOS: DialogStage.STAGE7_GET_PHOTOS,
+    DialogStage.STAGE6_REQUEST_PHOTOS: DialogStage.STAGE8_GET_LOCATION,
     DialogStage.STAGE8_GET_LOCATION: DialogStage.STAGE9_GET_PHONE,
     DialogStage.STAGE9_GET_PHONE: DialogStage.STAGE10_CHECK_DATA,
     DialogStage.STAGE11_DONE: DialogStage.STAGE1_WELCOME,
@@ -78,7 +78,7 @@ class DialogProcessor:
         )
         try:
             self.operate_data()
-            self.change_stage()
+            self.change_stage()  # не происходит, если вылетает BotProcessingError
         except BotProcessingError as e:
             BOT_LOG.debug(
                 LogStrings.DIALOG_INPUT_ERROR.format(
@@ -87,16 +87,17 @@ class DialogProcessor:
                     args=e.args,
                 )
             )
-            messages.append({"text": f"{e.args[0]}!"})
+            messages.append({"text": f"{e.args[0]}"})
         messages.append(get_reply_for_stage(self.dialog.stage))
         if self.dialog.stage == DialogStage.STAGE10_CHECK_DATA:
             messages.append(self.get_summary_for_request())
-        if self.dialog.stage == DialogStage.STAGE11_DONE:
+        elif self.dialog.stage == DialogStage.STAGE11_DONE:
             # move to request saving process
             publish_summary(
                 self.get_summary_for_request(), self.user, self.message_data["bot"]
             )
             self.restart()
+            messages.append(get_reply_for_stage(DialogStage.STAGE1_WELCOME))
 
         return messages
 
@@ -107,6 +108,8 @@ class DialogProcessor:
                 stage=self.dialog.stage,
             )
         )
+        if not self.request.is_complete:
+            self.request.delete()
         self.dialog.delete()
 
     def change_stage(self):
