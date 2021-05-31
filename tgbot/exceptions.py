@@ -4,7 +4,7 @@ class BotProcessingError(Exception):
     pass
 
 
-class NoTextProvidedError(BotProcessingError):
+class TextNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь не предоставляет текст в ответ за запрос ввода"""
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
@@ -12,7 +12,7 @@ class NoTextProvidedError(BotProcessingError):
         super().__init__(f"Запрошенный текст не введён!")
 
 
-class NoCallbackProvidedError(BotProcessingError):
+class CallbackNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь отправляет сообщение вместо нажатия кнопки"""
 
     # происходит, когда на стадии запроса нажатия кнопки передаётся сообщение
@@ -20,17 +20,30 @@ class NoCallbackProvidedError(BotProcessingError):
         super().__init__(f"Ожидается нажатие на кнопку!")
 
 
-class NoImageProvidedError(BotProcessingError):
+class ImageNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь не предоставляет изображение в ответ за запрос загрузки изображения"""
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
-        super().__init__(f"Запрошенное изображение не загружено!\n_Возможно, при загрузке не выставлена галочка сжатия._")
+        super().__init__(
+            f"Запрошенное изображение не загружено!\n_Возможно, при загрузке не выставлена галочка сжатия._"
+        )
 
 
-class WrongPhoneNumberError(BotProcessingError):
+class PhoneNumberMalformedError(BotProcessingError):
     """Возникает, когда пользователь не предоставляет изображение в ответ за запрос загрузки изображения"""
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
-        super().__init__(f"Введён неправильный номер телефона, повторите попытку ещё раз!")
+        super().__init__(
+            f"Введён неправильный номер телефона, повторите попытку ещё раз!"
+        )
+
+
+class CallbackExpiredError(BotProcessingError):
+    """Возникает, когда пользователь нажимает на кнопку от старого сообщения"""
+
+    def __init__(self, command, user_id):
+        super().__init__(
+            f"Нажате кнопка в старом сообщении! Пользователь: {user_id}, команда: {command}"
+        )

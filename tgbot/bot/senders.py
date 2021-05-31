@@ -6,7 +6,7 @@ from tgbot.bot.constants import PUBLISHING_CHANNEL_ID
 from tgbot.bot.utils import build_button_markup
 
 
-def send_telegram_message(message_data, user, bot):
+def send_telegram_message_return_id(message_data, user, bot):
     BOT_LOG.debug(
         LogStrings.DIALOG_SEND_MESSAGE.format(
             user_id=user.username,
@@ -22,14 +22,16 @@ def send_telegram_message(message_data, user, bot):
         parse_mode=ParseMode.MARKDOWN,
     )
     if "caption" in message_data.keys():
-        bot.send_photo(
+        msg = bot.send_photo(
             caption=message_data["caption"], photo=message_data["photo"], **params_dict
         )
     else:
-        bot.send_message(text=message_data["text"], **params_dict)
+        msg = bot.send_message(text=message_data["text"], **params_dict)
+
+    return msg.message_id
 
 
-def publish_summary(summary, user, bot):
+def publish_summary_return_id(summary, user, bot):
     BOT_LOG.debug(
         LogStrings.DIALOG_PUBLISH_REQUEST.format(
             user_id=user.username,
@@ -37,9 +39,11 @@ def publish_summary(summary, user, bot):
             summary=summary,
         )
     )
-    bot.send_photo(
+    msg = bot.send_photo(
         caption=summary["caption"],
         photo=summary["photo"],
         chat_id=PUBLISHING_CHANNEL_ID,
         parse_mode=ParseMode.MARKDOWN,
     )
+
+    return msg.message_id

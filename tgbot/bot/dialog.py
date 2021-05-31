@@ -16,7 +16,7 @@ from .processors import (
     StorePhotoInputProcessor,
     TitleInputProcessor,
 )
-from .senders import publish_summary
+from .senders import publish_summary_return_id
 
 PROCESSORS = {
     DialogStage.STAGE3_GET_NAME: NameInputProcessor,
@@ -67,6 +67,8 @@ class DialogProcessor:
         self.request = self.dialog.request
         self.message_data = message_data
 
+    # todo довольно сложно понимать, так как часть событий за процессинг происходит
+    #  в одной фазе, а часть - в другой
     def process(self):
         messages = []
         BOT_LOG.debug(
@@ -93,7 +95,7 @@ class DialogProcessor:
             messages.append(self.get_summary_for_request())
         elif self.dialog.stage == DialogStage.STAGE11_DONE:
             # move to request saving process
-            publish_summary(
+            publish_summary_return_id(
                 self.get_summary_for_request(), self.user, self.message_data["bot"]
             )
             self.restart()
@@ -131,7 +133,6 @@ class DialogProcessor:
 
     def operate_data(self):
         callback = self.message_data["callback"]
-        # todo по всему коду контроль критических состояний разбросан...
         # если меняем стадию на первую, то реинициализируемся
         if callback == "restart":
             self.restart()

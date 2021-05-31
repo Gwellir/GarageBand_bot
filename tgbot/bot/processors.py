@@ -5,7 +5,12 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.models import RequestPhoto
 
-from ..exceptions import NoCallbackProvidedError, NoTextProvidedError, NoImageProvidedError, WrongPhoneNumberError
+from ..exceptions import (
+    CallbackNotProvidedError,
+    ImageNotProvidedError,
+    PhoneNumberMalformedError,
+    TextNotProvidedError,
+)
 
 
 class AbstractInputProcessor(metaclass=abc.ABCMeta):
@@ -23,7 +28,7 @@ class TextInputProcessor(AbstractInputProcessor):
 
     def get_cleaned_text(self, data):
         if not data["text"]:
-            raise NoTextProvidedError
+            raise TextNotProvidedError
         return data.get("text")
 
     def set_field(self, text):
@@ -59,15 +64,15 @@ class LocationInputProcessor(TextInputProcessor):
     attr_name = "location"
 
 
-# todo add validation
+# todo move validation to the model
 class PhoneNumberInputProcessor(TextInputProcessor):
     attr_name = "phone"
 
     def get_cleaned_text(self, data):
         text = super().get_cleaned_text(data)
-        cleaned_text = re.sub(r'[^+0-9]', '', text)
-        if not (7 < len(cleaned_text) < 15) or cleaned_text.find('+', 1) >= 0:
-            raise WrongPhoneNumberError
+        cleaned_text = re.sub(r"[^+0-9]", "", text)
+        if not (7 < len(cleaned_text) < 15) or cleaned_text.find("+", 1) >= 0:
+            raise PhoneNumberMalformedError
         return cleaned_text
 
 
@@ -84,9 +89,9 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
                 tg_file_id=photo_file_id,
             )
             photo.save()
-        # todo плохой flow-control
+        # todo странный flow-control
         elif not data["callback"]:
-            raise NoImageProvidedError
+            raise ImageNotProvidedError
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=dialog.user.username,
@@ -100,5 +105,5 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
 class SetReadyInputProcessor(AbstractInputProcessor):
     def __call__(self, dialog, data):
         if not data["callback"]:
-            raise NoCallbackProvidedError
+            raise CallbackNotProvidedError
         dialog.request.set_ready(data["bot"])
