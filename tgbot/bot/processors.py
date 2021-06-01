@@ -64,6 +64,7 @@ class TextInputProcessor(AbstractInputProcessor):
 
 class NameInputProcessor(TextInputProcessor):
     attr_name = "name"
+    min_length = 2
 
     def set_field(self, data):
         self.model = self.dialog.user
