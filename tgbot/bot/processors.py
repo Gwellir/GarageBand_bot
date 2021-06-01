@@ -34,7 +34,7 @@ class TextInputProcessor(AbstractInputProcessor):
     def check_text_length(self, text):
         text_length = len(text)
         max_length = self.model._meta.get_field(self.attr_name).max_length
-        if text_length <= self.min_length:
+        if text_length < self.min_length:
             raise TextTooShortError(self.min_length, text_length)
         elif text_length > max_length:
             raise TextTooLongError(max_length, text_length)
