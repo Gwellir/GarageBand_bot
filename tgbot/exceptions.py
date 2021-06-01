@@ -9,7 +9,7 @@ class TextNotProvidedError(BotProcessingError):
 
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
-        super().__init__(f"Запрошенный текст не введён!")
+        super().__init__("Запрошенный текст не введён!")
 
 
 class CallbackNotProvidedError(BotProcessingError):
@@ -17,7 +17,7 @@ class CallbackNotProvidedError(BotProcessingError):
 
     # происходит, когда на стадии запроса нажатия кнопки передаётся сообщение
     def __init__(self):
-        super().__init__(f"Ожидается нажатие на кнопку!")
+        super().__init__("Ожидается нажатие на кнопку!")
 
 
 class ImageNotProvidedError(BotProcessingError):
@@ -26,7 +26,7 @@ class ImageNotProvidedError(BotProcessingError):
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
         super().__init__(
-            f"Запрошенное изображение не загружено!\n_Возможно, при загрузке не выставлена галочка сжатия._"
+            "Запрошенное изображение не загружено!\n_Возможно, при загрузке не выставлена галочка сжатия._"
         )
 
 
@@ -36,7 +36,25 @@ class PhoneNumberMalformedError(BotProcessingError):
     # обычно происходит, когда на стадии запроса текста передаётся изображение или стикер
     def __init__(self):
         super().__init__(
-            f"Введён неправильный номер телефона, повторите попытку ещё раз!"
+            "Введён неправильный номер телефона, повторите попытку ещё раз!"
+        )
+
+
+class TextTooLongError(BotProcessingError):
+    """Возникает, когда пользователь вводит слишком длинный текст в текстовом ответе"""
+
+    def __init__(self, max_length, length):
+        super().__init__(
+            f"Превышена максимальная длина ответа ({max_length}), сейчас: {length}"
+        )
+
+
+class TextTooShortError(BotProcessingError):
+    """Возникает, когда пользователь вводит слишком короткий текст в текстовом ответе"""
+
+    def __init__(self, min_length, length):
+        super().__init__(
+            f"Слишком короткий ответ, введите не менее {min_length} символов!"
         )
 
 
@@ -45,5 +63,5 @@ class CallbackExpiredError(BotProcessingError):
 
     def __init__(self, command, user_id):
         super().__init__(
-            f"Нажате кнопка в старом сообщении! Пользователь: {user_id}, команда: {command}"
+            f"Нажата кнопка в старом сообщении! Пользователь: {user_id}, команда: {command}"
         )

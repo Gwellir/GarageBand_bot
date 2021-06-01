@@ -1,6 +1,8 @@
 import abc
 import re
 
+from django.utils.html import strip_tags
+
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.models import RequestPhoto
@@ -10,6 +12,8 @@ from ..exceptions import (
     ImageNotProvidedError,
     PhoneNumberMalformedError,
     TextNotProvidedError,
+    TextTooLongError,
+    TextTooShortError,
 )
 
 
@@ -20,18 +24,32 @@ class AbstractInputProcessor(metaclass=abc.ABCMeta):
 
 class TextInputProcessor(AbstractInputProcessor):
     attr_name = None
+    min_length = 3
 
     def __call__(self, dialog, data):
         self.dialog = dialog
         self.model = dialog.request
-        self.set_field(self.get_cleaned_text(data))
+        self.set_field(data)
+
+    def check_text_length(self, text):
+        text_length = len(text)
+        max_length = self.model._meta.get_field(self.attr_name).max_length
+        if text_length <= self.min_length:
+            raise TextTooShortError(self.min_length, text_length)
+        elif text_length > max_length:
+            raise TextTooLongError(max_length, text_length)
+        else:
+            return True
 
     def get_cleaned_text(self, data):
         if not data["text"]:
             raise TextNotProvidedError
-        return data.get("text")
+        text = data.get("text")
+        if self.check_text_length(text):
+            return strip_tags(text)
 
-    def set_field(self, text):
+    def set_field(self, raw_text):
+        text = self.get_cleaned_text(raw_text)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=self.dialog.user.username,
@@ -89,17 +107,17 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
                 tg_file_id=photo_file_id,
             )
             photo.save()
+            BOT_LOG.debug(
+                LogStrings.DIALOG_SET_FIELD.format(
+                    user_id=dialog.user.username,
+                    stage=dialog.dialog.stage,
+                    model="RequestPhoto",
+                    data=data,
+                )
+            )
         # todo странный flow-control
         elif not data["callback"]:
             raise ImageNotProvidedError
-        BOT_LOG.debug(
-            LogStrings.DIALOG_SET_FIELD.format(
-                user_id=dialog.user.username,
-                stage=dialog.dialog.stage,
-                model="RequestPhoto",
-                data=data,
-            )
-        )
 
 
 class SetReadyInputProcessor(AbstractInputProcessor):

@@ -1,7 +1,6 @@
 from io import BufferedReader, BufferedWriter, BytesIO
 
 from django.db import models, transaction
-from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 from logger.log_config import BOT_LOG
@@ -26,7 +25,7 @@ class BotUser(models.Model):
     """Класс с информацией о пользователях бота"""
 
     name = models.CharField(
-        verbose_name="Полное имя для бота", max_length=100, blank=True
+        verbose_name="Полное имя пользователя", max_length=50, blank=True
     )
     first_name = models.CharField(
         verbose_name="Полное имя в ТГ", max_length=100, blank=True
@@ -37,9 +36,9 @@ class BotUser(models.Model):
     user_id = models.PositiveIntegerField(
         verbose_name="ID в ТГ", unique=True, null=False
     )
-    username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=100)
+    username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=50)
     location = models.CharField(
-        verbose_name="Указанное местоположение", null=True, max_length=200
+        verbose_name="Указанное местоположение", null=True, max_length=100
     )
     # todo move to some base TrackableModelMixin?
     last_active = models.DateTimeField(
@@ -74,15 +73,15 @@ class WorkRequest(models.Model):
     """Класс с заявками"""
 
     title = models.CharField(
-        verbose_name="Наименование задачи", max_length=255, blank=True
+        verbose_name="Наименование задачи", max_length=70, blank=True
     )
-    description = models.TextField(verbose_name="Подробное описание", blank=True)
+    description = models.TextField(verbose_name="Подробное описание", max_length=700, blank=True)
     formed_at = models.DateTimeField(verbose_name="Время составления", auto_now=True)
     user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE)
     location = models.CharField(
-        verbose_name="Местоположение для ремонта", blank=True, max_length=200
+        verbose_name="Местоположение для ремонта", blank=True, max_length=100
     )
-    phone = models.CharField(verbose_name="Номер телефона", blank=True, max_length=50)
+    phone = models.CharField(verbose_name="Номер телефона", blank=True, max_length=20)
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности заявки", default=False
     )
