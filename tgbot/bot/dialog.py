@@ -143,7 +143,8 @@ class DialogProcessor:
         text = strings.summary["text"] % (
             self.request.pk,
             self.request.title,
-            f"{self.request.description[:700]}{' <...>' if len(self.request.description) > 700 else ''}",
+            f"{self.request.description[:700]}"
+            f"{' <...>' if len(self.request.description) > 700 else ''}",
             self.request.location,
             self.user.username,
             self.user.name,

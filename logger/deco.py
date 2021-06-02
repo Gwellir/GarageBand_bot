@@ -1,5 +1,4 @@
 import inspect
-import os
 from functools import wraps
 
 from logger.log_config import BOT_LOG
@@ -19,10 +18,10 @@ class LogAdvanced:
         @wraps(func)
         def wrapped(*args, **kwargs):
             full_name, function_name = self._inspect_caller()
-            file_name = os.path.split(full_name)[1]
             logger = BOT_LOG
             logger.debug(
-                f'function "{func.__name__}" called from "{function_name}", params = {args}, {kwargs}'
+                f'function "{func.__name__}" called from "{function_name}",'
+                f" params = {args}, {kwargs}"
             )
             if not self.raiseable:
                 res = func(*args, **kwargs)
@@ -33,7 +32,8 @@ class LogAdvanced:
                     logger.debug(f'function "{func.__name__} returned: {res}')
                 except Exception as e:
                     logger.error(
-                        f'function "{func.__name__}" raised an exception "{type(e).__name__}" {e.args}'
+                        f'function "{func.__name__}"'
+                        f' raised an exception "{type(e).__name__}" {e.args}'
                     )
                     raise e
             return res

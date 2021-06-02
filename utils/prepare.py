@@ -1,9 +1,12 @@
 #!/bin/python3
-"""Скрипт для автоматизации развёртывания Python проектов на базе Django,
+"""
+Скрипт для автоматизации развёртывания Python проектов на базе Django,
 настройки виртуального окружения для них и выполнения базовых миграций.
 
 При запуске в директории с дистрибутивом - создаёт виртуальное окружение Python,
-устанавливает туда пакеты в соответствии с требованиями проекта и инициирует базу данных."""
+устанавливает туда пакеты в соответствии с требованиями проекта
+и инициирует базу данных.
+"""
 
 
 import os
@@ -51,7 +54,8 @@ if sys.version_info >= (3, 6, 1):
     print("Python version check - OK")
 else:
     print(
-        "You need to upgrade your Python interpreter to version 3.6.1 at least!\nExiting..."
+        "You need to upgrade your Python interpreter to version 3.6.1 at least!\n"
+        "Exiting..."
     )
     sys.exit(1)
 
