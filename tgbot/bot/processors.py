@@ -101,7 +101,7 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
             description = ""
         if data["photo"]:
             photo_file_id = data["photo"]
-            photo = dialog.request.photos.create(
+            dialog.request.photos.create(
                 description=description,
                 tg_file_id=photo_file_id,
             )
