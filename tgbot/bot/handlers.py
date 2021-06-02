@@ -49,9 +49,7 @@ def message_handler(update, context):
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
     try:
-        command = get_and_verify_callback_data(
-            update.callback_query, last_id
-        )
+        command = get_and_verify_callback_data(update.callback_query, last_id)
         if command:
             update.callback_query.answer()
     except CallbackExpiredError as e:

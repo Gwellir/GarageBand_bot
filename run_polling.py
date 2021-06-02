@@ -1,4 +1,5 @@
 import os
+import sys
 
 import django
 
@@ -8,4 +9,5 @@ django.setup()
 from tgbot.bot.dispatcher import run_polling
 
 if __name__ == "__main__":
+    os.chdir(os.path.dirname(sys.argv[0]))
     run_polling()

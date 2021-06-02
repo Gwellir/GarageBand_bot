@@ -19,7 +19,7 @@ def send_telegram_message_return_id(message_data, user, bot):
     params_dict = dict(
         chat_id=user.id,
         reply_markup=markup,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
     )
     if "caption" in message_data.keys():
         msg = bot.send_photo(
@@ -43,7 +43,7 @@ def publish_summary_return_id(summary, user, bot):
         caption=summary["caption"],
         photo=summary["photo"],
         chat_id=PUBLISHING_CHANNEL_ID,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
     )
 
     return msg.message_id

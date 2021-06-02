@@ -3,7 +3,6 @@ import os
 from pytest import mark
 from telethon import TelegramClient
 from telethon.tl.custom.message import Message
-from time import sleep
 
 BOT_ID = os.getenv("tested_bot_id")
 
