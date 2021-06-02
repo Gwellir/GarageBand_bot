@@ -75,7 +75,9 @@ class WorkRequest(models.Model):
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
-    description = models.TextField(verbose_name="Подробное описание", max_length=700, blank=True)
+    description = models.TextField(
+        verbose_name="Подробное описание", max_length=700, blank=True
+    )
     formed_at = models.DateTimeField(verbose_name="Время составления", auto_now=True)
     user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE)
     location = models.CharField(
@@ -96,7 +98,7 @@ class WorkRequest(models.Model):
 
     @classmethod
     def get_or_create(cls, user, dialog):
-        # странное решение, может быть, завести модель уникальных черновиков заявок по пользователям?
+        # может быть, завести модель уникальных черновиков заявок по пользователям?
         return WorkRequest.objects.get_or_create(
             user=user, dialog=dialog, is_complete=False
         )

@@ -1,11 +1,5 @@
 import telegram
-from telegram.ext import (
-    CallbackQueryHandler,
-    Dispatcher,
-    Filters,
-    MessageHandler,
-    Updater,
-)
+from telegram.ext import CallbackQueryHandler, Filters, MessageHandler, Updater
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
@@ -30,7 +24,7 @@ def run_polling():
     dp = setup_dispatcher(dp)
 
     bot_info = telegram.Bot(TELEGRAM_TOKEN).get_me()
-    bot_link = f"https://t.me/" + bot_info["username"]
+    bot_link = f"https://t.me/{bot_info['username']}"
 
     BOT_LOG.info(f"Polling of '{bot_link}' started")
     updater.start_polling()
