@@ -5,7 +5,6 @@ from django.utils.html import strip_tags
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.models import RequestPhoto
 
 from ..exceptions import (
     CallbackNotProvidedError,
@@ -102,12 +101,10 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
             description = ""
         if data["photo"]:
             photo_file_id = data["photo"]
-            photo = RequestPhoto(
+            photo = dialog.request.photos.create(
                 description=description,
-                request=dialog.request,
                 tg_file_id=photo_file_id,
             )
-            photo.save()
             BOT_LOG.debug(
                 LogStrings.DIALOG_SET_FIELD.format(
                     user_id=dialog.user.username,
