@@ -26,7 +26,9 @@ def send_telegram_message_return_id(message_data, user, bot):
             caption=message_data["caption"], photo=message_data["photo"], **params_dict
         )
     else:
-        msg = bot.send_message(text=message_data["text"], **params_dict)
+        msg = bot.send_message(
+            text=message_data["text"], disable_web_page_preview=True, **params_dict
+        )
 
     return msg.message_id
 

@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from tgbot.bot.senders import publish_summary_return_id
+from tgbot.bot_views import get_summary_for_request
 
 
 class DialogStage(models.IntegerChoices):
@@ -123,6 +125,27 @@ class WorkRequest(models.Model):
         )
         self.is_complete = True
         self.save()
+        RegisteredRequest.publish(self, bot)
+
+
+class RegisteredRequest(models.Model):
+    request = models.OneToOneField(
+        WorkRequest, on_delete=models.CASCADE, related_name="registered"
+    )
+    message_id = models.PositiveIntegerField(
+        verbose_name="Идентификатор сообщения в канале", null=True
+    )
+
+    @classmethod
+    def publish(cls, request, bot):
+        reg_request = cls.objects.create(
+            request=request,
+        )
+        message_id = publish_summary_return_id(
+            get_summary_for_request(request, ready=True), request.user, bot
+        )
+        reg_request.message_id = message_id
+        reg_request.save()
 
 
 class RequestPhoto(models.Model):

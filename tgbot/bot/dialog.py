@@ -1,12 +1,9 @@
-from django.core.files import File
-
-import tgbot.bot.strings as strings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_LOGO_FILE, MAX_CAPTION_LENGTH
-from tgbot.models import DialogStage
 
+from ..bot_views import get_reply_for_stage, get_summary_for_request
 from ..exceptions import BotProcessingError
+from ..models import DialogStage
 from .processors import (
     DescriptionInputProcessor,
     LocationInputProcessor,
@@ -16,7 +13,6 @@ from .processors import (
     StorePhotoInputProcessor,
     TitleInputProcessor,
 )
-from .senders import publish_summary_return_id
 
 PROCESSORS = {
     DialogStage.STAGE3_GET_NAME: NameInputProcessor,
@@ -54,12 +50,6 @@ NEXT_STAGE = {
 }
 
 
-def get_reply_for_stage(stage):
-    num = stage - 1
-
-    return strings.stages_info[num]
-
-
 class DialogProcessor:
     def __init__(self, dialog, message_data):
         self.dialog = dialog
@@ -92,12 +82,8 @@ class DialogProcessor:
             messages.append({"text": f"{e.args[0]}"})
         messages.append(get_reply_for_stage(self.dialog.stage))
         if self.dialog.stage == DialogStage.STAGE10_CHECK_DATA:
-            messages.append(self.get_summary_for_request())
+            messages.append(get_summary_for_request(self.request))
         elif self.dialog.stage == DialogStage.STAGE11_DONE:
-            # move to request saving process
-            publish_summary_return_id(
-                self.get_summary_for_request(), self.user, self.message_data["bot"]
-            )
             self.restart()
             messages.append(get_reply_for_stage(DialogStage.STAGE1_WELCOME))
 
@@ -138,22 +124,3 @@ class DialogProcessor:
             self.restart()
         elif self.dialog.stage in PROCESSORS.keys():
             PROCESSORS[self.dialog.stage]()(self, self.message_data)
-
-    def get_summary_for_request(self):
-        text = strings.summary["text"] % (
-            self.request.pk,
-            self.request.title,
-            f"{self.request.description[:700]}"
-            f"{' <...>' if len(self.request.description) > 700 else ''}",
-            self.request.location,
-            self.user.username,
-            self.user.name,
-            self.request.phone,
-        )
-        buttons = strings.summary["buttons"]
-        if self.request.photos.all():
-            photo = self.request.photos.all()[0].tg_file_id
-        else:
-            photo = File(open(DEFAULT_LOGO_FILE, "rb"))
-
-        return dict(caption=text[:MAX_CAPTION_LENGTH], buttons=buttons, photo=photo)
