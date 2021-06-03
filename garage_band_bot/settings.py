@@ -124,6 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+STATIC_ROOT = BASE_DIR / "static"
 STATIC_URL = "/static/"
 
 # Default primary key field type
@@ -131,7 +132,11 @@ STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# bot settings
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TESTING_CHANNEL_ID = os.getenv("TESTING_CHANNEL_ID")
+PUBLISHING_CHANNEL_ID = os.getenv("PUBLISHING_CHANNEL_ID")
+ADMIN_GROUP_ID = os.getenv("ADMIN_GROUP_ID")
 
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
