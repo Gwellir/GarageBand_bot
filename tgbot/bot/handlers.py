@@ -51,6 +51,8 @@ def admin_command_handler(update, context):
     except BotUser.DoesNotExist:
         # todo unify callback and exception processing
         update.callback_query.answer("Ваш аккаунт не является администратором!")
+        return
+
     command, key = update.callback_query.data.split()
 
     try:
