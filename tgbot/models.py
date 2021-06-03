@@ -32,17 +32,17 @@ class BotUser(models.Model):
         verbose_name="Полное имя пользователя", max_length=50, blank=True
     )
     first_name = models.CharField(
-        verbose_name="Полное имя в ТГ", max_length=100, blank=True
+        verbose_name="Имя в ТГ", max_length=100, blank=True
     )
     last_name = models.CharField(
-        verbose_name="Полное имя в ТГ", max_length=100, blank=True
+        verbose_name="Фамилия в ТГ", max_length=100, blank=True
     )
     user_id = models.PositiveIntegerField(
         verbose_name="ID в ТГ", unique=True, null=False, db_index=True
     )
     username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=50)
     location = models.CharField(
-        verbose_name="Указанное местоположение", null=True, max_length=100
+        verbose_name="Указанное местоположение", null=True, blank=True, max_length=100
     )
     # todo move to some base TrackableModelMixin?
     last_active = models.DateTimeField(
