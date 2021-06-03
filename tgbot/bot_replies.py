@@ -10,6 +10,30 @@ def get_reply_for_stage(stage):
     return strings.stages_info[num]
 
 
+def get_admin_message(request):
+    text = strings.admin["text"] % (
+        request.registered.pk,
+        request.user.user_id,
+        request.user.name,
+    )
+    buttons = [
+        [
+            {
+                "text": "❌ Удалить",
+                "callback_data": f"admin_delete {request.registered.message_id}",
+            }
+        ],
+        [
+            {
+                "text": "☠️ Забанить пользователя",
+                "callback_data": f"admin_ban {request.user.pk}",
+            }
+        ],
+    ]
+
+    return dict(text=text, buttons=buttons)
+
+
 def get_summary_for_request(request, ready=False):
     text = strings.summary["text"] % (
         request.registered.pk if ready else "000",
