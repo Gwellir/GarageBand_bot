@@ -65,6 +65,9 @@ def admin_command_handler(update, context):
     except (AdminActionError, UserIsBannedError) as e:
         update.callback_query.answer(e.args[0])
 
+    # todo should only work for destructive actions
+    update.effective_message.delete()
+
 
 def message_handler(update, context):
     """Обработчик для всех получаемых сообщений.

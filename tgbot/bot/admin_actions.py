@@ -9,6 +9,7 @@ from tgbot.exceptions import MessageDoesNotExistError, NoUserWithThisIdError
 from tgbot.models import BotUser, RegisteredRequest
 
 
+# todo organize exception control
 def ban_user_by_id(bot, pk, callback=None):
     try:
         user = BotUser.objects.get(pk=pk)
