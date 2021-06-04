@@ -13,12 +13,8 @@ stages_info = [
             ],
             [
                 {
-                    "text": "Поиск заявок",
-                    "callback_data": "search_request",
-                },
-                {
                     "text": "Разместить рекламу",
-                    "callback_data": "propose_ads",
+                    "url": "https://t.me/ZhitkovArtem",
                 },
             ],
         ],
