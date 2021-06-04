@@ -1,4 +1,4 @@
-from io import BufferedReader, BufferedWriter, BytesIO
+import tempfile
 
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
@@ -31,9 +31,7 @@ class BotUser(models.Model):
     name = models.CharField(
         verbose_name="Полное имя пользователя", max_length=50, blank=True
     )
-    first_name = models.CharField(
-        verbose_name="Имя в ТГ", max_length=100, blank=True
-    )
+    first_name = models.CharField(verbose_name="Имя в ТГ", max_length=100, blank=True)
     last_name = models.CharField(
         verbose_name="Фамилия в ТГ", max_length=100, blank=True
     )
@@ -127,13 +125,10 @@ class WorkRequest(models.Model):
     def set_ready(self, bot):
         for photo in self.photos.all():
             file = bot.get_file(file_id=photo.tg_file_id)
-            # todo в целом, копипаста с бессмысленным усложнением
-            wpo = BytesIO()
-            w_write = BufferedWriter(wpo)
-            w_read = BufferedReader(wpo)
-            file.download(out=w_write)
-            photo.image.save(f"{photo.tg_file_id}.jpg", w_read)
-            wpo.close()
+            temp = tempfile.TemporaryFile()
+            file.download(out=temp)
+            photo.image.save(f"{photo.tg_file_id}.jpg", temp)
+            temp.close()
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
