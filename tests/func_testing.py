@@ -8,17 +8,16 @@ BOT_ID = os.getenv("tested_bot_id")
 
 
 @mark.asyncio
-async def test_start(client: TelegramClient):
+async def test_start(client: TelegramClient, image):
     async with client.conversation("@GarageBandTest_bot", timeout=5) as conv:
         await conv.send_message("/start")
 
         resp: Message = await conv.get_response()
 
         assert "помогаю размещать заявки" in resp.raw_text
-        assert resp.button_count == 3
+        assert resp.button_count == 2
         assert resp.buttons[0][0].text == "Оформить заявку"
-        assert resp.buttons[1][0].text == "Поиск заявок"
-        assert resp.buttons[1][1].text == "Разместить рекламу"
+        assert resp.buttons[1][0].text == "Разместить рекламу"
 
         await resp.click(text="Оформить заявку")
         answer = await conv.get_response()
@@ -51,10 +50,11 @@ async def test_start(client: TelegramClient):
         answer = await conv.get_response()
 
         assert answer.button_count == 2
-        assert "Вы можете добавить фотографии" in answer.raw_text
+        assert "Вы можете добавить фотографию" in answer.raw_text
         assert answer.buttons[0][0].text == "Пропустить"
         assert answer.buttons[1][0].text == "Отменить"
 
+        await conv.send_message("Картинка", file=image)
         await answer.click(text="Пропустить")
         answer = await conv.get_response()
 
@@ -79,7 +79,7 @@ async def test_start(client: TelegramClient):
         assert "Автотест" in answer2.raw_text
         assert "🛠️ Автоматическая проверка работы бота" in answer2.raw_text
         assert "📍 Санкт-Петербург" in answer2.raw_text
-        assert "🖋 @Valion - Владислав" in answer2.raw_text
+        assert "Владислав" in answer2.raw_text
         assert "📞 +380970000000" in answer2.raw_text
         assert answer2.buttons[0][0].text == "✅ Публикуем"
         assert answer2.buttons[0][1].text == "❌ Заново"

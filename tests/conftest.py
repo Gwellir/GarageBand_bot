@@ -35,3 +35,10 @@ async def client() -> TelegramClient:
 
     await tc.disconnect()
     await tc.disconnected
+
+
+@pytest.fixture()
+async def image():
+    f = open(BASE_DIR / "tests/clouds-mf.jpg", "rb")
+    yield f
+    f.close()
