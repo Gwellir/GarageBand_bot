@@ -1,7 +1,7 @@
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 
-from ..bot_views import get_reply_for_stage, get_summary_for_request
+from ..bot_replies import get_reply_for_stage, get_summary_for_request
 from ..exceptions import BotProcessingError
 from ..models import DialogStage
 from .processors import (

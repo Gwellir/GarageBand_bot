@@ -3,10 +3,12 @@ from io import BufferedReader, BufferedWriter, BytesIO
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
+from garage_band_bot.settings import ADMIN_GROUP_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.senders import publish_summary_return_id
-from tgbot.bot_views import get_summary_for_request
+from tgbot.bot.senders import publish_summary_return_id, send_message_return_id
+from tgbot.bot_replies import get_admin_message, get_summary_for_request
+from tgbot.exceptions import UserIsBannedError
 
 
 class DialogStage(models.IntegerChoices):
@@ -30,17 +32,17 @@ class BotUser(models.Model):
         verbose_name="Полное имя пользователя", max_length=50, blank=True
     )
     first_name = models.CharField(
-        verbose_name="Полное имя в ТГ", max_length=100, blank=True
+        verbose_name="Имя в ТГ", max_length=100, blank=True
     )
     last_name = models.CharField(
-        verbose_name="Полное имя в ТГ", max_length=100, blank=True
+        verbose_name="Фамилия в ТГ", max_length=100, blank=True
     )
     user_id = models.PositiveIntegerField(
-        verbose_name="ID в ТГ", unique=True, null=False
+        verbose_name="ID в ТГ", unique=True, null=False, db_index=True
     )
     username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=50)
     location = models.CharField(
-        verbose_name="Указанное местоположение", null=True, max_length=100
+        verbose_name="Указанное местоположение", null=True, blank=True, max_length=100
     )
     # todo move to some base TrackableModelMixin?
     last_active = models.DateTimeField(
@@ -51,6 +53,12 @@ class BotUser(models.Model):
         verbose_name="Время создания",
         auto_now_add=True,
     )
+    is_banned = models.BooleanField(
+        verbose_name="В бане", default=False, null=False, db_index=True
+    )
+    is_staff = models.BooleanField(
+        verbose_name="Админ", default=False, null=False, db_index=True
+    )
 
     @property
     def get_fullname(self):
@@ -59,7 +67,7 @@ class BotUser(models.Model):
     def __str__(self):
         return (
             f"#{self.pk} {self.name if self.name else self.get_fullname} "
-            f"TG: #{self.user_id} @{self.username}"
+            f"TG: #{self.user_id} @{self.username if self.username else '-'}"
         )
 
     @classmethod
@@ -67,8 +75,16 @@ class BotUser(models.Model):
         user, created = cls.objects.update_or_create(
             user_id=data["user_id"], defaults=data
         )
+        if user.is_banned:
+            raise UserIsBannedError(user)
 
         return user, created
+
+    def ban(self):
+        if self.is_banned:
+            raise UserIsBannedError(self)
+        self.is_banned = True
+        self.save()
 
 
 class WorkRequest(models.Model):
@@ -80,14 +96,16 @@ class WorkRequest(models.Model):
     description = models.TextField(
         verbose_name="Подробное описание", max_length=700, blank=True
     )
-    formed_at = models.DateTimeField(verbose_name="Время составления", auto_now=True)
-    user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE)
+    formed_at = models.DateTimeField(
+        verbose_name="Время составления", auto_now=True, db_index=True
+    )
+    user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE, db_index=True)
     location = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=100
     )
     phone = models.CharField(verbose_name="Номер телефона", blank=True, max_length=20)
     is_complete = models.BooleanField(
-        verbose_name="Флаг готовности заявки", default=False
+        verbose_name="Флаг готовности заявки", default=False, db_index=True
     )
     dialog = models.OneToOneField(
         "Dialog",
@@ -97,10 +115,10 @@ class WorkRequest(models.Model):
         default=None,
     )
     # photos backref
+    # registered backref
 
     @classmethod
     def get_or_create(cls, user, dialog):
-        # может быть, завести модель уникальных черновиков заявок по пользователям?
         return WorkRequest.objects.get_or_create(
             user=user, dialog=dialog, is_complete=False
         )
@@ -133,10 +151,11 @@ class RegisteredRequest(models.Model):
         WorkRequest, on_delete=models.CASCADE, related_name="registered"
     )
     message_id = models.PositiveIntegerField(
-        verbose_name="Идентификатор сообщения в канале", null=True
+        verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
     )
 
     @classmethod
+    @transaction.atomic
     def publish(cls, request, bot):
         reg_request = cls.objects.create(
             request=request,
@@ -146,6 +165,7 @@ class RegisteredRequest(models.Model):
         )
         reg_request.message_id = message_id
         reg_request.save()
+        send_message_return_id(get_admin_message(request), ADMIN_GROUP_ID, bot)
 
 
 class RequestPhoto(models.Model):
@@ -159,7 +179,7 @@ class RequestPhoto(models.Model):
     )
     image = models.ImageField(verbose_name="Фотография", upload_to="user_photos")
     request = models.ForeignKey(
-        WorkRequest, on_delete=models.CASCADE, related_name="photos"
+        WorkRequest, on_delete=models.CASCADE, related_name="photos", db_index=True
     )
 
 

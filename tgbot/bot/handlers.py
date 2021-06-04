@@ -1,10 +1,16 @@
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from tgbot.bot.admin_actions import ADMIN_ACTIONS
 from tgbot.bot.dialog import DialogProcessor
-from tgbot.bot.senders import send_telegram_message_return_id
+from tgbot.bot.senders import send_message_return_id
 from tgbot.bot.utils import extract_user_data_from_update
-from tgbot.exceptions import CallbackExpiredError
-from tgbot.models import Dialog
+from tgbot.exceptions import (
+    AdminActionError,
+    CallbackExpiredError,
+    UnknownAdminCommandError,
+    UserIsBannedError,
+)
+from tgbot.models import BotUser, Dialog
 
 
 def get_and_verify_callback_data(callback_query, last_id):
@@ -26,16 +32,38 @@ def get_photo_data(message_data, bot):
 
 def post_handler(update, context):
     """
-    Обработчик для сообщений каналов
+    Обработчик для сообщений каналов и групп
 
-    Требуется для отслеживания ID каналов.
+    Требуется для отслеживания ID каналов и групп.
     """
 
     BOT_LOG.info(
         LogStrings.CHANNEL_POST.format(
-            channel_id=update.channel_post.chat_id,
+            channel_id=update.effective_message.chat_id,
         )
     )
+
+
+def admin_command_handler(update, context):
+    user = extract_user_data_from_update(update)
+    try:
+        BotUser.objects.get(user_id=user["user_id"], is_staff=True)
+    except BotUser.DoesNotExist:
+        # todo unify callback and exception processing
+        update.callback_query.answer("Ваш аккаунт не является администратором!")
+        return
+
+    command, key = update.callback_query.data.split()
+
+    try:
+        action = ADMIN_ACTIONS[command]
+    except KeyError:
+        raise UnknownAdminCommandError(command, key)
+
+    try:
+        action(context.bot, int(key), callback=update.callback_query)
+    except (AdminActionError, UserIsBannedError) as e:
+        update.callback_query.answer(e.args[0])
 
 
 def message_handler(update, context):
@@ -45,7 +73,17 @@ def message_handler(update, context):
 
     # todo добавить привязку инстансов DialogProcessor к пользователям
     user_data = extract_user_data_from_update(update)
-    dialog = Dialog.get_or_create(user_data)
+    try:
+        dialog = Dialog.get_or_create(user_data)
+    except UserIsBannedError as e:
+        BOT_LOG.warning(
+            LogStrings.DIALOG_INPUT_ERROR.format(
+                user_id=update.effective_user.username,
+                stage=None,
+                args=e.args[0],
+            )
+        )
+        return
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
     try:
@@ -75,6 +113,6 @@ def message_handler(update, context):
     replies = dialog_processor.process()
 
     for reply in replies:
-        context.user_data["last_message_id"] = send_telegram_message_return_id(
-            reply, update.effective_user, context.bot
+        context.user_data["last_message_id"] = send_message_return_id(
+            reply, update.effective_user.id, context.bot
         )

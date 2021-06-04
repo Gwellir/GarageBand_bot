@@ -1,3 +1,44 @@
+class UserIsBannedError(Exception):
+    """Возникает, когда приходит сообщение от забаненного пользователя."""
+
+    def __init__(self, user):
+        super().__init__(f"Пользователь {user} находится в бане!")
+
+
+class AdminActionError(Exception):
+    """Базовый класс для исключений в работе админки бота"""
+
+    pass
+
+
+class NoUserWithThisIdError(AdminActionError):
+    """Возникает при попытке произвести действие c пользователем с несуществующим ID"""
+
+    def __init__(self, pk):
+        super().__init__(f"Пользователь c pk '{pk}' не существует!")
+
+
+class UserIsNotAdminError(AdminActionError):
+    """Возникает при попытке произвести действие c пользователем с несуществующим ID"""
+
+    def __init__(self, user_id):
+        super().__init__("Аккаунт не является администраторским!")
+
+
+class UnknownAdminCommandError(AdminActionError):
+    """Возникает, когда в коллбеке приходит неизвестная админская команда."""
+
+    def __init__(self, command, key):
+        super().__init__(f"Команда '{command}' с ключом {key} не распознана!")
+
+
+class MessageDoesNotExistError(AdminActionError):
+    """Возникает, при попытке удалить несуществующее сообщение из канала."""
+
+    def __init__(self, message_id):
+        super().__init__(f"Сообщение #{message_id} не существует!")
+
+
 class BotProcessingError(Exception):
     """Базовый класс для исключений в обработке данных в боте"""
 
