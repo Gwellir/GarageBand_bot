@@ -1,54 +1,36 @@
-from django.core.files import File
-
 from tgbot.bot import strings as strings
-from tgbot.bot.constants import DEFAULT_LOGO_FILE, MAX_CAPTION_LENGTH
 
 
-def get_reply_for_stage(stage):
+def fill_data(message_data, content_dict):
+    msg = dict()
+    msg["text"] = message_data["text"].format(**content_dict)
+    msg["buttons"] = message_data["buttons"]
+    for row in msg["buttons"]:
+        for button in row:
+            for field in button.keys():
+                button[field] = button[field].format(**content_dict)
+
+    return msg
+
+
+def get_reply_for_stage(data, stage):
     num = stage - 1
+    msg = fill_data(strings.stages_info[num], data)
 
-    return strings.stages_info[num]
-
-
-def get_admin_message(request):
-    text = strings.admin["text"] % (
-        request.registered.pk,
-        request.user.user_id,
-        request.user.name,
-    )
-    buttons = [
-        [
-            {
-                "text": "❌ Удалить",
-                "callback_data": f"admin_delete {request.registered.message_id}",
-            }
-        ],
-        [
-            {
-                "text": "☠️ Забанить пользователя",
-                "callback_data": f"admin_ban {request.user.pk}",
-            }
-        ],
-    ]
-
-    return dict(text=text, buttons=buttons)
+    return msg
 
 
-def get_summary_for_request(request, ready=False):
-    text = strings.summary["text"] % (
-        request.registered.pk if ready else "000",
-        request.title,
-        f"{request.description[:700]}"
-        f"{' <...>' if len(request.description) > 700 else ''}",
-        request.location,
-        request.user.user_id,
-        request.user.name,
-        request.phone,
-    )
-    buttons = strings.summary["buttons"]
-    if request.photos.all():
-        photo = request.photos.all()[0].tg_file_id
-    else:
-        photo = File(open(DEFAULT_LOGO_FILE, "rb"))
+def get_admin_message(data: dict):
+    msg = fill_data(strings.admin, data)
 
-    return dict(caption=text[:MAX_CAPTION_LENGTH], buttons=buttons, photo=photo)
+    return msg
+
+
+def get_summary_for_request(data, photo, ready=False):
+    msg = fill_data(strings.summary, data)
+    msg["caption"] = msg.pop("text")
+    msg["photo"] = photo
+    if ready:
+        msg.pop("buttons")
+
+    return msg
