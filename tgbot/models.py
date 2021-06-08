@@ -91,6 +91,9 @@ class BotUser(models.Model):
 class Tag(models.Model):
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
 
+    def __str__(self):
+        return f"#{self.pk} {self.name}"
+
 
 class WorkRequest(models.Model):
     """Класс с заявками"""
@@ -121,6 +124,9 @@ class WorkRequest(models.Model):
     )
     # photos backref
     # registered backref
+
+    def __str__(self):
+        return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -179,6 +185,9 @@ class RegisteredRequest(models.Model):
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
     )
 
+    def __str__(self):
+        return f"{self.pk} {self.request.user} ({self.message_id})"
+
     @classmethod
     @transaction.atomic
     def publish(cls, request, bot):
@@ -225,6 +234,9 @@ class Dialog(models.Model):
         null=False,
         default=DialogStage.STAGE1_WELCOME,
     )
+
+    def __str__(self):
+        return f"{self.pk} {self.user} @{self.stage}"
 
     @classmethod
     @transaction.atomic()
