@@ -86,6 +86,10 @@ class LocationInputProcessor(TextInputProcessor):
 class PhoneNumberInputProcessor(TextInputProcessor):
     attr_name = "phone"
 
+    def set_field(self, data):
+        self.model = self.dialog.user
+        super().set_field(data)
+
     def get_cleaned_text(self, data):
         text = super().get_cleaned_text(data)
         cleaned_text = re.sub(r"[^+0-9]", "", text)
@@ -102,7 +106,8 @@ class StorePhotoInputProcessor(AbstractInputProcessor):
         if data["photo"]:
             photo_file_id = data["photo"]
             dialog.request.photos.create(
-                description=description,
+                # todo fix magic number, use textInput preprocessor?
+                description=description[:250],
                 tg_file_id=photo_file_id,
             )
             BOT_LOG.debug(
