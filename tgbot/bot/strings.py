@@ -133,7 +133,8 @@ stages_info = [
         "buttons": [],
     },
     {  # stage finished
-        "text": "Благодарим за сотрудничество!\nВаша заявка #{registered_pk} опубликована.",  # request.pk
+        "text": "Благодарим за сотрудничество!\n"
+        "Ваша заявка #{registered_pk} опубликована.",
         "buttons": [
             [
                 {
@@ -161,7 +162,7 @@ summary = {
     "text": "<b>#{request_tag} {registered_pk}</b>\n\n"  # request.pk, request.title
     "🛠️ {request_desc}\n\n"  # request.description
     "📍 {request_location}\n\n"  # request.location
-    "🖋 <a href='tg://user?id={user_tg_id}'>{user_name}</a>\n\n",  # request.user.user_id request.user.name
+    "🖋 <a href='tg://user?id={user_tg_id}'>{user_name}</a>\n\n",
     "buttons": [
         [
             {
@@ -177,8 +178,8 @@ summary = {
 }
 
 admin = {
-    "text": "#request\n<b>Заявка #{registered_pk}</b>\n"  # request.registered.pk
-    "От: <a href='tg://user?id={user_tg_id}'>{user_name}</a>",  # request.user.user_id request.user.name
+    "text": "#request\n<b>Заявка #{registered_pk}</b>\n"
+    "От: <a href='tg://user?id={user_tg_id}'>{user_name}</a>",
     "buttons": [
         [
             {
