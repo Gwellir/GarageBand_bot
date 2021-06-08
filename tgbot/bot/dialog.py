@@ -26,12 +26,11 @@ PROCESSORS = {
 
 
 CALLBACK_TO_STAGE = {
-    "new_request": DialogStage.STAGE2_CONFIRM_START,
+    "new_request": DialogStage.STAGE3_GET_NAME,
     "restart": DialogStage.STAGE1_WELCOME,
     # placeholders
     "search_request": DialogStage.STAGE1_WELCOME,
     "propose_ads": DialogStage.STAGE1_WELCOME,
-    "stage2_confirm": DialogStage.STAGE3_GET_NAME,
     "have_photos": DialogStage.STAGE7_GET_PHOTOS,
     "skip_photos": DialogStage.STAGE8_GET_LOCATION,
     "photos_confirm": DialogStage.STAGE8_GET_LOCATION,
@@ -58,7 +57,7 @@ class DialogProcessor:
         self.message_data = message_data
 
     # todo довольно сложно понимать, так как часть событий за процессинг происходит
-    #  в одной фазе, а часть - в другой
+    #  в одной стадии, а часть - в другой
     def process(self):
         messages = []
         BOT_LOG.debug(
@@ -80,12 +79,17 @@ class DialogProcessor:
                 )
             )
             messages.append({"text": f"{e.args[0]}"})
-        messages.append(get_reply_for_stage(self.dialog.stage))
+        messages.append(
+            get_reply_for_stage(self.request.data_as_dict(), self.dialog.stage)
+        )
         if self.dialog.stage == DialogStage.STAGE10_CHECK_DATA:
-            messages.append(get_summary_for_request(self.request))
+            messages.append(
+                get_summary_for_request(
+                    self.request.data_as_dict(), self.request.get_photo()
+                )
+            )
         elif self.dialog.stage == DialogStage.STAGE11_DONE:
             self.restart()
-            messages.append(get_reply_for_stage(DialogStage.STAGE1_WELCOME))
 
         return messages
 
