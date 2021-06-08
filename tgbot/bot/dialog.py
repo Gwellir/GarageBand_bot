@@ -11,12 +11,12 @@ from .processors import (
     PhoneNumberInputProcessor,
     SetReadyInputProcessor,
     StorePhotoInputProcessor,
-    TitleInputProcessor,
+    TagInputProcessor,
 )
 
 PROCESSORS = {
     DialogStage.STAGE3_GET_NAME: NameInputProcessor,
-    DialogStage.STAGE4_GET_REQUEST_TITLE: TitleInputProcessor,
+    DialogStage.STAGE4_GET_REQUEST_TAG: TagInputProcessor,
     DialogStage.STAGE5_GET_REQUEST_DESC: DescriptionInputProcessor,
     DialogStage.STAGE6_REQUEST_PHOTOS: StorePhotoInputProcessor,
     DialogStage.STAGE8_GET_LOCATION: LocationInputProcessor,
@@ -39,8 +39,8 @@ CALLBACK_TO_STAGE = {
 
 NEXT_STAGE = {
     DialogStage.STAGE1_WELCOME: DialogStage.STAGE1_WELCOME,
-    DialogStage.STAGE3_GET_NAME: DialogStage.STAGE4_GET_REQUEST_TITLE,
-    DialogStage.STAGE4_GET_REQUEST_TITLE: DialogStage.STAGE5_GET_REQUEST_DESC,
+    DialogStage.STAGE3_GET_NAME: DialogStage.STAGE4_GET_REQUEST_TAG,
+    DialogStage.STAGE4_GET_REQUEST_TAG: DialogStage.STAGE5_GET_REQUEST_DESC,
     DialogStage.STAGE5_GET_REQUEST_DESC: DialogStage.STAGE6_REQUEST_PHOTOS,
     DialogStage.STAGE6_REQUEST_PHOTOS: DialogStage.STAGE8_GET_LOCATION,
     DialogStage.STAGE8_GET_LOCATION: DialogStage.STAGE9_GET_PHONE,
@@ -100,6 +100,7 @@ class DialogProcessor:
                 stage=self.dialog.stage,
             )
         )
+        self.dialog.stage = DialogStage.STAGE1_WELCOME
         if not self.request.is_complete:
             self.request.delete()
         self.dialog.delete()
@@ -108,6 +109,8 @@ class DialogProcessor:
         callback = self.message_data["callback"]
         if callback is not None:
             new_stage = CALLBACK_TO_STAGE[callback]
+        elif self.message_data["text"] == "Отменить":
+            return
         else:
             new_stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
         BOT_LOG.debug(
@@ -124,7 +127,8 @@ class DialogProcessor:
     def operate_data(self):
         callback = self.message_data["callback"]
         # если меняем стадию на первую, то реинициализируемся
-        if callback == "restart":
+        if callback == "restart" or self.message_data["text"] == "Отменить":
             self.restart()
+            return
         elif self.dialog.stage in PROCESSORS.keys():
             PROCESSORS[self.dialog.stage]()(self, self.message_data)

@@ -17,7 +17,7 @@ class DialogStage(models.IntegerChoices):
     STAGE1_WELCOME = 1, _("Стадия 1. Приветствие")
     STAGE2_CONFIRM_START = 2, _("Стадия 2. Подтвердить создание заявки")
     STAGE3_GET_NAME = 3, _("Стадия 3. Получить имя")
-    STAGE4_GET_REQUEST_TITLE = 4, _("Стадия 4. Получить название заявки")
+    STAGE4_GET_REQUEST_TAG = 4, _("Стадия 4. Получить категорию заявки")
     STAGE5_GET_REQUEST_DESC = 5, _("Стадия 5. Получить описание заявки")
     STAGE6_REQUEST_PHOTOS = 6, _("Стадия 6. Предложить отправить фотографии")
     STAGE7_GET_PHOTOS = 7, _("Стадия 7. Получить фотографии")
@@ -88,9 +88,14 @@ class BotUser(models.Model):
         self.save()
 
 
+class Tag(models.Model):
+    name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
+
+
 class WorkRequest(models.Model):
     """Класс с заявками"""
 
+    tag = models.ForeignKey(Tag, on_delete=models.SET_NULL, db_index=True, null=True)
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
@@ -130,7 +135,7 @@ class WorkRequest(models.Model):
         else:
             registered_pk = registered_msg_id = "000"
         return dict(
-            request_tag=self.title,
+            request_tag=self.tag.name if self.tag else None,
             request_desc=self.description,
             request_location=self.location,
             user_pk=self.user.pk,
@@ -189,6 +194,7 @@ class RegisteredRequest(models.Model):
         )
         reg_request.message_id = message_id
         reg_request.save()
+        request.save()
         send_message_return_id(
             get_admin_message(request.data_as_dict()), ADMIN_GROUP_ID, bot
         )

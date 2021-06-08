@@ -14,6 +14,7 @@ from ..exceptions import (
     TextTooLongError,
     TextTooShortError,
 )
+from ..models import Tag
 
 
 class AbstractInputProcessor(metaclass=abc.ABCMeta):
@@ -72,6 +73,27 @@ class NameInputProcessor(TextInputProcessor):
 
 class TitleInputProcessor(TextInputProcessor):
     attr_name = "title"
+
+
+class TagInputProcessor(TextInputProcessor):
+    attr_name = "tag"
+
+    def set_field(self, data: dict):
+        text = data["text"]
+        try:
+            tag = Tag.objects.get(name=text.replace(" ", "_").replace("/", "_"))
+        except Tag.DoesNotExist:
+            tag = Tag.objects.get(pk=1)  # default "Другое"
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SET_FIELD.format(
+                user_id=self.dialog.user.username,
+                stage=self.dialog.dialog.stage,
+                model=self.model,
+                data=tag,
+            )
+        )
+        setattr(self.model, self.attr_name, tag)
+        self.model.save()
 
 
 class DescriptionInputProcessor(TextInputProcessor):
