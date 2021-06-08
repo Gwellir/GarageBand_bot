@@ -3,7 +3,7 @@ from telegram import ParseMode
 from garage_band_bot.settings import PUBLISHING_CHANNEL_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.utils import build_button_markup
+from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
 
 
 def send_message_return_id(message_data, user_id, bot):
@@ -15,7 +15,9 @@ def send_message_return_id(message_data, user_id, bot):
     )
     markup = None
     if "buttons" in message_data.keys():
-        markup = build_button_markup(message_data["buttons"])
+        markup = build_inline_button_markup(message_data["buttons"])
+    elif "text_buttons" in message_data.keys():
+        markup = build_reply_button_markup(message_data["text_buttons"])
     params_dict = dict(
         chat_id=user_id,
         reply_markup=markup,
