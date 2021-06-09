@@ -14,17 +14,15 @@ from tgbot.exceptions import UserIsBannedError
 
 
 class DialogStage(models.IntegerChoices):
-    STAGE1_WELCOME = 1, _("Стадия 1. Приветствие")
-    STAGE2_CONFIRM_START = 2, _("Стадия 2. Подтвердить создание заявки")
-    STAGE3_GET_NAME = 3, _("Стадия 3. Получить имя")
-    STAGE4_GET_REQUEST_TAG = 4, _("Стадия 4. Получить категорию заявки")
-    STAGE5_GET_REQUEST_DESC = 5, _("Стадия 5. Получить описание заявки")
-    STAGE6_REQUEST_PHOTOS = 6, _("Стадия 6. Предложить отправить фотографии")
-    STAGE7_GET_PHOTOS = 7, _("Стадия 7. Получить фотографии")
-    STAGE8_GET_LOCATION = 8, _("Стадия 8. Получить местоположение")
-    STAGE9_GET_PHONE = 9, _("Стадия 9. Получить телефон")
-    STAGE10_CHECK_DATA = 10, _("Стадия 10. Проверить заявку")
-    STAGE11_DONE = 11, _("Стадия 11. Работа завершена")
+    WELCOME = 1, _("Приветствие")
+    GET_NAME = 2, _("Получить имя")
+    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
+    GET_REQUEST_DESC = 4, _("Получить описание заявки")
+    REQUEST_PHOTOS = 5, _("Предложить отправить фотографии")
+    GET_LOCATION = 6, _("Получить местоположение")
+    GET_PHONE = 7, _("Получить телефон")
+    CHECK_DATA = 8, _("Проверить заявку")
+    DONE = 9, _("Работа завершена")
 
 
 class BotUser(models.Model):
@@ -232,7 +230,7 @@ class Dialog(models.Model):
         verbose_name="Состояние диалога",
         choices=DialogStage.choices,
         null=False,
-        default=DialogStage.STAGE1_WELCOME,
+        default=DialogStage.WELCOME,
     )
 
     def __str__(self):
