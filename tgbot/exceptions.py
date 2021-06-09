@@ -53,6 +53,13 @@ class TextNotProvidedError(BotProcessingError):
         super().__init__("Запрошенный текст не введён!")
 
 
+class TagDoesNotExist(BotProcessingError):
+    """Возникает, когда пользователь вводит неправильное имя тага"""
+
+    def __init__(self, name):
+        super().__init__(f"Таг {name} не существует!")
+
+
 class CallbackNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь отправляет сообщение вместо нажатия кнопки"""
 

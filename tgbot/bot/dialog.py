@@ -10,42 +10,27 @@ from .processors import (
     NameInputProcessor,
     PhoneNumberInputProcessor,
     SetReadyInputProcessor,
+    StartInputProcessor,
     StorePhotoInputProcessor,
-    TitleInputProcessor,
+    TagInputProcessor,
 )
 
 PROCESSORS = {
-    DialogStage.STAGE3_GET_NAME: NameInputProcessor,
-    DialogStage.STAGE4_GET_REQUEST_TITLE: TitleInputProcessor,
-    DialogStage.STAGE5_GET_REQUEST_DESC: DescriptionInputProcessor,
-    DialogStage.STAGE6_REQUEST_PHOTOS: StorePhotoInputProcessor,
-    DialogStage.STAGE8_GET_LOCATION: LocationInputProcessor,
-    DialogStage.STAGE9_GET_PHONE: PhoneNumberInputProcessor,
-    DialogStage.STAGE10_CHECK_DATA: SetReadyInputProcessor,
+    DialogStage.WELCOME: StartInputProcessor,
+    DialogStage.GET_NAME: NameInputProcessor,
+    DialogStage.GET_REQUEST_TAG: TagInputProcessor,
+    DialogStage.GET_REQUEST_DESC: DescriptionInputProcessor,
+    DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
+    DialogStage.GET_LOCATION: LocationInputProcessor,
+    DialogStage.GET_PHONE: PhoneNumberInputProcessor,
+    DialogStage.CHECK_DATA: SetReadyInputProcessor,
 }
 
 
 CALLBACK_TO_STAGE = {
-    "new_request": DialogStage.STAGE3_GET_NAME,
-    "restart": DialogStage.STAGE1_WELCOME,
-    # placeholders
-    "search_request": DialogStage.STAGE1_WELCOME,
-    "propose_ads": DialogStage.STAGE1_WELCOME,
-    "have_photos": DialogStage.STAGE7_GET_PHOTOS,
-    "skip_photos": DialogStage.STAGE8_GET_LOCATION,
-    "photos_confirm": DialogStage.STAGE8_GET_LOCATION,
-    "final_confirm": DialogStage.STAGE11_DONE,
-}
-
-NEXT_STAGE = {
-    DialogStage.STAGE1_WELCOME: DialogStage.STAGE1_WELCOME,
-    DialogStage.STAGE3_GET_NAME: DialogStage.STAGE4_GET_REQUEST_TITLE,
-    DialogStage.STAGE4_GET_REQUEST_TITLE: DialogStage.STAGE5_GET_REQUEST_DESC,
-    DialogStage.STAGE5_GET_REQUEST_DESC: DialogStage.STAGE6_REQUEST_PHOTOS,
-    DialogStage.STAGE6_REQUEST_PHOTOS: DialogStage.STAGE8_GET_LOCATION,
-    DialogStage.STAGE8_GET_LOCATION: DialogStage.STAGE9_GET_PHONE,
-    DialogStage.STAGE9_GET_PHONE: DialogStage.STAGE10_CHECK_DATA,
-    DialogStage.STAGE11_DONE: DialogStage.STAGE1_WELCOME,
+    "new_request": DialogStage.GET_NAME,
+    "restart": DialogStage.WELCOME,
+    "final_confirm": DialogStage.DONE,
 }
 
 
@@ -67,9 +52,9 @@ class DialogProcessor:
                 input_data=self.message_data,
             )
         )
+
         try:
             self.operate_data()
-            self.change_stage()  # не происходит, если вылетает BotProcessingError
         except BotProcessingError as e:
             BOT_LOG.debug(
                 LogStrings.DIALOG_INPUT_ERROR.format(
@@ -79,16 +64,19 @@ class DialogProcessor:
                 )
             )
             messages.append({"text": f"{e.args[0]}"})
+
         messages.append(
             get_reply_for_stage(self.request.data_as_dict(), self.dialog.stage)
         )
-        if self.dialog.stage == DialogStage.STAGE10_CHECK_DATA:
+
+        if self.dialog.stage == DialogStage.CHECK_DATA:
             messages.append(
                 get_summary_for_request(
                     self.request.data_as_dict(), self.request.get_photo()
                 )
             )
-        elif self.dialog.stage == DialogStage.STAGE11_DONE:
+
+        elif self.dialog.stage == DialogStage.DONE:
             self.restart()
 
         return messages
@@ -100,16 +88,21 @@ class DialogProcessor:
                 stage=self.dialog.stage,
             )
         )
+        self.dialog.stage = DialogStage.WELCOME
         if not self.request.is_complete:
             self.request.delete()
         self.dialog.delete()
 
-    def change_stage(self):
+    def advance_stage(self, step):
         callback = self.message_data["callback"]
-        if callback is not None:
+        # если меняем стадию на первую, то реинициализируемся
+        if callback == "restart":
+            self.restart()
+            return
+        elif callback is not None:
             new_stage = CALLBACK_TO_STAGE[callback]
         else:
-            new_stage = NEXT_STAGE.get(self.dialog.stage, self.dialog.stage)
+            new_stage = self.dialog.stage + step
         BOT_LOG.debug(
             LogStrings.DIALOG_CHANGE_STAGE.format(
                 user_id=self.user.username,
@@ -122,9 +115,7 @@ class DialogProcessor:
         self.dialog.save()
 
     def operate_data(self):
-        callback = self.message_data["callback"]
-        # если меняем стадию на первую, то реинициализируемся
-        if callback == "restart":
-            self.restart()
-        elif self.dialog.stage in PROCESSORS.keys():
-            PROCESSORS[self.dialog.stage]()(self, self.message_data)
+        step = 1
+        if self.dialog.stage in PROCESSORS.keys():
+            step = PROCESSORS[self.dialog.stage]()(self, self.message_data)
+        self.advance_stage(step)

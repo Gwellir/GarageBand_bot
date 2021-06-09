@@ -2,13 +2,17 @@ from tgbot.bot import strings as strings
 
 
 def fill_data(message_data, content_dict):
-    msg = dict()
-    msg["text"] = message_data["text"].format(**content_dict)
-    msg["buttons"] = message_data["buttons"]
-    for row in msg["buttons"]:
-        for button in row:
-            for field in button.keys():
-                button[field] = button[field].format(**content_dict)
+    msg = message_data.copy()
+    msg["text"] = msg["text"].format(**content_dict)
+    if msg.get("buttons") or msg.get("text_buttons"):
+        for row in msg.get("buttons", []):
+            for button in row:
+                for field in button.keys():
+                    button[field] = button[field].format(**content_dict)
+        for row in msg.get("text_buttons", []):
+            for button in row:
+                for field in button.keys():
+                    button[field] = button[field].format(**content_dict)
 
     return msg
 

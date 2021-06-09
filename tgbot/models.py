@@ -14,17 +14,15 @@ from tgbot.exceptions import UserIsBannedError
 
 
 class DialogStage(models.IntegerChoices):
-    STAGE1_WELCOME = 1, _("Стадия 1. Приветствие")
-    STAGE2_CONFIRM_START = 2, _("Стадия 2. Подтвердить создание заявки")
-    STAGE3_GET_NAME = 3, _("Стадия 3. Получить имя")
-    STAGE4_GET_REQUEST_TITLE = 4, _("Стадия 4. Получить название заявки")
-    STAGE5_GET_REQUEST_DESC = 5, _("Стадия 5. Получить описание заявки")
-    STAGE6_REQUEST_PHOTOS = 6, _("Стадия 6. Предложить отправить фотографии")
-    STAGE7_GET_PHOTOS = 7, _("Стадия 7. Получить фотографии")
-    STAGE8_GET_LOCATION = 8, _("Стадия 8. Получить местоположение")
-    STAGE9_GET_PHONE = 9, _("Стадия 9. Получить телефон")
-    STAGE10_CHECK_DATA = 10, _("Стадия 10. Проверить заявку")
-    STAGE11_DONE = 11, _("Стадия 11. Работа завершена")
+    WELCOME = 1, _("Приветствие")
+    GET_NAME = 2, _("Получить имя")
+    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
+    GET_REQUEST_DESC = 4, _("Получить описание заявки")
+    REQUEST_PHOTOS = 5, _("Предложить отправить фотографии")
+    GET_LOCATION = 6, _("Получить местоположение")
+    GET_PHONE = 7, _("Получить телефон")
+    CHECK_DATA = 8, _("Проверить заявку")
+    DONE = 9, _("Работа завершена")
 
 
 class BotUser(models.Model):
@@ -88,9 +86,17 @@ class BotUser(models.Model):
         self.save()
 
 
+class Tag(models.Model):
+    name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
+
+    def __str__(self):
+        return f"#{self.pk} {self.name}"
+
+
 class WorkRequest(models.Model):
     """Класс с заявками"""
 
+    tag = models.ForeignKey(Tag, on_delete=models.SET_NULL, db_index=True, null=True)
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
@@ -117,6 +123,9 @@ class WorkRequest(models.Model):
     # photos backref
     # registered backref
 
+    def __str__(self):
+        return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
+
     @classmethod
     def get_or_create(cls, user, dialog):
         return WorkRequest.objects.get_or_create(
@@ -130,7 +139,7 @@ class WorkRequest(models.Model):
         else:
             registered_pk = registered_msg_id = "000"
         return dict(
-            request_tag=self.title,
+            request_tag=self.tag.name if self.tag else None,
             request_desc=self.description,
             request_location=self.location,
             user_pk=self.user.pk,
@@ -174,6 +183,9 @@ class RegisteredRequest(models.Model):
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
     )
 
+    def __str__(self):
+        return f"{self.pk} {self.request.user} ({self.message_id})"
+
     @classmethod
     @transaction.atomic
     def publish(cls, request, bot):
@@ -189,6 +201,7 @@ class RegisteredRequest(models.Model):
         )
         reg_request.message_id = message_id
         reg_request.save()
+        request.save()
         send_message_return_id(
             get_admin_message(request.data_as_dict()), ADMIN_GROUP_ID, bot
         )
@@ -217,8 +230,11 @@ class Dialog(models.Model):
         verbose_name="Состояние диалога",
         choices=DialogStage.choices,
         null=False,
-        default=DialogStage.STAGE1_WELCOME,
+        default=DialogStage.WELCOME,
     )
+
+    def __str__(self):
+        return f"{self.pk} {self.user} @{self.stage}"
 
     @classmethod
     @transaction.atomic()

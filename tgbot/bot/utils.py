@@ -31,7 +31,7 @@ def extract_user_data_from_update(update):
     )
 
 
-def build_button_markup(buttons_data):
+def build_inline_button_markup(buttons_data):
     layout = []
     if buttons_data:
         for row in buttons_data:
@@ -40,3 +40,16 @@ def build_button_markup(buttons_data):
         return telegram.InlineKeyboardMarkup(layout)
 
     return None
+
+
+def build_reply_button_markup(buttons_data):
+    layout = []
+    if buttons_data:
+        for row in buttons_data:
+            layout.append([telegram.KeyboardButton(**item) for item in row])
+
+        return telegram.ReplyKeyboardMarkup(
+            layout, one_time_keyboard=True, resize_keyboard=True
+        )
+    else:
+        return telegram.ReplyKeyboardRemove()
