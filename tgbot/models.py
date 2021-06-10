@@ -223,14 +223,23 @@ class RequestPhoto(models.Model):
 
 
 class Dialog(models.Model):
-    user = models.OneToOneField(
-        BotUser, on_delete=models.CASCADE, related_name="dialog"
-    )
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     stage = models.PositiveSmallIntegerField(
         verbose_name="Состояние диалога",
         choices=DialogStage.choices,
         null=False,
         default=DialogStage.WELCOME,
+    )
+    is_finished = models.BooleanField(
+        verbose_name="Диалог завершён", default=False, db_index=True
+    )
+    last_active = models.DateTimeField(
+        verbose_name="Время последней активности",
+        auto_now=True,
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Время создания",
+        auto_now_add=True,
     )
 
     def __str__(self):
@@ -240,11 +249,33 @@ class Dialog(models.Model):
     @transaction.atomic()
     def get_or_create(cls, update):
         user, u_created = BotUser.get_or_create(update)
-        dialog, d_created = cls.objects.update_or_create(
-            user=user,
-        )
+        dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
         request, r_created = WorkRequest.get_or_create(user, dialog)
 
         # todo implement reloading request drafts
 
         return dialog
+
+    def finish(self):
+        if not self.request.is_complete:
+            self.request.delete()
+        self.is_finished = True
+        self.save()
+
+
+class Message(models.Model):
+    """Модель для хранения сообщений из диалога."""
+
+    dialog = models.ForeignKey(
+        Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
+    )
+    text = models.TextField(verbose_name="Текст сообщения")
+    stage = models.PositiveSmallIntegerField(
+        verbose_name="Стадия диалога", choices=DialogStage.choices
+    )
+    is_incoming = models.BooleanField(
+        verbose_name="Входящее", db_index=True, default=True
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Время создания", auto_now_add=True, db_index=True
+    )
