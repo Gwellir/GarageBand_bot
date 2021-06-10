@@ -3,7 +3,7 @@ from logger.log_strings import LogStrings
 
 from ..bot_replies import get_reply_for_stage, get_summary_for_request
 from ..exceptions import BotProcessingError
-from ..models import DialogStage
+from ..models import DialogStage, Message
 from .processors import (
     DescriptionInputProcessor,
     LocationInputProcessor,
@@ -14,6 +14,7 @@ from .processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
+from .utils import get_bot_message_as_text, get_user_message_as_text
 
 PROCESSORS = {
     DialogStage.WELCOME: StartInputProcessor,
@@ -45,12 +46,18 @@ class DialogProcessor:
     #  в одной стадии, а часть - в другой
     def process(self):
         messages = []
+        current_log_stage = self.dialog.stage
         BOT_LOG.debug(
             LogStrings.DIALOG_INCOMING_MESSAGE.format(
                 user_id=self.user.username,
                 stage=self.dialog.stage,
                 input_data=self.message_data,
             )
+        )
+        Message.objects.create(
+            dialog=self.dialog,
+            stage=current_log_stage,
+            text=get_user_message_as_text(self.message_data),
         )
 
         try:
@@ -78,6 +85,14 @@ class DialogProcessor:
 
         elif self.dialog.stage == DialogStage.DONE:
             self.restart()
+
+        for message in messages:
+            Message.objects.create(
+                dialog=self.dialog,
+                stage=current_log_stage,
+                text=get_bot_message_as_text(message),
+                is_incoming=False,
+            )
 
         return messages
 

@@ -53,3 +53,47 @@ def build_reply_button_markup(buttons_data):
         )
     else:
         return telegram.ReplyKeyboardRemove()
+
+
+def get_user_message_as_text(message_data: dict) -> str:
+    text = None
+    if message_data["callback"]:
+        text = f"CALLBACK: {message_data['callback']}"
+    elif message_data["text"]:
+        text = message_data["text"]
+    elif message_data["caption"]:
+        text = f"PHOTO: {message_data['photo']}\n\n{message_data['caption']}"
+
+    return text
+
+
+def get_buttons_as_text(button_data):
+    text = ""
+    if not button_data:
+        return text
+    for row in button_data:
+        text = f"{text}\n"
+        for button in row:
+            if "callback_data" in button.keys():
+                command_text = f"({button['callback_data']})"
+            elif "url" in button.keys():
+                command_text = f"({button['url']})"
+            else:
+                command_text = ""
+            text = f"{text}[{button['text']}{command_text}] "
+
+    return text
+
+
+def get_bot_message_as_text(message_data: dict) -> str:
+    if "text" in message_data.keys():
+        text = message_data["text"]
+    elif "caption" in message_data.keys():
+        text = f"PHOTO: {message_data['photo']}\n\n{message_data['caption']}"
+    button_text = ""
+    if "buttons" in message_data.keys():
+        button_text = get_buttons_as_text(message_data["buttons"])
+    elif "text_buttons" in message_data.keys():
+        button_text = get_buttons_as_text(message_data["text_buttons"])
+    text = f"{text}{button_text}"
+    return text
