@@ -66,6 +66,7 @@ def admin_command_handler(update, context):
         update.callback_query.answer(e.args[0])
 
     # todo should only work for destructive actions
+    # todo sometimes raises BadRequest
     update.effective_message.delete()
 
 
@@ -87,8 +88,10 @@ def message_handler(update, context):
             )
         )
         return
+
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
+
     try:
         command = get_and_verify_callback_data(update.callback_query, last_id)
         if command:
