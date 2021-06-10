@@ -64,7 +64,7 @@ def get_user_message_as_text(message_data: dict) -> str:
     elif message_data["caption"]:
         text = f"PHOTO: {message_data['photo']}<br><br>{message_data['caption']}"
 
-    return text
+    return text.replace("\n", "<br>")
 
 
 def get_buttons_as_text(button_data):
@@ -90,6 +90,7 @@ def get_bot_message_as_text(message_data: dict) -> str:
         text = message_data["text"]
     elif "caption" in message_data.keys():
         text = f"PHOTO: {message_data['photo']}<br><br>{message_data['caption']}"
+    text = text.replace("\n", "<br>")
     button_text = ""
     if "buttons" in message_data.keys():
         button_text = get_buttons_as_text(message_data["buttons"])
