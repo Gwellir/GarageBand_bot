@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.getenv("DJANGO_DEBUG", '1')))
+DEBUG = bool(int(os.getenv("DJANGO_DEBUG", "1")))
 
 ALLOWED_HOSTS = ["*"]
 
@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "tgbot",
+    "adminapp",
 ]
 
 MIDDLEWARE = [
