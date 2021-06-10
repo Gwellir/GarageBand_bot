@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = not not os.getenv("DJANGO_DEBUG", True)
+DEBUG = bool(int(os.getenv("DJANGO_DEBUG", '1')))
 
 ALLOWED_HOSTS = ["*"]
 
@@ -134,9 +134,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # bot settings
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TESTING_CHANNEL_ID = os.getenv("TESTING_CHANNEL_ID")
-PUBLISHING_CHANNEL_ID = os.getenv("PUBLISHING_CHANNEL_ID")
-ADMIN_GROUP_ID = os.getenv("ADMIN_GROUP_ID")
+if DEBUG:
+    PUBLISHING_CHANNEL_ID = os.getenv("TESTING_CHANNEL_ID")
+    ADMIN_GROUP_ID = os.getenv("TESTING_GROUP_ID")
+else:
+    PUBLISHING_CHANNEL_ID = os.getenv("PUBLISHING_CHANNEL_ID")
+    ADMIN_GROUP_ID = os.getenv("ADMIN_GROUP_ID")
 
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
