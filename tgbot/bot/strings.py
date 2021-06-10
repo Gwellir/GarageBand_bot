@@ -102,7 +102,6 @@ stages_info = [
             [
                 {
                     "text": "Отменить",
-                    "callback_data": "restart",
                 },
             ]
         ],
@@ -115,7 +114,6 @@ stages_info = [
             [
                 {
                     "text": "Отменить",
-                    "callback_data": "restart",
                 },
             ]
         ],
