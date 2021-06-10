@@ -8,9 +8,10 @@ BOT_ID = os.getenv("tested_bot_id")
 
 
 @mark.asyncio
-async def test_start(client: TelegramClient, image):
-    for i in range(20):
-        async with client.conversation("@GarageBandTest_bot", timeout=5) as conv:
+async def test_start(client: TelegramClient, image, bot_name):
+    for i in range(1):
+        async with client.conversation(bot_name, timeout=5) as conv:
+            image_file = open(image, "rb")
             await conv.send_message("/start")
 
             resp: Message = await conv.get_response()
@@ -49,7 +50,7 @@ async def test_start(client: TelegramClient, image):
             assert answer.buttons[0][0].text == "Пропустить"
             assert answer.buttons[1][0].text == "Отменить"
 
-            await conv.send_message("Картинка", file=image)
+            await conv.send_message("Картинка", file=image_file)
             answer = await conv.get_response()
 
             assert answer.button_count == 1
@@ -85,3 +86,4 @@ async def test_start(client: TelegramClient, image):
             assert answer.buttons[0][0].text == "Перейти в канал Автосервис Украина"
             assert answer.buttons[1][0].text == "Оформить ещё заявку"
             assert answer.buttons[2][0].text == "Разместить рекламу"
+            image_file.close()
