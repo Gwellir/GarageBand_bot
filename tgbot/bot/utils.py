@@ -62,7 +62,7 @@ def get_user_message_as_text(message_data: dict) -> str:
     elif message_data["text"]:
         text = message_data["text"]
     elif message_data["caption"]:
-        text = f"PHOTO: {message_data['photo']}\n\n{message_data['caption']}"
+        text = f"PHOTO: {message_data['photo']}<br><br>{message_data['caption']}"
 
     return text
 
@@ -72,7 +72,7 @@ def get_buttons_as_text(button_data):
     if not button_data:
         return text
     for row in button_data:
-        text = f"{text}\n"
+        text = f"{text}<br>"
         for button in row:
             if "callback_data" in button.keys():
                 command_text = f"({button['callback_data']})"
@@ -89,7 +89,7 @@ def get_bot_message_as_text(message_data: dict) -> str:
     if "text" in message_data.keys():
         text = message_data["text"]
     elif "caption" in message_data.keys():
-        text = f"PHOTO: {message_data['photo']}\n\n{message_data['caption']}"
+        text = f"PHOTO: {message_data['photo']}<br><br>{message_data['caption']}"
     button_text = ""
     if "buttons" in message_data.keys():
         button_text = get_buttons_as_text(message_data["buttons"])
