@@ -233,6 +233,14 @@ class Dialog(models.Model):
     is_finished = models.BooleanField(
         verbose_name="Диалог завершён", default=False, db_index=True
     )
+    last_active = models.DateTimeField(
+        verbose_name="Время последней активности",
+        auto_now=True,
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Время создания",
+        auto_now_add=True,
+    )
 
     def __str__(self):
         return f"{self.pk} {self.user} @{self.stage}"

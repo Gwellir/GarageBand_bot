@@ -27,7 +27,9 @@ def logs_list_view(request, user_pk=None, dialog_pk=None):
                 "tag": dialog.request.tag if hasattr(dialog, "request") else None,
                 "time": dialog.last_active,
             }
-            for dialog in Dialog.objects.filter(user__pk=user_pk).order_by("-last_active", "-pk")
+            for dialog in Dialog.objects.filter(user__pk=user_pk).order_by(
+                "-last_active", "-pk"
+            )
         ]
     messages = []
     if dialog_pk:

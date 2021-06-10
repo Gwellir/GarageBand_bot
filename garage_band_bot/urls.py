@@ -20,5 +20,5 @@ from adminapp import urls as admin_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("bot_admin/", include(admin_urls, namespace="bot_admin"))
+    path("bot_admin/", include(admin_urls, namespace="bot_admin")),
 ]
