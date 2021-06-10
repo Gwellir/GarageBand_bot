@@ -223,7 +223,7 @@ class RequestPhoto(models.Model):
 
 
 class Dialog(models.Model):
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, related_name="dialog"
     )
     stage = models.PositiveSmallIntegerField(
@@ -231,6 +231,9 @@ class Dialog(models.Model):
         choices=DialogStage.choices,
         null=False,
         default=DialogStage.WELCOME,
+    )
+    is_finished = models.BooleanField(
+        verbose_name="Диалог завершён", default=False, db_index=True
     )
 
     def __str__(self):
@@ -240,11 +243,15 @@ class Dialog(models.Model):
     @transaction.atomic()
     def get_or_create(cls, update):
         user, u_created = BotUser.get_or_create(update)
-        dialog, d_created = cls.objects.update_or_create(
-            user=user,
-        )
+        dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
         request, r_created = WorkRequest.get_or_create(user, dialog)
 
         # todo implement reloading request drafts
 
         return dialog
+
+    def finish(self):
+        if not self.request.is_complete:
+            self.request.delete()
+        self.is_finished = True
+        self.save()

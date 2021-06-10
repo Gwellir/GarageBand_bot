@@ -88,10 +88,8 @@ class DialogProcessor:
                 stage=self.dialog.stage,
             )
         )
-        self.dialog.stage = DialogStage.WELCOME
-        if not self.request.is_complete:
-            self.request.delete()
-        self.dialog.delete()
+
+        self.dialog.finish()
 
     def advance_stage(self, step):
         callback = self.message_data["callback"]
