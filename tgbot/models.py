@@ -223,9 +223,7 @@ class RequestPhoto(models.Model):
 
 
 class Dialog(models.Model):
-    user = models.ForeignKey(
-        BotUser, on_delete=models.CASCADE, related_name="dialog"
-    )
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     stage = models.PositiveSmallIntegerField(
         verbose_name="Состояние диалога",
         choices=DialogStage.choices,
@@ -255,3 +253,21 @@ class Dialog(models.Model):
             self.request.delete()
         self.is_finished = True
         self.save()
+
+
+class Message(models.Model):
+    """Модель для хранения сообщений из диалога."""
+
+    dialog = models.ForeignKey(
+        Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
+    )
+    text = models.TextField(verbose_name="Текст сообщения")
+    stage = models.PositiveSmallIntegerField(
+        verbose_name="Стадия диалога", choices=DialogStage.choices
+    )
+    is_incoming = models.BooleanField(
+        verbose_name="Входящее", db_index=True, default=True
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Время создания", auto_now_add=True, db_index=True
+    )
