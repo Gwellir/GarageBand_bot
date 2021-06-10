@@ -1,0 +1,139 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.container {
+    width: 1200px;
+    margin: 0 auto;
+}
+
+.content {
+    height: 900px;
+}
+
+.chat-view {
+    margin-top: 20px;
+    height: 90%;
+    width: 100%;
+}
+
+.user-list {
+    vertical-align: top;
+    width: 20%;
+    height: 100%;
+    display: inline-block;
+    border: 1px solid black;
+    overflow: auto;
+    padding: 2px;
+}
+.chat-list {
+    vertical-align: top;
+    width: 20%;
+    height: 100%;
+    display: inline-block;
+    border: 1px solid black;
+    overflow: auto;
+    padding: 2px;
+}
+
+.chat-button {
+    text-decoration: none;
+    color: inherit;
+}
+
+.chat-entry:hover {
+    box-shadow: 0 0 10px -2px rgba(0, 0, 0, 0.9);
+}
+
+.chat-content {
+    vertical-align: top;
+    width: 55%;
+    height: 100%;
+    display: inline-block;
+    border: 1px solid black;
+    padding: 2px;
+    overflow: auto;
+}
+
+.chat-entry {
+    padding: 2px;
+    margin-bottom: 5px;
+    border: 1px dotted #000000;
+    overflow-wrap: break-word;
+}
+
+.chat-message {
+    padding: 2px;
+    margin-bottom: 5px;
+    width: 70%;
+    border: 1px solid black;
+}
+
+.chat-name {
+    font-weight: 700;
+}
+
+.chat-last-message {
+    float: left;
+    white-space: nowrap;
+    /*overflow: hidden;
+    text-overflow: ellipsis;*/
+    width: 100%;
+}
+
+.chat-time {
+    float: right;
+    font-size: small;
+}
+
+.chat-message-time {
+    float: right;
+    font-size: small;
+}
+
+.chat-message-content {
+    width: 100%;
+    float: left;
+    overflow-wrap: break-word;
+}
+
+.msg-in {
+    float: left;
+    background: #ddd;
+}
+
+.msg-out {
+    float: right;
+    background: #ccc;
+}
+
+.highlight {
+    background: lightgray;
+}
+
+.banned_user {
+    border-color: red !important;
+}
+
+.hidden {
+    display: none;
+}
+
+footer {
+    clear:both;
+}
+
+.clearfix:before {
+}
+
+.clearfix:after {
+    visibility: hidden;
+    display: block;
+    content: "";
+    clear: both;
+}

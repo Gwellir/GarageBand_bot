@@ -1,0 +1,39 @@
+{% extends 'adminapp/base.html' %}
+
+{% block content %}
+<h3>Существующие чаты</h3>
+<div class="chat-view clearfix">
+    <div class="user-list">
+        {% for user in user_list %}
+        <a href="/bot_admin/logs/{{user.number}}/" class="chat-button">
+            <div class="chat-entry
+                {% if user.number == selected_user %}highlight{%endif%}
+                {% if user.is_banned %}banned_user{%endif%}
+            ">
+                <div class="user-name">@{{ user.name }}</div>
+                <div class="user-time">{{ user.time|date:"d.m.Y" }}, {{ user.time|time:"h:i" }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    <div class="chat-list">
+        {% for chat in chat_list %}
+        <a href="/bot_admin/logs/{{selected_user}}/{{chat.number}}/" class="chat-button">
+            <div class="chat-entry clearfix {% if chat.number == selected_dialog %}highlight{%endif%}">
+                <div class="chat-name">{{ chat.number }}</div>
+                <div class="chat-last-message">{{ chat.tag }}</div>
+                <div class="chat-time">{{ chat.time|date:"d.m.Y" }}, {{ chat.time|time:"h:i" }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    <div class="chat-content">
+        {% for message in message_list %}
+        <div class="chat-message {% if message.direction %} msg-in {% else %} msg-out {% endif %}">
+            <div class="chat-message-content">{{message.content | safe}}</div>
+            <div class="chat-message-time">{{ message.time|date:"d.m.Y" }}, {{ message.time|time:"h:i" }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
