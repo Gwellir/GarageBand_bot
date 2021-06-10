@@ -2,7 +2,7 @@ stages_info = [
     {  # stage 1
         "text": "Здравствуйте!\n"
         "Я Администратор заявок, помогаю размещать заявки на ремонт для канала "
-        '<a href="https://t.me/GarageBandKharkov">Автосервис Украина</a>.\n'
+        '<a href="https://t.me/AutoServiceUA">Автосервис Украина</a>.\n'
         'Нажмите "Оформить заявку".',
         "buttons": [
             [
