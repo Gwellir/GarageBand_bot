@@ -142,6 +142,13 @@ body {
     content: "✅";
 }
 
+.request_discarded:before {
+    position: absolute;
+    right: 0;
+    top: 0;
+    content: "❌";
+}
+
 .hidden {
     display: none;
 }

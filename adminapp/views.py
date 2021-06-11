@@ -18,6 +18,10 @@ def get_is_complete(dialog):
     return hasattr(dialog, "request") and dialog.request.is_complete
 
 
+def get_is_discarded(dialog):
+    return hasattr(dialog, "request") and dialog.request.is_discarded
+
+
 def get_tag(dialog):
     if hasattr(dialog, "request"):
         return dialog.request.tag
@@ -50,6 +54,7 @@ def logs_list_view(request, user_pk=None, dialog_pk=None):
                 "message_id": get_message_id(dialog),
                 "tag": get_tag(dialog),
                 "is_complete": get_is_complete(dialog),
+                "is_discarded": get_is_discarded(dialog),
                 "time": dialog.last_active,
             }
             for dialog in Dialog.objects.filter(user__pk=user_pk).order_by(

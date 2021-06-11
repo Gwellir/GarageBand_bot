@@ -105,6 +105,8 @@ class DialogProcessor:
         )
 
         self.dialog.finish()
+        # this is not saved, just to assure correct messages are displayed
+        self.dialog.stage = DialogStage.WELCOME
 
     def advance_stage(self, step):
         callback = self.message_data["callback"]

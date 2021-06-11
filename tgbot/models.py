@@ -113,6 +113,9 @@ class WorkRequest(models.Model):
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности заявки", default=False, db_index=True
     )
+    is_discarded = models.BooleanField(
+        verbose_name="Флаг отказа от проведения заявки", default=False, db_index=True
+    )
     dialog = models.OneToOneField(
         "Dialog",
         on_delete=models.SET_NULL,
@@ -129,7 +132,7 @@ class WorkRequest(models.Model):
     @classmethod
     def get_or_create(cls, user, dialog):
         return WorkRequest.objects.get_or_create(
-            user=user, dialog=dialog, is_complete=False
+            user=user, dialog=dialog, is_complete=False, is_discarded=False
         )
 
     def data_as_dict(self):
@@ -258,7 +261,8 @@ class Dialog(models.Model):
 
     def finish(self):
         if not self.request.is_complete:
-            self.request.delete()
+            self.request.is_discarded = True
+            self.request.save()
         self.is_finished = True
         self.save()
 

@@ -15,7 +15,7 @@
                     {% else %}
                     <a href="#" class="chat-name">{{ user.fullname }}</a>
                     {% endif %}
-                    <div class="user-time">{{ user.time|date:"d.m.Y" }}, {{ user.time|time:"h:i" }}</div>
+                    <div class="user-time">{{ user.time|date:"d.m.Y" }}, {{ user.time|time:"H:i" }}</div>
                 </div>
                 <a href="/bot_admin/logs/{{user.number}}/" class="select-link">
                     <div class="arrow"></div>
@@ -28,7 +28,8 @@
             <div class="button-wrapper">
                 <div class="select-entry clearfix
                     {% if chat.number == selected_dialog %} highlight {%endif%}
-                    {% if chat.is_complete %} request_complete {% endif %}"
+                    {% if chat.is_complete %} request_complete {% endif %}
+                    {% if chat.is_discarded %} request_discarded {% endif %}"
                 >
                     <div class="chat-name">{{ chat.number }}
                         {% if chat.registered_pk %}
@@ -48,7 +49,7 @@
         {% for message in message_list %}
         <div class="chat-message {% if message.direction %} msg-in {% else %} msg-out {% endif %}">
             <div class="chat-message-content">{{message.content | safe}}</div>
-            <div class="chat-message-time">{{ message.time|date:"d.m.Y" }}, {{ message.time|time:"h:i" }}</div>
+            <div class="chat-message-time">{{ message.time|date:"d.m.Y" }}, {{ message.time|time:"H:i" }}</div>
         </div>
         {% endfor %}
     </div>
