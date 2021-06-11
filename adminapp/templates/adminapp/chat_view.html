@@ -3,10 +3,10 @@
 {% block content %}
 <h3>Существующие чаты</h3>
 <div class="chat-view clearfix">
-    <div class="user-list">
+    <div class="select-list">
         {% for user in user_list %}
-        <a href="/bot_admin/logs/{{user.number}}/" class="chat-button">
-            <div class="chat-entry
+        <a href="/bot_admin/logs/{{user.number}}/" class="select-button">
+            <div class="select-entry
                 {% if user.number == selected_user %}highlight{%endif%}
                 {% if user.is_banned %}banned_user{%endif%}
             ">
@@ -16,11 +16,18 @@
         </a>
         {% endfor %}
     </div>
-    <div class="chat-list">
+    <div class="select-list">
         {% for chat in chat_list %}
-        <a href="/bot_admin/logs/{{selected_user}}/{{chat.number}}/" class="chat-button">
-            <div class="chat-entry clearfix {% if chat.number == selected_dialog %}highlight{%endif%}">
-                <div class="chat-name">{{ chat.number }}</div>
+        <a href="/bot_admin/logs/{{selected_user}}/{{chat.number}}/" class="select-button">
+            <div class="select-entry clearfix
+                {% if chat.number == selected_dialog %} highlight {%endif%}
+                {% if chat.is_complete %} request_complete {% endif %}"
+            >
+                <div class="chat-name">{{ chat.number }}
+                    {% if chat.registered_pk %}
+                        - #{{chat.registered_pk}}
+                    {% endif %}
+                </div>
                 <div class="chat-last-message">{{ chat.tag }}</div>
                 <div class="chat-time">{{ chat.time|date:"d.m.Y" }}, {{ chat.time|time:"h:i" }}</div>
             </div>

@@ -1,4 +1,5 @@
 import telegram
+from django.utils.html import escape
 
 
 def extract_user_data_from_update(update):
@@ -62,9 +63,9 @@ def get_user_message_as_text(message_data: dict) -> str:
     elif message_data["text"]:
         text = message_data["text"]
     elif message_data["caption"]:
-        text = f"PHOTO: {message_data['photo']}<br><br>{message_data['caption']}"
+        text = f"PHOTO: {message_data['photo']}\n\n{message_data['caption']}"
 
-    return text.replace("\n", "<br>")
+    return escape(text).replace("\n", "<br>")
 
 
 def get_buttons_as_text(button_data):
