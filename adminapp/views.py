@@ -31,7 +31,9 @@ def logs_list_view(request, user_pk=None, dialog_pk=None):
     users = [
         {
             "number": user.pk,
-            "name": user.username,
+            "tg_id": user.user_id,
+            "username": user.username,
+            "fullname": user.get_fullname,
             "chat_last_message": None,
             "time": user.last_active,
             "is_banned": user.is_banned,
