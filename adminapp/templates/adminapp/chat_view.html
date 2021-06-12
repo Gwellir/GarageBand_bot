@@ -33,7 +33,7 @@
                 >
                     <div class="chat-name">{{ chat.number }}
                         {% if chat.registered_pk %}
-                        - <a href="https://t.me/AutoServiceUA/{{chat.registered_pk}}" target="_blank" rel="noopener noreferrer">#{{chat.registered_pk}}</a>
+                        - <a href="https://t.me/AutoServiceUA/{{chat.message_id}}" target="_blank" rel="noopener noreferrer">#{{chat.registered_pk}}</a>
                         {% endif %}
                     </div>
                     <div class="chat-last-message">{{ chat.tag }}</div>
