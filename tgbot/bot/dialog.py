@@ -9,7 +9,6 @@ from .processors import (
     DescriptionInputProcessor,
     LocationInputProcessor,
     NameInputProcessor,
-    PhoneNumberInputProcessor,
     SetReadyInputProcessor,
     StartInputProcessor,
     StorePhotoInputProcessor,
