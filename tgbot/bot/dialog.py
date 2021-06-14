@@ -25,7 +25,6 @@ PROCESSORS = {
     DialogStage.GET_REQUEST_DESC: DescriptionInputProcessor,
     DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
     DialogStage.GET_LOCATION: LocationInputProcessor,
-    DialogStage.GET_PHONE: PhoneNumberInputProcessor,
     DialogStage.CHECK_DATA: SetReadyInputProcessor,
 }
 
