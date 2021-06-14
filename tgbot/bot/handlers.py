@@ -14,6 +14,7 @@ from tgbot.bot.utils import extract_user_data_from_update
 from tgbot.exceptions import (
     AdminActionError,
     CallbackExpiredError,
+    MessageIsAnEditError,
     UnknownAdminCommandError,
     UserIsBannedError,
 )
@@ -96,10 +97,12 @@ def message_handler(update, context):
     Передаёт информацию о событии соответствующему инстансу DialogProcessor"""
 
     # todo добавить привязку инстансов DialogProcessor к пользователям
-    user_data = extract_user_data_from_update(update)
+
     try:
+        user_data = extract_user_data_from_update(update)
         dialog = Dialog.get_or_create(user_data)
-    except UserIsBannedError as e:
+    # todo think how to use edits?
+    except (UserIsBannedError, MessageIsAnEditError) as e:
         BOT_LOG.warning(
             LogStrings.DIALOG_INPUT_ERROR.format(
                 user_id=update.effective_user.username,
@@ -145,46 +148,35 @@ def message_handler(update, context):
 
 
 def error_handler(update, context):
-    # add all the dev user_ids in this list. You can also add ids of channels or groups.
     devs = [DEV_TG_ID]
     try:
-        # we want to notify the user of this problem. This will always work, but not notify users if the update is an
-        # callback or inline query, or a poll update. In case you want this, keep in mind that sending the message
-        # could fail
         if update.effective_message:
             text = (
-                "Извините, при обработке вашего сообщения произошла непредвиденная ошибка.\n"
+                "Извините, при обработке вашего сообщения"
+                " произошла непредвиденная ошибка.\n"
                 "Уведомление разработчикам отправлено!"
             )
             update.effective_message.reply_text(text)
-        # This traceback is created with accessing the traceback object from the sys.exc_info, which is returned as the
-        # third value of the returned tuple. Then we use the traceback.format_tb to get the traceback as a string, which
-        # for a weird reason separates the line breaks in a list, but keeps the linebreaks itself. So just joining an
-        # empty string works fine.
         trace = "".join(traceback.format_tb(sys.exc_info()[2]))
-        # lets try to get as much information from the telegram update as possible
         payload = ""
-        # normally, we always have an user. If not, its either a channel or a poll update.
         if update.effective_user:
-            payload += f" with the user {mention_html(update.effective_user.id, update.effective_user.first_name)}"
-        # there are more situations when you don't get a chat
+            user_id = update.effective_user.id
+            user_name = update.effective_user.first_name
+            payload += f" with the user" \
+                       f" {mention_html(user_id, user_name)}"
         if update.effective_chat:
             payload += f" within the chat <i>{update.effective_chat.title}</i>"
             if update.effective_chat.username:
                 payload += f" (@{update.effective_chat.username})"
-        # but only one where you have an empty payload by now: A poll (buuuh)
         if update.poll:
             payload += f" with the poll id {update.poll.id}."
     except AttributeError:
         pass
-    # lets put this in a "well" formatted text
     text = (
-        f"Hey.\n The error <code>{escape(context.error)}</code> happened{payload}. The full traceback:\n\n<code>{escape(trace)}"
+        f"Hey.\n The error <code>{escape(context.error)}</code> happened{payload}."
+        f" The full traceback:\n\n<code>{escape(trace)}"
         f"</code>"
     )
-    # and send it to the dev(s)
     for dev_id in devs:
-        send_message_return_id(text, dev_id, context.bot)
-        # context.bot.send_message(dev_id, text, parse_mode=ParseMode.HTML)
-    # we raise the error again, so the logger module catches it. If you don't use the logger module, use it.
+        send_message_return_id({"text": text}, dev_id, context.bot)
     raise
