@@ -59,7 +59,7 @@ class TextInputProcessor(BaseInputProcessor):
             return True
 
     def get_field_value(self, data):
-        if not data["text"]:
+        if not data["text"] or data["callback"]:
             raise TextNotProvidedError
         text = data.get("text")
         if self.check_text_length(text):
@@ -138,7 +138,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
         if not description:
             description = ""
 
-        if data["photo"]:
+        if data["photo"] and not data["callback"]:
             photo_file_id = data["photo"]
             self.model.photos.create(
                 # todo fix magic number, use textInput preprocessor?

@@ -1,3 +1,5 @@
+"""Содержит строки шаблонов ответов бота."""
+
 stages_info = [
     {  # stage 1
         "text": "Здравствуйте!\n"
@@ -28,6 +30,14 @@ stages_info = [
         "text_buttons": [
             [
                 {
+                    "text": "Двигатель/КПП",
+                },
+                {
+                    "text": "Ходовая часть",
+                },
+            ],
+            [
+                {
                     "text": "Кузов",
                 },
                 {
@@ -36,23 +46,15 @@ stages_info = [
             ],
             [
                 {
-                    "text": "Диагностика",
-                },
-                {
-                    "text": "Двигатель/КПП",
-                },
-            ],
-            [
-                {
                     "text": "Автоэлектрика",
                 },
                 {
-                    "text": "Ходовая часть",
+                    "text": "Диагностика",
                 },
             ],
             [
                 {
-                    "text": "Кондиционер",
+                    "text": "ГБО",
                 },
                 {
                     "text": "Другое",
@@ -102,7 +104,6 @@ stages_info = [
             [
                 {
                     "text": "Отменить",
-                    "callback_data": "restart",
                 },
             ]
         ],
@@ -115,7 +116,6 @@ stages_info = [
             [
                 {
                     "text": "Отменить",
-                    "callback_data": "restart",
                 },
             ]
         ],
@@ -126,12 +126,14 @@ stages_info = [
     },
     {  # stage finished
         "text": "Благодарим за сотрудничество!\n"
-        "Ваша заявка #{registered_pk} опубликована.",
+        'Ваша заявка '
+        '<a href="https://t.me/AutoServiceUA/{registered_msg_id}">#{registered_pk}</a>'
+        'опубликована.',
         "buttons": [
             [
                 {
-                    "text": "Перейти в канал Автосервис Украина",
-                    "url": "https://t.me/AutoServiceUA",
+                    "text": "Перейти к вашему посту в канале",
+                    "url": "https://t.me/AutoServiceUA/{registered_msg_id}",
                 }
             ],
             [

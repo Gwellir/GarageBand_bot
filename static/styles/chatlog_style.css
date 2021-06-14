@@ -22,16 +22,7 @@ body {
     width: 100%;
 }
 
-.user-list {
-    vertical-align: top;
-    width: 20%;
-    height: 100%;
-    display: inline-block;
-    border: 1px solid black;
-    overflow: auto;
-    padding: 2px;
-}
-.chat-list {
+.select-list {
     vertical-align: top;
     width: 20%;
     height: 100%;
@@ -41,13 +32,39 @@ body {
     padding: 2px;
 }
 
-.chat-button {
+.button-wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+.select-link {
+    display: block;
+    position: relative;
+    width: 10%;
+    float: right;
+}
+
+.select-link:hover {
+    background: lightgray;
+}
+
+.select-link:hover .arrow {
+    transform: scale(1.3);
+}
+
+.select-button {
     text-decoration: none;
     color: inherit;
 }
 
-.chat-entry:hover {
-    box-shadow: 0 0 10px -2px rgba(0, 0, 0, 0.9);
+.select-entry {
+    position: relative;
+    padding: 2px;
+    margin: 2px 0;
+    border: 1px dotted #000000;
+    overflow-wrap: break-word;
+    width: 89%;
+    float: left;
 }
 
 .chat-content {
@@ -58,13 +75,6 @@ body {
     border: 1px solid black;
     padding: 2px;
     overflow: auto;
-}
-
-.chat-entry {
-    padding: 2px;
-    margin-bottom: 5px;
-    border: 1px dotted #000000;
-    overflow-wrap: break-word;
 }
 
 .chat-message {
@@ -116,8 +126,27 @@ body {
     background: lightgray;
 }
 
-.banned_user {
-    border-color: red !important;
+.banned_user:before {
+    position: absolute;
+    right: 1px;
+    top: 0;
+    font-weight: 700;
+    color: red;
+    content: "ban";
+}
+
+.request_complete:before {
+    position: absolute;
+    right: 0;
+    top: 0;
+    content: "✅";
+}
+
+.request_discarded:before {
+    position: absolute;
+    right: 0;
+    top: 0;
+    content: "❌";
 }
 
 .hidden {
@@ -128,12 +157,20 @@ footer {
     clear:both;
 }
 
-.clearfix:before {
-}
-
 .clearfix:after {
     visibility: hidden;
     display: block;
     content: "";
     clear: both;
+}
+
+.arrow {
+    position: absolute;
+    top: 35%;
+    left: 10px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid black;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
 }

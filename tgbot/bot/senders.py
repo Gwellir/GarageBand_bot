@@ -23,6 +23,7 @@ def send_message_return_id(message_data, user_id, bot):
         reply_markup=markup,
         parse_mode=ParseMode.HTML,
     )
+    # todo wrap in TRY EXCEPT (ChatMigrated, ...)
     if "caption" in message_data.keys():
         msg = bot.send_photo(
             caption=message_data["caption"], photo=message_data["photo"], **params_dict

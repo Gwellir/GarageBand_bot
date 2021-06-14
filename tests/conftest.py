@@ -38,7 +38,10 @@ async def client() -> TelegramClient:
 
 
 @pytest.fixture()
-async def image():
-    f = open(BASE_DIR / "tests/clouds-mf.jpg", "rb")
-    yield f
-    f.close()
+def image():
+    return BASE_DIR / "tests/clouds-mf.jpg"
+
+
+@pytest.fixture()
+def bot_name():
+    return os.getenv("TESTED_BOT_ID")

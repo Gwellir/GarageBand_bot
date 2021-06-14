@@ -1,3 +1,5 @@
+"""Содержит логику для администраторских действий."""
+
 from datetime import timedelta
 
 from django.utils.timezone import now
@@ -11,6 +13,9 @@ from tgbot.models import BotUser, RegisteredRequest
 
 # todo organize exception control
 def ban_user_by_id(bot, pk, callback=None):
+    """Банит пользователя по ID Телеграма, удаляет все сообщения пользователя
+    за сутки, отправляет подтверждающее сообщение и ответ на коллбек."""
+
     try:
         user = BotUser.objects.get(pk=pk)
     except BotUser.DoesNotExist:
@@ -32,12 +37,18 @@ def ban_user_by_id(bot, pk, callback=None):
 
 
 def delete_channel_message_by_id(bot, message_id, callback=None):
+    """Удаляет сообщение из публикационного канала по id.
+
+    Отправляет уведомление в админскую группу."""
+
     try:
         bot.delete_message(PUBLISHING_CHANNEL_ID, message_id)
     except BadRequest:
         raise MessageDoesNotExistError(message_id)
     if callback:
-        msg = {"text": f"Сообщение #{message_id} удалено!"}
+        # todo mark deleted? or rather, move this logic to the model?
+        reg_request = RegisteredRequest.objects.get(message_id=message_id)
+        msg = {"text": f"Заявка #{reg_request.pk} удалена!"}
         callback.answer(msg["text"])
         send_message_return_id(msg, ADMIN_GROUP_ID, bot)
 
