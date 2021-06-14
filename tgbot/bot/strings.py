@@ -1,3 +1,5 @@
+"""Содержит строки шаблонов ответов бота."""
+
 stages_info = [
     {  # stage 1
         "text": "Здравствуйте!\n"
@@ -124,12 +126,12 @@ stages_info = [
     },
     {  # stage finished
         "text": "Благодарим за сотрудничество!\n"
-        "Ваша заявка #{registered_pk} опубликована.",
+        'Ваша заявка <a href="https://t.me/AutoServiceUA/{registered_msg_id}">#{registered_pk}</a> опубликована.',
         "buttons": [
             [
                 {
-                    "text": "Перейти в канал Автосервис Украина",
-                    "url": "https://t.me/AutoServiceUA",
+                    "text": "Перейти к вашему посту в канале",
+                    "url": "https://t.me/AutoServiceUA/{registered_msg_id}",
                 }
             ],
             [

@@ -1,3 +1,5 @@
+"""Содержит классы моделей бота для ORM Django."""
+
 import tempfile
 
 from django.core.files import File
@@ -8,12 +10,14 @@ from garage_band_bot.settings import ADMIN_GROUP_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
+from tgbot.bot.replies import get_admin_message, get_summary_for_request
 from tgbot.bot.senders import publish_summary_return_id, send_message_return_id
-from tgbot.bot_replies import get_admin_message, get_summary_for_request
 from tgbot.exceptions import UserIsBannedError
 
 
 class DialogStage(models.IntegerChoices):
+    """Набор стадий проведения диалога."""
+
     WELCOME = 1, _("Приветствие")
     GET_NAME = 2, _("Получить имя")
     GET_REQUEST_TAG = 3, _("Получить категорию заявки")
@@ -25,8 +29,14 @@ class DialogStage(models.IntegerChoices):
     DONE = 9, _("Работа завершена")
 
 
+# todo merge with Django Auth User
 class BotUser(models.Model):
-    """Класс с информацией о пользователях бота"""
+    """
+    Модель с информацией о пользователях бота.
+
+    Содержит информацию из Telegram, а также данные, которые указывает пользователь
+    в процессе оформления заявки (имя и телефон)
+    """
 
     name = models.CharField(
         verbose_name="Полное имя пользователя", max_length=50, blank=True
@@ -61,6 +71,8 @@ class BotUser(models.Model):
 
     @property
     def get_fullname(self):
+        """Возвращает полное имя пользователя, как оно указано в Телеграме."""
+
         return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
@@ -71,6 +83,12 @@ class BotUser(models.Model):
 
     @classmethod
     def get_or_create(cls, data):
+        """
+        Возвращает новый или существующий инстанс пользователя.
+
+        Вызывает UserIsBannerError, если пользователь забанен.
+        """
+
         user, created = cls.objects.update_or_create(
             user_id=data["user_id"], defaults=data
         )
@@ -80,6 +98,12 @@ class BotUser(models.Model):
         return user, created
 
     def ban(self):
+        """
+        Устанавливает пользователю флаг бана.
+
+        Вызывает UserIsBannerError, если пользователь УЖЕ забанен.
+        """
+
         if self.is_banned:
             raise UserIsBannedError(self)
         self.is_banned = True
@@ -87,6 +111,8 @@ class BotUser(models.Model):
 
 
 class Tag(models.Model):
+    """Модель со списком разновидностей категорий заявок."""
+
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
 
     def __str__(self):
@@ -94,7 +120,12 @@ class Tag(models.Model):
 
 
 class WorkRequest(models.Model):
-    """Класс с заявками"""
+    """
+    Модель заявки
+
+    Содержит все введённые пользователем данные, относящиеся к ремонту,
+    связь с пользователем и диалогом, флаги состояния и время создания.
+    """
 
     tag = models.ForeignKey(Tag, on_delete=models.SET_NULL, db_index=True, null=True)
     title = models.CharField(
@@ -131,11 +162,24 @@ class WorkRequest(models.Model):
 
     @classmethod
     def get_or_create(cls, user, dialog):
+        """
+        Возвращает заявку, которая привязана к пользователю и диалогу,
+        или же формирует новую.
+        Заявка считается завершённой, либо если она зарегистрирована,
+        либо если отброшена.
+        """
+
         return WorkRequest.objects.get_or_create(
             user=user, dialog=dialog, is_complete=False, is_discarded=False
         )
 
+    # todo separate into a manager?
     def data_as_dict(self):
+        """
+        Возвращает данные, релевантные для формирования ответов пользователям,
+        в виде словаря.
+        """
+
         if self.is_complete:
             registered_pk = self.registered.pk
             registered_msg_id = self.registered.message_id
@@ -153,6 +197,13 @@ class WorkRequest(models.Model):
         )
 
     def get_photo(self):
+        """
+        Возвращает объект фотографии, пригодный для передачи в Телеграм.
+
+        Либо первое из загруженных фото, либо картинку по умолчанию, если
+        фотографии не были загружены.
+        """
+
         if self.photos.all():
             return self.photos.all()[0].tg_file_id
         else:
@@ -160,6 +211,13 @@ class WorkRequest(models.Model):
 
     @transaction.atomic
     def set_ready(self, bot):
+        """
+        Выставляет заявке статус готовности.
+
+        Загружает фотографии в базу данных, ставит отметку в логе, выставляет флаг
+        готовности, а затем публикует заявку в канал
+        """
+
         for photo in self.photos.all():
             file = bot.get_file(file_id=photo.tg_file_id)
             temp = tempfile.TemporaryFile()
@@ -179,6 +237,12 @@ class WorkRequest(models.Model):
 
 
 class RegisteredRequest(models.Model):
+    """
+    Модель зарегистрированных заявок
+
+    Содержит связь с заявкой, а также информацию о посте в канале (номер сообщения)
+    """
+
     request = models.OneToOneField(
         WorkRequest, on_delete=models.CASCADE, related_name="registered"
     )
@@ -192,6 +256,9 @@ class RegisteredRequest(models.Model):
     @classmethod
     @transaction.atomic
     def publish(cls, request, bot):
+        """Публикует сообщение на базе заявки в основной канал,
+        сохраняет номер сообщения."""
+
         reg_request = cls.objects.create(
             request=request,
         )
@@ -226,6 +293,13 @@ class RequestPhoto(models.Model):
 
 
 class Dialog(models.Model):
+    """
+    Модель диалога с пользователем
+
+    Содержит связь с пользователем, этап диалога, флаг завершения
+    и данные о времени начала и последнем сообщении пользователя.
+    """
+
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     stage = models.PositiveSmallIntegerField(
         verbose_name="Состояние диалога",
@@ -251,6 +325,12 @@ class Dialog(models.Model):
     @classmethod
     @transaction.atomic()
     def get_or_create(cls, update):
+        """
+        Получает из базы, либо создаёт структуру из пользователя, диалога и заявки.
+        Если все связанные с пользователем диалоги завершены - формирует новую пару
+        диалог-заявка.
+        """
+
         user, u_created = BotUser.get_or_create(update)
         dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
         request, r_created = WorkRequest.get_or_create(user, dialog)
@@ -260,6 +340,13 @@ class Dialog(models.Model):
         return dialog
 
     def finish(self):
+        """
+        Завершает диалог.
+
+        Если связанная заявка не опубликована, ей выставляется флаг is_discarded,
+        в ином случае - is_finished.
+        """
+
         if not self.request.is_complete:
             self.request.is_discarded = True
             self.request.save()
@@ -268,7 +355,12 @@ class Dialog(models.Model):
 
 
 class Message(models.Model):
-    """Модель для хранения сообщений из диалога."""
+    """
+    Модель для хранения сообщений из диалога
+
+    Содержи связь с диалогом, содержимое сообщения, стадию диалога на момент
+    формирования, информацию о направлении и времени создания.
+    """
 
     dialog = models.ForeignKey(
         Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
