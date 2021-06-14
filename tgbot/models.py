@@ -24,9 +24,8 @@ class DialogStage(models.IntegerChoices):
     GET_REQUEST_DESC = 4, _("Получить описание заявки")
     REQUEST_PHOTOS = 5, _("Предложить отправить фотографии")
     GET_LOCATION = 6, _("Получить местоположение")
-    GET_PHONE = 7, _("Получить телефон")
-    CHECK_DATA = 8, _("Проверить заявку")
-    DONE = 9, _("Работа завершена")
+    CHECK_DATA = 7, _("Проверить заявку")
+    DONE = 8, _("Работа завершена")
 
 
 # todo merge with Django Auth User

@@ -32,10 +32,10 @@ async def test_start(client: TelegramClient, image, bot_name):
             await conv.send_message("Владислав")
             answer = await conv.get_response()
 
-            assert answer.button_count == 9
+            assert answer.button_count == 7
             assert "Выберите тип ремонта" in answer.raw_text
-            assert answer.buttons[3][1].text == "Другое"
-            assert answer.buttons[4][0].text == "Отменить"
+            assert answer.buttons[0][0].text == "Двигатель/ходовая"
+            assert answer.buttons[6][0].text == "Отменить"
 
             await answer.buttons[0][0].click()
             answer = await conv.get_response()
@@ -60,20 +60,14 @@ async def test_start(client: TelegramClient, image, bot_name):
             assert answer.buttons[0][0].text == "Отменить"
 
             await conv.send_message("Санкт-Петербург")
-            answer = await conv.get_response()
 
-            assert answer.button_count == 1
-            assert "Укажите свой номер телефона" in answer.raw_text
-            assert answer.buttons[0][0].text == "Отменить"
-
-            await conv.send_message("+38 097 000 00 00")
             answer1 = await conv.get_response()
             assert answer1.button_count == 0
             assert "Вы молодец!" in answer1.raw_text
 
             answer2 = await conv.get_response()
             assert answer2.button_count == 2
-            assert "#Двигатель_КПП" in answer2.raw_text
+            assert "#Двигатель_ходовая" in answer2.raw_text
             assert "🛠️ Автоматическая проверка работы бота" in answer2.raw_text
             assert "📍 Санкт-Петербург" in answer2.raw_text
             assert "Владислав" in answer2.raw_text
@@ -85,7 +79,7 @@ async def test_start(client: TelegramClient, image, bot_name):
 
             assert answer.button_count == 3
             assert "Благодарим за сотрудничество!" in answer.raw_text
-            assert answer.buttons[0][0].text == "Перейти в канал Автосервис Украина"
+            assert answer.buttons[0][0].text == "Перейти к вашему посту в канале"
             assert answer.buttons[1][0].text == "Оформить ещё заявку"
             assert answer.buttons[2][0].text == "Разместить рекламу"
             image_file.close()
