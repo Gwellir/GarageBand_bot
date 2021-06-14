@@ -45,7 +45,7 @@ def run_preparations() -> None:
     # install project requirements
     subprocess.run([PIP_ENV, "install", "-r", REQ_FILE], check=True)
     # perform migrations
-    subprocess.run([PYTHON_ENV, "manage.py", "makemigrations"], check=True)
+    # subprocess.run([PYTHON_ENV, "manage.py", "makemigrations"], check=True)
     subprocess.run([PYTHON_ENV, "manage.py", "migrate"], check=True)
 
 

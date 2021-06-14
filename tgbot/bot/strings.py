@@ -126,9 +126,8 @@ stages_info = [
     },
     {  # stage finished
         "text": "Благодарим за сотрудничество!\n"
-        'Ваша заявка '
-        '<a href="https://t.me/AutoServiceUA/{registered_msg_id}">#{registered_pk}</a>'
-        'опубликована.',
+        'Ваша заявка <a href="https://t.me/AutoServiceUA/{registered_msg_id}">'
+        '#{registered_pk}</a> опубликована.',
         "buttons": [
             [
                 {
