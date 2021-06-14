@@ -185,8 +185,12 @@ class WorkRequest(models.Model):
             registered_msg_id = self.registered.message_id
         else:
             registered_pk = registered_msg_id = "000"
+        if self.tag:
+            tag_name = self.tag.name.replace("/", "_").replace(" ", "_")
+        else:
+            tag_name = None
         return dict(
-            request_tag=self.tag.name if self.tag else None,
+            request_tag=tag_name,
             request_desc=self.description,
             request_location=self.location,
             user_pk=self.user.pk,
