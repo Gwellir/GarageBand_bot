@@ -1,8 +1,18 @@
+"""Содержит исключения, возникающие при работе бота."""
+
+
 class UserIsBannedError(Exception):
     """Возникает, когда приходит сообщение от забаненного пользователя."""
 
     def __init__(self, user):
         super().__init__(f"Пользователь {user} находится в бане!")
+
+
+class MessageIsAnEditError(Exception):
+    """Возникает, когда мы получаем апдейт о правке."""
+
+    def __init__(self, update):
+        super().__init__(f"Пришло уведомление о правке: {update}!")
 
 
 class AdminActionError(Exception):
@@ -74,7 +84,7 @@ class ImageNotProvidedError(BotProcessingError):
     def __init__(self):
         super().__init__(
             "Запрошенное изображение не загружено!\n"
-            "_Возможно, при загрузке не выставлена галочка сжатия._"
+            "<i>Возможно, при загрузке не выставлена галочка сжатия.</i>"
         )
 
 
