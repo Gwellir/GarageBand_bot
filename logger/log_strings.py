@@ -1,4 +1,7 @@
+# todo load this from .ini
 class LogStrings:
+    """Класс для работы с текстовыми строками логгера."""
+
     DIALOG_INCOMING_MESSAGE = (
         "<-- : User: {user_id}, stage: {stage}, data: {input_data}"
     )
