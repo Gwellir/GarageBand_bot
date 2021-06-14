@@ -162,8 +162,7 @@ def error_handler(update, context):
         if update.effective_user:
             user_id = update.effective_user.id
             user_name = update.effective_user.first_name
-            payload += f" with the user" \
-                       f" {mention_html(user_id, user_name)}"
+            payload += f" with the user {mention_html(user_id, user_name)}"
         if update.effective_chat:
             payload += f" within the chat <i>{update.effective_chat.title}</i>"
             if update.effective_chat.username:

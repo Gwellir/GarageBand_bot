@@ -1,3 +1,5 @@
+"""Содержит функции отправки сообщений в telegram."""
+
 from telegram import ParseMode
 
 from garage_band_bot.settings import PUBLISHING_CHANNEL_ID
@@ -7,6 +9,13 @@ from tgbot.bot.utils import build_inline_button_markup, build_reply_button_marku
 
 
 def send_message_return_id(message_data, user_id, bot):
+    """Отправляет сообщение через телеграм бота.
+
+    Формирует структуру кнопок, определяет, требуется ли отправка обычного сообщения,
+    либо же фотографии с описанием.
+    Возвращает message_id сообщения в соответствующем чате TG.
+    """
+
     BOT_LOG.debug(
         LogStrings.DIALOG_SEND_MESSAGE.format(
             user_id=user_id,
@@ -37,6 +46,10 @@ def send_message_return_id(message_data, user_id, bot):
 
 
 def publish_summary_return_id(summary, user, bot):
+    """Размещает сообщение с фотографией в канале публикации.
+    Возвращает message_id сообщения из канала.
+    """
+
     BOT_LOG.debug(
         LogStrings.DIALOG_PUBLISH_REQUEST.format(
             user_id=user.username,

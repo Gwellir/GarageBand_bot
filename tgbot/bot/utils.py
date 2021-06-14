@@ -1,9 +1,14 @@
+"""Содержит набор утилит для обработчиков бота."""
+
 import telegram
 from django.utils.html import escape
 
+from tgbot.exceptions import MessageIsAnEditError
+
 
 def extract_user_data_from_update(update):
-    """python-telegram-bot's Update instance --> User info"""
+    """Извлекает данные о пользователе из формата update PTB."""
+
     if update.message is not None:
         user = update.message.from_user.to_dict()
     elif update.inline_query is not None:
@@ -20,7 +25,7 @@ def extract_user_data_from_update(update):
     ):
         user = update.callback_query.message.chat.to_dict()
     else:
-        raise Exception(f"Can't extract user data from update: {update}")
+        raise MessageIsAnEditError(update)
 
     return dict(
         user_id=user["id"],
@@ -33,6 +38,8 @@ def extract_user_data_from_update(update):
 
 
 def build_inline_button_markup(buttons_data):
+    """Формирует reply_markup для сообщения с inline кнопками."""
+
     layout = []
     if buttons_data:
         for row in buttons_data:
@@ -44,6 +51,8 @@ def build_inline_button_markup(buttons_data):
 
 
 def build_reply_button_markup(buttons_data):
+    """Формирует reply_markup для сообщения с текстовыми кнопками."""
+
     layout = []
     if buttons_data:
         for row in buttons_data:
@@ -56,7 +65,10 @@ def build_reply_button_markup(buttons_data):
         return telegram.ReplyKeyboardRemove()
 
 
+# todo вынести в другое место, как относящееся к форматам логирования
 def get_user_message_as_text(message_data: dict) -> str:
+    """Возвращает сообщение пользователя в формате для просмотра чатов."""
+
     text = None
     if message_data["callback"]:
         text = f"CALLBACK: {message_data['callback']}"
@@ -69,6 +81,8 @@ def get_user_message_as_text(message_data: dict) -> str:
 
 
 def get_buttons_as_text(button_data):
+    """Возвращает кнопки в текстовом виде."""
+
     text = ""
     if not button_data:
         return text
@@ -87,6 +101,8 @@ def get_buttons_as_text(button_data):
 
 
 def get_bot_message_as_text(message_data: dict) -> str:
+    """Возвращает сообщение бота в формате для сохранения в таблицу Message."""
+
     if "text" in message_data.keys():
         text = message_data["text"]
     elif "caption" in message_data.keys():

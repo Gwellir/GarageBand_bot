@@ -4,25 +4,60 @@ from django.shortcuts import render
 from tgbot.models import BotUser, Dialog, Message
 
 
+# todo these should go to specific model managers I guess
 def get_registered_pk(dialog):
+    """
+    Получает номер связанной с диалогом зарегистрированной заявки,
+    если к диалогу привязана заявка и она зарегистрирована.
+
+    :type dialog: :class:`tgbot.models.Dialog`
+    """
+
     if hasattr(dialog, "request") and hasattr(dialog.request, "registered"):
         return dialog.request.registered.pk
+    return None
 
 
 def get_message_id(dialog):
+    """
+    Получает номер опубликованного сообщения с заявкой, в случае, если
+    к диалогу привязана заявка и она зарегистрирована.
+
+    :type dialog: :class:`tgbot.models.Dialog`
+    """
+
     if hasattr(dialog, "request") and hasattr(dialog.request, "registered"):
         return dialog.request.registered.message_id
+    return None
 
 
 def get_is_complete(dialog):
+    """
+    Получает статус завершённости заявки, в случае, если к диалогу привязана заявка.
+
+    :type dialog: :class:`tgbot.models.Dialog`
+    """
+
     return hasattr(dialog, "request") and dialog.request.is_complete
 
 
 def get_is_discarded(dialog):
+    """
+    Получает статус отмены заявки, в случае, если к диалогу привязана заявка.
+
+    :type dialog: :class:`tgbot.models.Dialog`
+    """
+
     return hasattr(dialog, "request") and dialog.request.is_discarded
 
 
 def get_tag(dialog):
+    """
+    Получает тег заявки, в случае, если к диалогу привязана заявка.
+
+    :type dialog: :class:`tgbot.models.Dialog`
+    """
+
     if hasattr(dialog, "request"):
         return dialog.request.tag
     return None
@@ -30,7 +65,14 @@ def get_tag(dialog):
 
 @user_passes_test(lambda u: u.is_superuser, login_url="admin:login")
 def logs_list_view(request, user_pk=None, dialog_pk=None):
-    """Отображает список проведённых чатов и содержимое просматриваемого чата."""
+    """
+    Отображает список пользователей, диалогов выбранного пользователя и
+    содержимое выбранного диалога.
+
+    :type request: :class:`django.http.HttpRequest`
+    :type user_pk: int
+    :type dialog_pk: int
+    """
 
     users = [
         {

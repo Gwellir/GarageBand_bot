@@ -9,6 +9,8 @@ BOT_ID = os.getenv("tested_bot_id")
 
 @mark.asyncio
 async def test_start(client: TelegramClient, image, bot_name):
+    """Проводит полный функциональный тест постинга заявки в канал."""
+
     for i in range(1):
         async with client.conversation(bot_name, timeout=5) as conv:
             image_file = open(image, "rb")
@@ -71,7 +73,7 @@ async def test_start(client: TelegramClient, image, bot_name):
 
             answer2 = await conv.get_response()
             assert answer2.button_count == 2
-            assert "#Кузов" in answer2.raw_text
+            assert "#Двигатель_КПП" in answer2.raw_text
             assert "🛠️ Автоматическая проверка работы бота" in answer2.raw_text
             assert "📍 Санкт-Петербург" in answer2.raw_text
             assert "Владислав" in answer2.raw_text

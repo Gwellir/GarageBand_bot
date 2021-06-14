@@ -1,3 +1,5 @@
+"""Конфигурационный файл pytest, содержит fixtures для работы функционального тест"""
+
 import os
 from pathlib import Path
 
@@ -20,6 +22,10 @@ session_str = os.getenv("TG_TEST_SESSION_STRING")
 
 @pytest.fixture()
 async def client() -> TelegramClient:
+    """
+    Инициализирует клиент telethon, выдаёт его инстанс в тест, затем закрывает клиент.
+    """
+
     tc = TelegramClient(
         StringSession(session_str),
         api_id,
@@ -39,9 +45,13 @@ async def client() -> TelegramClient:
 
 @pytest.fixture()
 def image():
+    """Выдаёт имя файла для тестового изображения."""
+
     return BASE_DIR / "tests/clouds-mf.jpg"
 
 
 @pytest.fixture()
 def bot_name():
+    """Выдаёт TG ID тестируемого бота."""
+
     return os.getenv("TESTED_BOT_ID")
