@@ -136,6 +136,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # bot settings
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+DEV_TG_ID = os.getenv("DEV_TG_ID")
 if DEBUG:
     PUBLISHING_CHANNEL_ID = os.getenv("TESTING_CHANNEL_ID")
     ADMIN_GROUP_ID = os.getenv("TESTING_GROUP_ID")

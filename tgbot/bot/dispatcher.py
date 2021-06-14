@@ -1,24 +1,33 @@
+"""Содержит функции запуска и настройки telegram-бота."""
+
 import telegram
 from telegram.ext import CallbackQueryHandler, Filters, MessageHandler, Updater
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
-from tgbot.bot.handlers import admin_command_handler, message_handler, post_handler
+from tgbot.bot.handlers import (
+    admin_command_handler,
+    error_handler,
+    message_handler,
+    post_handler,
+)
 
 
 def setup_dispatcher(dp):
-    """Adding handlers for events"""
+    """Создаёт обработчики для приходящих от Telegram событий."""
 
     dp.add_handler(CallbackQueryHandler(admin_command_handler, pattern=r"^admin_.*"))
     dp.add_handler(MessageHandler(Filters.chat_type.private, message_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.channel, post_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.groups, post_handler))
     dp.add_handler(CallbackQueryHandler(message_handler))
+    dp.add_error_handler(error_handler)
+
     BOT_LOG.debug("Event handlers initialized.")
 
 
 def run_polling():
-    """Run in polling mode"""
+    """Запуск в режиме polling"""
 
     updater = Updater(TELEGRAM_TOKEN, use_context=True)
 
