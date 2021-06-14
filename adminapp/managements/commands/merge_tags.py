@@ -5,7 +5,7 @@ from tgbot.models import WorkRequest
 
 
 class Command(BaseCommand):
-    help = "merge tags"
+    help = "merge tags for 15-06-21"
 
     def handle(self, *args, **options):
         WorkRequest.objects.filter(Q(tag=3)).update(tag=2)
