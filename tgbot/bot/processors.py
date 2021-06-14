@@ -119,7 +119,7 @@ class TagInputProcessor(TextInputProcessor):
             raise TextNotProvidedError
         text = data["text"]
         try:
-            tag = Tag.objects.get(name=text.replace(" ", "_").replace("/", "_"))
+            tag = Tag.objects.get(name=text)
         except Tag.DoesNotExist:
             tag = Tag.objects.get(pk=1)  # default "Другое"
 
