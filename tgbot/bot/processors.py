@@ -126,6 +126,12 @@ class TagInputProcessor(TextInputProcessor):
         return tag
 
 
+class CarTypeInputProcessor(TextInputProcessor):
+    """Процессор ввода типа авто"""
+
+    attr_name = "car_type"
+
+
 class DescriptionInputProcessor(TextInputProcessor):
     """Процессор ввода описания заявки"""
 
