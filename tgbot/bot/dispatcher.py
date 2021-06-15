@@ -1,7 +1,13 @@
 """Содержит функции запуска и настройки telegram-бота."""
 
 import telegram
-from telegram.ext import CallbackQueryHandler, Filters, MessageHandler, Updater
+from telegram.ext import (
+    CallbackQueryHandler,
+    Filters,
+    MessageHandler,
+    Updater,
+    CommandHandler,
+)
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
@@ -10,6 +16,7 @@ from tgbot.bot.handlers import (
     error_handler,
     message_handler,
     post_handler,
+    chat_ban_user,
 )
 
 
@@ -17,6 +24,7 @@ def setup_dispatcher(dp):
     """Создаёт обработчики для приходящих от Telegram событий."""
 
     dp.add_handler(CallbackQueryHandler(admin_command_handler, pattern=r"^admin_.*"))
+    dp.add_handler(CommandHandler(["ban"], chat_ban_user))
     dp.add_handler(MessageHandler(Filters.chat_type.private, message_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.channel, post_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.groups, post_handler))

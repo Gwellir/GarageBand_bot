@@ -1,7 +1,11 @@
+import json
 import sys
 import traceback
+from datetime import datetime, timedelta
 
 from django.utils.html import escape
+from telegram import ChatPermissions
+from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
 from garage_band_bot.settings import DEV_TG_ID
@@ -89,6 +93,52 @@ def admin_command_handler(update, context):
     # todo should only work for destructive actions
     # todo sometimes raises BadRequest
     update.effective_message.delete()
+
+
+def chat_ban_user(update, context):
+    """Банит пользователя в чате по ответу на его сообщение."""
+
+    user = extract_user_data_from_update(update)
+    try:
+        BotUser.objects.get(user_id=user["user_id"], is_staff=True)
+    except BotUser.DoesNotExist:
+        # todo unify callback and exception processing
+        return
+
+    reply = update.effective_message.reply_to_message
+    if not reply:
+        return
+    uid, nick = (
+        reply.from_user.id,
+        reply.from_user.username
+        if reply.from_user.username
+        else reply.from_user.full_name,
+    )
+    try:
+        context.bot.restrict_chat_member(
+            update.effective_chat.id,
+            uid,
+            until_date=datetime.now() + timedelta(hours=24),
+            permissions=ChatPermissions(
+                can_send_messages=False,
+                can_send_media_messages=False,
+                can_send_polls=False,
+                can_send_other_messages=False,
+                can_add_web_page_previews=False,
+                can_change_info=False,
+                can_invite_users=False,
+                can_pin_messages=False,
+            ),
+        )
+        send_message_return_id(
+            {"text": f"Пользователь {nick} {uid} забанен в обсуждении на сутки"},
+            update.effective_chat.id,
+            context.bot,
+        )
+        reply.delete()
+    except BadRequest:
+        update.effective_message.reply_text("Невозможно забанить владельца группы!")
+        return
 
 
 def message_handler(update, context):
