@@ -6,8 +6,8 @@ from logger.log_strings import LogStrings
 from ..exceptions import BotProcessingError
 from ..models import DialogStage, Message
 from .processors import (
+    CarTypeInputProcessor,
     DescriptionInputProcessor,
-    LocationInputProcessor,
     NameInputProcessor,
     SetReadyInputProcessor,
     StartInputProcessor,
@@ -21,9 +21,9 @@ PROCESSORS = {
     DialogStage.WELCOME: StartInputProcessor,
     DialogStage.GET_NAME: NameInputProcessor,
     DialogStage.GET_REQUEST_TAG: TagInputProcessor,
+    DialogStage.GET_CAR_TYPE: CarTypeInputProcessor,
     DialogStage.GET_REQUEST_DESC: DescriptionInputProcessor,
     DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
-    DialogStage.GET_LOCATION: LocationInputProcessor,
     DialogStage.CHECK_DATA: SetReadyInputProcessor,
 }
 
@@ -55,7 +55,7 @@ class DialogProcessor:
         """
         Входная точка обработчика диалогов.
 
-        Сохраняет входящее и исходяшие сообщения в логах, выполняет оперирование
+        Сохраняет входящее и исходящие сообщения в логах, выполняет оперирование
         пришедшими данными, обрабатывает исключения процессинга данных в боте.
         Возвращает список сообщений для отправки пользователю.
         """
@@ -87,9 +87,17 @@ class DialogProcessor:
             )
             messages.append({"text": f"{e.args[0]}"})
 
-        messages.append(
-            get_reply_for_stage(self.request.data_as_dict(), self.dialog.stage)
-        )
+        try:
+            messages.append(
+                get_reply_for_stage(self.request.data_as_dict(), self.dialog.stage)
+            )
+        # это может произойти, если часть пользователей находится в стадии,
+        # которая больше не существует (todo сдвинуть стадии в БД?)
+        except IndexError:
+            self._restart()
+            messages.append(
+                get_reply_for_stage(self.request.data_as_dict(), DialogStage.WELCOME)
+            )
 
         if self.dialog.stage == DialogStage.CHECK_DATA:
             messages.append(

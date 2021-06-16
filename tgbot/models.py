@@ -6,7 +6,7 @@ from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
-from garage_band_bot.settings import ADMIN_GROUP_ID
+from garage_band_bot.settings import ADMIN_GROUP_ID, PUBLISHING_CHANNEL_NAME
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
@@ -21,9 +21,9 @@ class DialogStage(models.IntegerChoices):
     WELCOME = 1, _("Приветствие")
     GET_NAME = 2, _("Получить имя")
     GET_REQUEST_TAG = 3, _("Получить категорию заявки")
-    GET_REQUEST_DESC = 4, _("Получить описание заявки")
-    REQUEST_PHOTOS = 5, _("Предложить отправить фотографии")
-    GET_LOCATION = 6, _("Получить местоположение")
+    GET_CAR_TYPE = 4, _("Получить тип автомобиля")
+    GET_REQUEST_DESC = 5, _("Получить описание заявки")
+    REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
     CHECK_DATA = 7, _("Проверить заявку")
     DONE = 8, _("Работа завершена")
 
@@ -140,6 +140,9 @@ class WorkRequest(models.Model):
     location = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=100
     )
+    car_type = models.CharField(
+        verbose_name="Тип автомобиля", blank=True, max_length=50
+    )
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности заявки", default=False, db_index=True
     )
@@ -189,9 +192,10 @@ class WorkRequest(models.Model):
         else:
             tag_name = None
         return dict(
+            channel_name=PUBLISHING_CHANNEL_NAME,
             request_tag=tag_name,
             request_desc=self.description,
-            request_location=self.location,
+            request_car_type=self.car_type,
             user_pk=self.user.pk,
             user_name=self.user.name,
             user_tg_id=self.user.user_id,
