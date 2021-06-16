@@ -3,20 +3,20 @@
 import telegram
 from telegram.ext import (
     CallbackQueryHandler,
+    CommandHandler,
     Filters,
     MessageHandler,
     Updater,
-    CommandHandler,
 )
 
 from garage_band_bot.settings import TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
 from tgbot.bot.handlers import (
     admin_command_handler,
+    chat_ban_user,
     error_handler,
     message_handler,
     post_handler,
-    chat_ban_user,
 )
 
 
