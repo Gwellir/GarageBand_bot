@@ -74,6 +74,16 @@ class BotUser(models.Model):
 
         return f"{self.first_name} {self.last_name}"
 
+    def stats_as_tg_html(self):
+        rrs = RegisteredRequest.objects.filter(request__user=self)
+        if rrs.count() == 0:
+            return None
+        rrs_str = ""
+        for rr in rrs:
+           rrs_str = f"{rrs_str} {rr.as_tg_html()}"
+        return f'<a href="tg://user?id={self.user_id}">{self.name}</a>:' \
+               f'{rrs_str}'
+
     def __str__(self):
         return (
             f"#{self.pk} {self.name if self.name else self.get_fullname} "
@@ -136,7 +146,7 @@ class WorkRequest(models.Model):
     formed_at = models.DateTimeField(
         verbose_name="Время составления", auto_now=True, db_index=True
     )
-    user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE, db_index=True)
+    user: BotUser = models.ForeignKey(BotUser, on_delete=models.CASCADE, db_index=True, related_name='requests')
     location = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=100
     )
@@ -259,6 +269,9 @@ class RegisteredRequest(models.Model):
 
     def __str__(self):
         return f"{self.pk} {self.request.user} ({self.message_id})"
+
+    def as_tg_html(self):
+        return f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/{self.message_id}">#{self.pk}</a>'
 
     @classmethod
     @transaction.atomic
