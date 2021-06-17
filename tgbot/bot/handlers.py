@@ -1,6 +1,7 @@
 import sys
 import traceback
 from datetime import datetime, timedelta
+from time import sleep
 
 from django.utils.html import escape
 from telegram import ChatPermissions
@@ -106,6 +107,7 @@ def show_user_requests_stats(update, context):
             i += 1
         if i == length - 1:
             send_message_return_id({'text': text}, ADMIN_GROUP_ID, context.bot)
+            sleep(0.5)
             i = 0
             text = ""
     if text:
