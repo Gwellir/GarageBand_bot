@@ -9,7 +9,7 @@ from telegram.ext import (
     Updater,
 )
 
-from garage_band_bot.settings import TELEGRAM_TOKEN
+from garage_band_bot.settings import ADMIN_GROUP_ID, TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
 from tgbot.bot.handlers import (
     admin_command_handler,
@@ -46,5 +46,8 @@ def run_polling():
     bot_link = f"https://t.me/{bot_info['username']}"
 
     BOT_LOG.info(f"Polling of '{bot_link}' started")
+
+    updater.bot.send_message(chat_id=ADMIN_GROUP_ID, text="Бот перезапущен 😉")
+
     updater.start_polling()
     updater.idle()
