@@ -108,6 +108,8 @@ def show_user_requests_stats(update, context):
             send_message_return_id({'text': text}, ADMIN_GROUP_ID, context.bot)
             i = 0
             text = ""
+    if text:
+        send_message_return_id({'text': text}, ADMIN_GROUP_ID, context.bot)
 
 
 def chat_ban_user(update, context):
