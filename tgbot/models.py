@@ -75,13 +75,13 @@ class BotUser(models.Model):
         return f"{self.first_name} {self.last_name}"
 
     def stats_as_tg_html(self):
-        rrs = RegisteredRequest.objects.filter(request__user=self)
+        rrs = RegisteredRequest.objects.filter(request__user=self).order_by('pk')
         if rrs.count() == 0:
             return None
         rrs_str = ""
         for rr in rrs:
            rrs_str = f"{rrs_str} {rr.as_tg_html()}"
-        return f'<a href="tg://user?id={self.user_id}">{self.name}</a>:' \
+        return f'<a href="tg://user?id={self.user_id}">#{self.pk} {self.name}</a>:' \
                f'{rrs_str}'
 
     def __str__(self):

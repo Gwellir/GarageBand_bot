@@ -96,7 +96,7 @@ def admin_command_handler(update, context):
 
 def show_user_requests_stats(update, context):
     length = 30
-    users = BotUser.objects.all()
+    users = BotUser.objects.all().order_by('pk')
     text = ""
     i = 0
     for user in users:
