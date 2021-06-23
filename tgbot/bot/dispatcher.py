@@ -16,7 +16,8 @@ from tgbot.bot.handlers import (
     chat_ban_user,
     error_handler,
     message_handler,
-    post_handler, show_user_requests_stats,
+    post_handler,
+    show_user_requests_stats,
 )
 
 
