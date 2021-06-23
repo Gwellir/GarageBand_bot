@@ -4,3 +4,5 @@ __pycache__
 venv
 .idea
 /media/
+/doc/build/
+/logger/bot.log*
