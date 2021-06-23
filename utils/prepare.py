@@ -49,14 +49,15 @@ def run_preparations() -> None:
     subprocess.run([PYTHON_ENV, "manage.py", "migrate"], check=True)
 
 
-# check python version
-if sys.version_info >= (3, 6, 1):
-    print("Python version check - OK")
-else:
-    print(
-        "You need to upgrade your Python interpreter to version 3.6.1 at least!\n"
-        "Exiting..."
-    )
-    sys.exit(1)
+if __name__ == "__main__":
+    # check python version
+    if sys.version_info >= (3, 6, 1):
+        print("Python version check - OK")
+    else:
+        print(
+            "You need to upgrade your Python interpreter to version 3.6.1 at least!\n"
+            "Exiting..."
+        )
+        sys.exit(1)
 
-setup_env()
+    setup_env()
