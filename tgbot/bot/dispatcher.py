@@ -9,7 +9,7 @@ from telegram.ext import (
     Updater,
 )
 
-from garage_band_bot.settings import TELEGRAM_TOKEN
+from garage_band_bot.settings import ADMIN_GROUP_ID, TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
 from tgbot.bot.handlers import (
     admin_command_handler,
@@ -17,6 +17,7 @@ from tgbot.bot.handlers import (
     error_handler,
     message_handler,
     post_handler,
+    show_user_requests_stats,
 )
 
 
@@ -25,6 +26,7 @@ def setup_dispatcher(dp):
 
     dp.add_handler(CallbackQueryHandler(admin_command_handler, pattern=r"^admin_.*"))
     dp.add_handler(CommandHandler(["ban"], chat_ban_user))
+    dp.add_handler(CommandHandler(["user_request_stats"], show_user_requests_stats))
     dp.add_handler(MessageHandler(Filters.chat_type.private, message_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.channel, post_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.groups, post_handler))
@@ -46,5 +48,8 @@ def run_polling():
     bot_link = f"https://t.me/{bot_info['username']}"
 
     BOT_LOG.info(f"Polling of '{bot_link}' started")
+
+    updater.bot.send_message(chat_id=ADMIN_GROUP_ID, text="Бот перезапущен 😉")
+
     updater.start_polling()
     updater.idle()

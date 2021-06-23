@@ -1,13 +1,14 @@
 import sys
 import traceback
 from datetime import datetime, timedelta
+from time import sleep
 
 from django.utils.html import escape
 from telegram import ChatPermissions
 from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
-from garage_band_bot.settings import DEV_TG_ID
+from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
@@ -92,6 +93,25 @@ def admin_command_handler(update, context):
     # todo should only work for destructive actions
     # todo sometimes raises BadRequest
     update.effective_message.delete()
+
+
+def show_user_requests_stats(update, context):
+    length = 30
+    users = BotUser.objects.all().order_by("pk")
+    text = ""
+    i = 0
+    for user in users:
+        stats = user.stats_as_tg_html()
+        if stats:
+            text = f"{text}{user.stats_as_tg_html()}\n"
+            i += 1
+        if i == length - 1:
+            send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
+            sleep(0.5)
+            i = 0
+            text = ""
+    if text:
+        send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
 
 
 def chat_ban_user(update, context):
