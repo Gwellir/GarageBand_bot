@@ -1,14 +1,13 @@
 """Конфигурационный файл pytest, содержит fixtures для работы функционального тест"""
 
 import os
-from pathlib import Path
 
 import dotenv
 import pytest
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from checks import BASE_DIR, IMAGE_PATH, STICKER_PATH
 
 # load ENV
 dotenv_file = BASE_DIR / ".env"
@@ -44,10 +43,17 @@ async def client() -> TelegramClient:
 
 
 @pytest.fixture()
-def image():
+def image_path():
     """Выдаёт имя файла для тестового изображения."""
 
-    return BASE_DIR / "tests/clouds-mf.jpg"
+    return IMAGE_PATH
+
+
+@pytest.fixture()
+def sticker_path():
+    """Выдаёт имя файла для тестового изображения."""
+
+    return STICKER_PATH
 
 
 @pytest.fixture()
