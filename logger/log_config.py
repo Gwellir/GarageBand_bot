@@ -12,7 +12,7 @@ CONSOLE_LOGGER.setLevel(logging.INFO)
 BOT_LOG.addHandler(CONSOLE_LOGGER)
 
 path = os.path.dirname(os.path.abspath(__file__))
-path = os.path.join(path, "bot.log")
+path = os.path.join(path, "logs\\bot.log")
 FILE_LOGGER = TimedRotatingFileHandler(path, when="d", interval=1)
 FILE_FORMATTER = logging.Formatter("%(asctime)s %(levelname)-8s [bot] %(message)s")
 FILE_LOGGER.setFormatter(FILE_FORMATTER)
