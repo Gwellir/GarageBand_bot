@@ -167,12 +167,12 @@ async def check_misinputs(conv, answer, stage):
 
 def check_too_short(answer):
     assert answer.button_count == 0
-    assert f"Слишком короткий ответ, введите не менее" in answer.raw_text
+    assert "Слишком короткий ответ, введите не менее" in answer.raw_text
 
 
 def check_too_long(answer):
     assert answer.button_count == 0
-    assert f"Превышена максимальная длина ответа (" in answer.raw_text
+    assert "Превышена максимальная длина ответа (" in answer.raw_text
 
 
 def check_not_text(answer):

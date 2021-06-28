@@ -4,10 +4,9 @@ import os
 
 import dotenv
 import pytest
+from checks import BASE_DIR, IMAGE_PATH, STICKER_PATH
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-
-from checks import BASE_DIR, IMAGE_PATH, STICKER_PATH
 
 # load ENV
 dotenv_file = BASE_DIR / ".env"

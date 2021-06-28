@@ -275,8 +275,10 @@ class RegisteredRequest(models.Model):
         return f"{self.pk} {self.request.user} ({self.message_id})"
 
     def as_tg_html(self):
-        return f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/' \
-               f'{self.message_id}">#{self.pk}</a>'
+        return (
+            f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/'
+            f'{self.message_id}">#{self.pk}</a>'
+        )
 
     @classmethod
     @transaction.atomic
