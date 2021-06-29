@@ -1,6 +1,6 @@
 """Содержит логику ведения диалога с пользователем."""
 
-from convoapp.models import Message, DialogStage
+from convoapp.models import DialogStage, Message
 from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
