@@ -8,11 +8,12 @@ from telegram import ChatPermissions
 from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
+from convoapp.dialog import DialogProcessor
+from convoapp.models import Dialog
 from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
-from tgbot.bot.dialog import DialogProcessor
 from tgbot.bot.senders import send_message_return_id
 from tgbot.bot.utils import extract_user_data_from_update
 from tgbot.exceptions import (
@@ -22,7 +23,7 @@ from tgbot.exceptions import (
     UnknownAdminCommandError,
     UserIsBannedError,
 )
-from tgbot.models import BotUser, Dialog
+from tgbot.models import BotUser
 
 
 def get_and_verify_callback_data(callback_query, last_id):

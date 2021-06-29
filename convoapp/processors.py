@@ -6,8 +6,7 @@ from django.utils.html import strip_tags
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-
-from ..exceptions import (
+from tgbot.exceptions import (
     CallbackNotProvidedError,
     ImageNotProvidedError,
     PhoneNumberMalformedError,
@@ -15,7 +14,7 @@ from ..exceptions import (
     TextTooLongError,
     TextTooShortError,
 )
-from ..models import Tag
+from tgbot.models import Tag
 
 
 class BaseInputProcessor:

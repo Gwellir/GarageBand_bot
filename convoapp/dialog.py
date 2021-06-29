@@ -1,11 +1,7 @@
 """Содержит логику ведения диалога с пользователем."""
 
-from logger.log_config import BOT_LOG
-from logger.log_strings import LogStrings
-
-from ..exceptions import BotProcessingError
-from ..models import DialogStage, Message
-from .processors import (
+from convoapp.models import DialogStage, Message
+from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
     NameInputProcessor,
@@ -14,8 +10,11 @@ from .processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
-from .replies import get_reply_for_stage, get_summary_for_request
-from .utils import get_bot_message_as_text, get_user_message_as_text
+from convoapp.replies import get_reply_for_stage, get_summary_for_request
+from logger.log_config import BOT_LOG
+from logger.log_strings import LogStrings
+from tgbot.bot.utils import get_bot_message_as_text, get_user_message_as_text
+from tgbot.exceptions import BotProcessingError
 
 PROCESSORS = {
     DialogStage.WELCOME: StartInputProcessor,
@@ -26,8 +25,6 @@ PROCESSORS = {
     DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
     DialogStage.CHECK_DATA: SetReadyInputProcessor,
 }
-
-
 CALLBACK_TO_STAGE = {
     "new_request": DialogStage.GET_NAME,
     "restart": DialogStage.WELCOME,

@@ -16,9 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from adminapp import urls as admin_urls
+from convoapp import urls as convo_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("bot_admin/", include(admin_urls, namespace="bot_admin")),
+    path("log_viewer/", include(convo_urls, namespace="bot_admin")),
 ]
