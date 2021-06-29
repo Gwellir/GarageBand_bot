@@ -1,14 +1,8 @@
 from django.contrib import admin
 
-from .models import (
-    BotUser,
-    Dialog,
-    Message,
-    RegisteredRequest,
-    RequestPhoto,
-    Tag,
-    WorkRequest,
-)
+from convoapp.models import Dialog, Message
+
+from .models import BotUser, RegisteredRequest, RequestPhoto, Tag, WorkRequest
 
 # todo rework admin interface to answer project's needs
 admin.site.register(BotUser)

@@ -2,7 +2,7 @@
 
 import copy
 
-from tgbot.bot import strings as strings
+from convoapp import strings as strings
 
 
 def fill_data(message_data: dict, content_dict: dict) -> dict:
