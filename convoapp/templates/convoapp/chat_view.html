@@ -1,4 +1,4 @@
-{% extends 'adminapp/base.html' %}
+{% extends 'convoapp/base.html' %}
 
 {% block content %}
 <h3>Существующие чаты</h3>
@@ -17,7 +17,7 @@
                     {% endif %}
                     <div class="user-time">{{ user.time|date:"d.m.Y" }}, {{ user.time|time:"H:i" }}</div>
                 </div>
-                <a href="/bot_admin/logs/{{user.number}}/" class="select-link">
+                <a href="/log_viewer/logs/{{user.number}}/" class="select-link">
                     <div class="arrow"></div>
                 </a>
             </div>
@@ -39,7 +39,7 @@
                     <div class="chat-last-message">{{ chat.tag }}</div>
                     <div class="chat-time">{{ chat.time|date:"d.m.Y" }}, {{ chat.time|time:"H:i" }}</div>
                 </div>
-                <a href="/bot_admin/logs/{{selected_user}}/{{chat.number}}" class="select-link">
+                <a href="/log_viewer/logs/{{selected_user}}/{{chat.number}}" class="select-link">
                     <div class="arrow"></div>
                 </a>
             </div>
