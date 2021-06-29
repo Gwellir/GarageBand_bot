@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('tgbot', '0027_auto_20210628_1932'),
-        ('convoapp', '0002_auto_20210628_1932.py'),
+        ('convoapp', '0002_auto_20210628_1932'),
     ]
 
     operations = [
