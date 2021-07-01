@@ -125,8 +125,29 @@ stages_info = [
             ],
             [
                 {
+                    "text": "Оставить отзыв",
+                    "callback_data": "leave_feedback {registered_pk}",
+                },
+            ],
+            [
+                {
                     "text": "Разместить рекламу",
                     "url": "https://t.me/ZhitkovArtem",
+                },
+            ],
+        ],
+    },
+    {  # stage feedback
+        "text": "Напишите ваш отзыв (заявка #{registered_pk}):",
+        "text_buttons": None,
+    },
+    {  # stage feedback done
+        "text": "Спасибо за обратную связь!",
+        "buttons": [
+            [
+                {
+                    "text": "Оформить ещё заявку",
+                    "callback_data": "new_request",
                 },
             ],
         ],
@@ -142,7 +163,7 @@ summary = {
         [
             {
                 "text": "✅ Публикуем",
-                "callback_data": "final_confirm",
+                "callback_data": "final_confirm {request_pk}",
             },
             {
                 "text": "❌ Заново",

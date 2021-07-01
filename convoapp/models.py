@@ -15,6 +15,8 @@ class DialogStage(models.IntegerChoices):
     REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
     CHECK_DATA = 7, _("Проверить заявку")
     DONE = 8, _("Работа завершена")
+    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
+    FEEDBACK_DONE = 10, _("Отзыв получен")
 
 
 class Dialog(models.Model):
@@ -49,7 +51,7 @@ class Dialog(models.Model):
 
     @classmethod
     @transaction.atomic()
-    def get_or_create(cls, update):
+    def get_or_create(cls, update, feedback_to=None):
         """
         Получает из базы, либо создаёт структуру из пользователя, диалога и заявки.
         Если все связанные с пользователем диалоги завершены - формирует новую пару
@@ -57,10 +59,15 @@ class Dialog(models.Model):
         """
 
         user, u_created = BotUser.get_or_create(update)
-        dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
-        request, r_created = WorkRequest.get_or_create(user, dialog)
-
-        # todo implement reloading request drafts
+        if not feedback_to:
+            dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
+            request, r_created = WorkRequest.get_or_create(user, dialog)
+        else:
+            curr_dialog = Dialog.objects.filter(user=user, is_finished=False).first()
+            if curr_dialog:
+                curr_dialog.finish()
+            dialog = Dialog.objects.get(user=user, request__registered__pk=feedback_to)
+            dialog.is_finished = False
 
         return dialog
 
@@ -93,6 +100,9 @@ class Message(models.Model):
     text = models.TextField(verbose_name="Текст сообщения")
     stage = models.PositiveSmallIntegerField(
         verbose_name="Стадия диалога", choices=DialogStage.choices
+    )
+    message_id = models.IntegerField(
+        verbose_name="Номер сообщения", default=None, null=True
     )
     is_incoming = models.BooleanField(
         verbose_name="Входящее", db_index=True, default=True
