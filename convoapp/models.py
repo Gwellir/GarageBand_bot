@@ -51,22 +51,22 @@ class Dialog(models.Model):
 
     @classmethod
     @transaction.atomic()
-    def get_or_create(cls, update, feedback_to=None):
+    def get_or_create(cls, user, load=None):
         """
         Получает из базы, либо создаёт структуру из пользователя, диалога и заявки.
         Если все связанные с пользователем диалоги завершены - формирует новую пару
         диалог-заявка.
         """
 
-        user, u_created = BotUser.get_or_create(update)
-        if not feedback_to:
+        if not load:
             dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
             request, r_created = WorkRequest.get_or_create(user, dialog)
         else:
             curr_dialog = Dialog.objects.filter(user=user, is_finished=False).first()
             if curr_dialog:
                 curr_dialog.finish()
-            dialog = Dialog.objects.get(user=user, request__registered__pk=feedback_to)
+            dialog = Dialog.objects.get(user=user, request__registered__pk=load[0])
+            dialog.stage = load[1]
             dialog.is_finished = False
 
         return dialog

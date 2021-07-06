@@ -16,6 +16,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.utils import get_user_message_as_text
 from tgbot.exceptions import BotProcessingError, IgnoreActionError
+from tgbot.models import BotUser
 
 PROCESSORS = {
     DialogStage.WELCOME: StartInputProcessor,
@@ -34,12 +35,17 @@ CALLBACK_TO_STAGE = {
 }
 
 
-def get_feedback_request(message_data):
+def get_request_state(message_data):
+    """
+    Возвращает номер заявки для подгрузки в процессор диалогов,
+    если это требуется.
+    """
+
     cb = message_data.get("callback")
     if cb and cb.startswith("leave_feedback "):
         try:
             request_num = int(cb.split()[1])
-            return request_num
+            return request_num, DialogStage.DONE
         except ValueError:
             pass
 
@@ -53,10 +59,10 @@ class DialogProcessor:
     пользователя."""
 
     def __init__(self, user_data, message_data):
+        self.user, _ = BotUser.get_or_create(user_data)
         self.dialog = Dialog.get_or_create(
-            user_data, feedback_to=get_feedback_request(message_data)
+            self.user, load=get_request_state(message_data)
         )
-        self.user = self.dialog.user
         self.request = self.dialog.request
         self.message_data = message_data
 
