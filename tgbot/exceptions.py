@@ -123,3 +123,19 @@ class CallbackExpiredError(BotProcessingError):
             f"Нажата кнопка в старом сообщении!"
             f"Пользователь: {user_id}, команда: {command}"
         )
+
+
+class IgnoreActionError(Exception):
+    """
+    Применяется для обработки действий, которые требуют полного игнорирования
+    без комментариев.
+    """
+
+    pass
+
+
+class ButtonIsLockedError(IgnoreActionError):
+    """Возникает, когда пользователь нажимает на заблокированную кнопку."""
+
+    def __init__(self):
+        super().__init__("Использование этой кнопки невозможно!")

@@ -172,7 +172,7 @@ class WorkRequest(models.Model):
         """
 
         return WorkRequest.objects.get_or_create(
-            user=user, dialog=dialog, is_complete=False, is_discarded=False
+            user=user, dialog=dialog, is_discarded=False
         )
 
     # todo separate into a manager?
@@ -193,6 +193,7 @@ class WorkRequest(models.Model):
             tag_name = None
         return dict(
             channel_name=PUBLISHING_CHANNEL_NAME,
+            request_pk=self.pk,
             request_tag=tag_name,
             request_desc=self.description,
             request_car_type=self.car_type,
@@ -255,6 +256,9 @@ class RegisteredRequest(models.Model):
     )
     message_id = models.PositiveIntegerField(
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
+    )
+    feedback = models.TextField(
+        verbose_name="Отзыв пользователя", null=True, max_length=4000
     )
 
     def __str__(self):

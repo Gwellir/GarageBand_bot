@@ -7,6 +7,7 @@ from django.utils.html import strip_tags
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.exceptions import (
+    ButtonIsLockedError,
     CallbackNotProvidedError,
     ImageNotProvidedError,
     PhoneNumberMalformedError,
@@ -214,7 +215,23 @@ class SetReadyInputProcessor(BaseInputProcessor):
     def __call__(self, dialog, data):
         if not data["callback"]:
             raise CallbackNotProvidedError
-        if data["callback"] == "restart":
+        elif data["callback"] == "restart":
             return 0
-        dialog.request.set_ready(data["bot"])
+        elif data["callback"].split() == ["final_confirm", str(dialog.request.pk)]:
+            dialog.request.set_ready(data["bot"])
+            return 1
+        raise ButtonIsLockedError
+
+
+class FeedbackInputProcessor(TextInputProcessor):
+    """Процессор ввода фидбека (сохраняется в регистрированной заявке)."""
+
+    attr_name = "feedback"
+    min_length = 3
+
+    def get_step(self, data):
         return 1
+
+    def set_field(self, data):
+        self.model = self.dialog.request.registered
+        super().set_field(data)

@@ -9,13 +9,13 @@ from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
 from convoapp.dialog import DialogProcessor
-from convoapp.models import Dialog
+from convoapp.models import Message
 from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
 from tgbot.bot.senders import send_message_return_id
-from tgbot.bot.utils import extract_user_data_from_update
+from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_text
 from tgbot.exceptions import (
     AdminActionError,
     CallbackExpiredError,
@@ -27,12 +27,9 @@ from tgbot.models import BotUser
 
 
 def get_and_verify_callback_data(callback_query, last_id):
-    """Проверяет, что коллбек принадлежит последнему сообщению из диалога
-    и возвращает содержимое, иначе вызывает исключение."""
+    """Проверяет, что коллбек не пуст, и возвращает содержимое, иначе None"""
 
     if callback_query:
-        if last_id and callback_query.message.message_id != last_id:
-            raise CallbackExpiredError(callback_query.data, callback_query.from_user.id)
         return callback_query.data
     else:
         return None
@@ -170,9 +167,8 @@ def message_handler(update, context):
 
     try:
         user_data = extract_user_data_from_update(update)
-        dialog = Dialog.get_or_create(user_data)
     # todo think how to use edits?
-    except (UserIsBannedError, MessageIsAnEditError) as e:
+    except MessageIsAnEditError as e:
         BOT_LOG.warning(
             LogStrings.DIALOG_INPUT_ERROR.format(
                 user_id=update.effective_user.username,
@@ -203,18 +199,37 @@ def message_handler(update, context):
     # todo привести к неспецифическому для телеграма виде
     input_data = {
         "bot": context.bot,
+        "id": msg.message_id,
         "text": msg.text,
         "caption": msg.caption,
         "photo": get_photo_data(msg, context.bot),
         "callback": command,
     }
-    dialog_processor = DialogProcessor(dialog, input_data)
-    replies = dialog_processor.process()
+
+    try:
+        dialog_processor = DialogProcessor(user_data, input_data)
+        replies = dialog_processor.process()
+    except UserIsBannedError as e:
+        BOT_LOG.warning(
+            LogStrings.DIALOG_INPUT_ERROR.format(
+                user_id=user_data.get("username"),
+                stage=None,
+                args=e.args[0],
+            )
+        )
+        return
 
     for reply in replies:
-        context.user_data["last_message_id"] = send_message_return_id(
-            reply, update.effective_user.id, context.bot
+        last_id = send_message_return_id(reply, update.effective_user.id, context.bot)
+        Message.objects.create(
+            dialog=dialog_processor.dialog,
+            stage=dialog_processor.dialog.stage,
+            message_id=last_id,
+            text=get_bot_message_as_text(reply),
+            is_incoming=False,
         )
+    if replies:
+        context.user_data["last_message_id"] = last_id
 
 
 def error_handler(update, context):

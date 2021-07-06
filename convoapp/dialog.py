@@ -1,9 +1,10 @@
 """Содержит логику ведения диалога с пользователем."""
 
-from convoapp.models import DialogStage, Message
+from convoapp.models import Dialog, DialogStage, Message
 from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
+    FeedbackInputProcessor,
     NameInputProcessor,
     SetReadyInputProcessor,
     StartInputProcessor,
@@ -13,8 +14,9 @@ from convoapp.processors import (
 from convoapp.replies import get_reply_for_stage, get_summary_for_request
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.utils import get_bot_message_as_text, get_user_message_as_text
-from tgbot.exceptions import BotProcessingError
+from tgbot.bot.utils import get_user_message_as_text
+from tgbot.exceptions import BotProcessingError, IgnoreActionError
+from tgbot.models import BotUser
 
 PROCESSORS = {
     DialogStage.WELCOME: StartInputProcessor,
@@ -24,12 +26,28 @@ PROCESSORS = {
     DialogStage.GET_REQUEST_DESC: DescriptionInputProcessor,
     DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
     DialogStage.CHECK_DATA: SetReadyInputProcessor,
+    DialogStage.LEAVE_FEEDBACK: FeedbackInputProcessor,
 }
 CALLBACK_TO_STAGE = {
     "new_request": DialogStage.GET_NAME,
     "restart": DialogStage.WELCOME,
-    "final_confirm": DialogStage.DONE,
+    "leave_feedback": DialogStage.LEAVE_FEEDBACK,
 }
+
+
+def get_request_state(message_data):
+    """
+    Возвращает номер заявки для подгрузки в процессор диалогов,
+    если это требуется.
+    """
+
+    cb = message_data.get("callback")
+    if cb and cb.startswith("leave_feedback "):
+        try:
+            request_num = int(cb.split()[1])
+            return request_num, DialogStage.DONE
+        except ValueError:
+            pass
 
 
 class DialogProcessor:
@@ -40,9 +58,11 @@ class DialogProcessor:
     список сообщений, соответствующий стадии диалога и сообщению
     пользователя."""
 
-    def __init__(self, dialog, message_data):
-        self.dialog = dialog
-        self.user = self.dialog.user
+    def __init__(self, user_data, message_data):
+        self.user, _ = BotUser.get_or_create(user_data)
+        self.dialog = Dialog.get_or_create(
+            self.user, load=get_request_state(message_data)
+        )
         self.request = self.dialog.request
         self.message_data = message_data
 
@@ -57,19 +77,20 @@ class DialogProcessor:
         Возвращает список сообщений для отправки пользователю.
         """
 
-        messages = []
         current_log_stage = self.dialog.stage
+        Message.objects.create(
+            dialog=self.dialog,
+            stage=current_log_stage,
+            message_id=self.message_data.get("id"),
+            text=get_user_message_as_text(self.message_data),
+        )
+        messages = []
         BOT_LOG.debug(
             LogStrings.DIALOG_INCOMING_MESSAGE.format(
                 user_id=self.user.username,
                 stage=self.dialog.stage,
                 input_data=self.message_data,
             )
-        )
-        Message.objects.create(
-            dialog=self.dialog,
-            stage=current_log_stage,
-            text=get_user_message_as_text(self.message_data),
         )
 
         try:
@@ -83,6 +104,15 @@ class DialogProcessor:
                 )
             )
             messages.append({"text": f"{e.args[0]}"})
+        except IgnoreActionError as e:
+            BOT_LOG.debug(
+                LogStrings.DIALOG_INPUT_ERROR.format(
+                    user_id=self.user.username,
+                    stage=self.dialog.stage,
+                    args=e.args,
+                )
+            )
+            return []
 
         try:
             messages.append(
@@ -103,16 +133,8 @@ class DialogProcessor:
                 )
             )
 
-        elif self.dialog.stage == DialogStage.DONE:
-            self._restart()
-
-        for message in messages:
-            Message.objects.create(
-                dialog=self.dialog,
-                stage=current_log_stage,
-                text=get_bot_message_as_text(message),
-                is_incoming=False,
-            )
+        elif self.dialog.stage in [DialogStage.DONE, DialogStage.FEEDBACK_DONE]:
+            self.dialog.finish()
 
         return messages
 
@@ -140,8 +162,8 @@ class DialogProcessor:
         if callback == "restart":
             self._restart()
             return
-        elif callback is not None:
-            new_stage = CALLBACK_TO_STAGE[callback]
+        elif callback is not None and CALLBACK_TO_STAGE.get(callback.split()[0]):
+            new_stage = CALLBACK_TO_STAGE.get(callback.split()[0])
         else:
             new_stage = self.dialog.stage + step
         BOT_LOG.debug(
