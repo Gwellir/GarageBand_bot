@@ -2,6 +2,8 @@ import os
 from time import sleep
 
 from checks import (
+    check_feedback_done,
+    check_feedback_request,
     check_finish,
     check_misinputs,
     check_name_request,
@@ -10,7 +12,7 @@ from checks import (
     check_request_photo,
     check_request_tag,
     check_summary,
-    check_welcome, check_feedback_request, check_feedback_done,
+    check_welcome,
 )
 from pytest import mark
 from senders import click_button, text_reply
