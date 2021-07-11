@@ -235,3 +235,4 @@ class FeedbackInputProcessor(TextInputProcessor):
     def set_field(self, data):
         self.model = self.dialog.request.registered
         super().set_field(data)
+        self.model.post_feedback(data["bot"])

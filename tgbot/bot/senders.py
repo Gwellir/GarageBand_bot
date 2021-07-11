@@ -8,7 +8,7 @@ from logger.log_strings import LogStrings
 from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
 
 
-def send_message_return_id(message_data, user_id, bot):
+def send_message_return_id(message_data, user_id, bot, reply_to=None):
     """Отправляет сообщение через телеграм бота.
 
     Формирует структуру кнопок, определяет, требуется ли отправка обычного сообщения,
@@ -31,6 +31,7 @@ def send_message_return_id(message_data, user_id, bot):
         chat_id=user_id,
         reply_markup=markup,
         parse_mode=ParseMode.HTML,
+        reply_to_message_id=reply_to,
     )
     # todo wrap in TRY EXCEPT (ChatMigrated, ...)
     if "caption" in message_data.keys():

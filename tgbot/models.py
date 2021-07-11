@@ -5,8 +5,17 @@ import tempfile
 from django.core.files import File
 from django.db import models, transaction
 
-from convoapp.replies import get_admin_message, get_summary_for_request
-from garage_band_bot.settings import ADMIN_GROUP_ID, PUBLISHING_CHANNEL_NAME
+from convoapp.replies import (
+    get_admin_message,
+    get_feedback_message,
+    get_summary_for_request,
+)
+from garage_band_bot.settings import (
+    ADMIN_GROUP_ID,
+    DISCUSSION_GROUP_ID,
+    FEEDBACK_GROUP_ID,
+    PUBLISHING_CHANNEL_NAME,
+)
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
@@ -184,9 +193,11 @@ class WorkRequest(models.Model):
 
         if self.is_complete:
             registered_pk = self.registered.pk
-            registered_msg_id = self.registered.message_id
+            registered_msg_id = self.registered.channel_message_id
+            registered_feedback = self.registered.feedback
         else:
             registered_pk = registered_msg_id = "000"
+            registered_feedback = None
         if self.tag:
             tag_name = self.tag.name.replace("/", "_").replace(" ", "_")
         else:
@@ -202,6 +213,7 @@ class WorkRequest(models.Model):
             user_tg_id=self.user.user_id,
             registered_pk=registered_pk,
             registered_msg_id=registered_msg_id,
+            registered_feedback=registered_feedback,
         )
 
     def get_photo(self):
@@ -254,20 +266,23 @@ class RegisteredRequest(models.Model):
     request = models.OneToOneField(
         WorkRequest, on_delete=models.CASCADE, related_name="registered"
     )
-    message_id = models.PositiveIntegerField(
+    channel_message_id = models.PositiveIntegerField(
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
+    )
+    group_message_id = models.PositiveIntegerField(
+        verbose_name="Идентификатор сообщения в группе", null=True, db_index=True
     )
     feedback = models.TextField(
         verbose_name="Отзыв пользователя", null=True, max_length=4000
     )
 
     def __str__(self):
-        return f"{self.pk} {self.request.user} ({self.message_id})"
+        return f"{self.pk} {self.request.user} ({self.channel_message_id})"
 
     def as_tg_html(self):
         return (
             f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/'
-            f'{self.message_id}">#{self.pk}</a>'
+            f'{self.channel_message_id}">#{self.pk}</a>'
         )
 
     @classmethod
@@ -286,11 +301,26 @@ class RegisteredRequest(models.Model):
             request.user,
             bot,
         )
-        reg_request.message_id = message_id
+        reg_request.channel_message_id = message_id
         reg_request.save()
         request.save()
         send_message_return_id(
             get_admin_message(request.data_as_dict()), ADMIN_GROUP_ID, bot
+        )
+
+    def post_feedback(self, bot):
+        """Размещает отзыв в группе отзывов и под сообщением в канале"""
+
+        send_message_return_id(
+            get_feedback_message(self.request.data_as_dict()),
+            DISCUSSION_GROUP_ID,
+            bot,
+            reply_to=self.group_message_id,
+        )
+        send_message_return_id(
+            get_feedback_message(self.request.data_as_dict()),
+            FEEDBACK_GROUP_ID,
+            bot,
         )
 
 

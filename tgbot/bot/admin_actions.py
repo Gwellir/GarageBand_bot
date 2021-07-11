@@ -26,7 +26,7 @@ def ban_user_by_id(bot, pk, callback=None):
     )
     for request in user_requests.all():
         try:
-            delete_channel_message_by_id(bot, request.message_id)
+            delete_channel_message_by_id(bot, request.channel_message_id)
         except MessageDoesNotExistError:
             pass
     msg = {
@@ -47,7 +47,7 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
         raise MessageDoesNotExistError(message_id)
     if callback:
         # todo mark deleted? or rather, move this logic to the model?
-        reg_request = RegisteredRequest.objects.get(message_id=message_id)
+        reg_request = RegisteredRequest.objects.get(channel_message_id=message_id)
         msg = {"text": f"Заявка #{reg_request.pk} удалена!"}
         callback.answer(msg["text"])
         send_message_return_id(msg, ADMIN_GROUP_ID, bot)
