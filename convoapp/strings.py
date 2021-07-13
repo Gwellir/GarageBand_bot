@@ -109,7 +109,9 @@ stages_info = [
     {  # stage finished
         "text": "Благодарим за сотрудничество!\n"
         'Ваша заявка <a href="https://t.me/{channel_name}/{registered_msg_id}">'
-        "#{registered_pk}</a> опубликована.",
+        "#{registered_pk}</a> опубликована.\n"
+        'После её исполнения Вы можете оставить обратную связь по кнопке '
+        '"Оставить отзыв"',
         "buttons": [
             [
                 {
@@ -138,7 +140,9 @@ stages_info = [
         ],
     },
     {  # stage feedback
-        "text": "Напишите ваш отзыв (заявка #{registered_pk}):",
+        "text": "Заявка #{registered_pk}\n\n"
+        "Напишите имя/аккаунт мастера, который проводил работы, "
+        "и ваши общие ощущения от проведённых работ.",
         "text_buttons": None,
     },
     {  # stage feedback done
@@ -171,6 +175,14 @@ summary = {
             },
         ],
     ],
+}
+
+feedback = {
+    "text": "<b>Отзыв клиента по заявке "
+    '<a href="https://t.me/{channel_name}/{registered_msg_id}">'
+    "#{registered_pk}</a></b>"
+    "\n\n"
+    "<i>{registered_feedback}</i>"
 }
 
 admin = {

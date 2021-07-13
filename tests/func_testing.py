@@ -1,6 +1,9 @@
 import os
+from time import sleep
 
 from checks import (
+    check_feedback_done,
+    check_feedback_request,
     check_finish,
     check_misinputs,
     check_name_request,
@@ -57,6 +60,16 @@ async def test_posting(client: TelegramClient, image_path, bot_name):
             answer = await click_button(conv, answer2, "✅ Публикуем")
 
             check_finish(answer)
+
+            sleep(5)
+
+            answer = await click_button(conv, answer, "Оставить отзыв")
+
+            check_feedback_request(answer)
+
+            answer = await text_reply(conv, "Автоматическая проверка системы отзывов")
+
+            check_feedback_done(answer)
 
 
 @mark.asyncio

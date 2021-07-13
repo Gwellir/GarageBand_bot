@@ -32,6 +32,14 @@ def get_reply_for_stage(data, stage):
     return msg
 
 
+def get_feedback_message(data):
+    """Возвращает шаблон сообщения для отзыва."""
+
+    msg = fill_data(strings.feedback, data)
+
+    return msg
+
+
 def get_admin_message(data: dict):
     """Возвращает шаблон сообщения для администрирования."""
 

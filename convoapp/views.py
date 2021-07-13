@@ -27,7 +27,7 @@ def get_message_id(dialog):
     """
 
     if hasattr(dialog, "request") and hasattr(dialog.request, "registered"):
-        return dialog.request.registered.message_id
+        return dialog.request.registered.channel_message_id
     return None
 
 

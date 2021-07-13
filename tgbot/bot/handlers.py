@@ -10,7 +10,7 @@ from telegram.utils.helpers import mention_html
 
 from convoapp.dialog import DialogProcessor
 from convoapp.models import Message
-from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID
+from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID, PUBLISHING_CHANNEL_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
@@ -23,7 +23,7 @@ from tgbot.exceptions import (
     UnknownAdminCommandError,
     UserIsBannedError,
 )
-from tgbot.models import BotUser
+from tgbot.models import BotUser, RegisteredRequest
 
 
 def get_and_verify_callback_data(callback_query, last_id):
@@ -51,6 +51,17 @@ def post_handler(update, context):
 
     Требуется для отслеживания ID каналов и групп.
     """
+
+    # для работы отзовика нам требуется номер поста из канала в группе
+    fwd_msg_id = update.effective_message.forward_from_message_id
+    fwd_from_chat = update.effective_message.forward_from_chat
+    if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == int(PUBLISHING_CHANNEL_ID):
+        try:
+            reg_request = RegisteredRequest.objects.get(channel_message_id=fwd_msg_id)
+            reg_request.group_message_id = update.effective_message.message_id
+            reg_request.save()
+        except RegisteredRequest.DoesNotExist:
+            pass
 
     BOT_LOG.info(
         LogStrings.CHANNEL_POST.format(

@@ -60,11 +60,23 @@ def check_summary(answers):
 
 
 def check_finish(answer):
-    assert answer.button_count == 3
+    assert answer.button_count == 4
     assert "Благодарим за сотрудничество!" in answer.raw_text
     assert answer.buttons[0][0].text == "Перейти к вашему посту в канале"
     assert answer.buttons[1][0].text == "Оформить ещё заявку"
-    assert answer.buttons[2][0].text == "Разместить рекламу"
+    assert answer.buttons[2][0].text == "Оставить отзыв"
+    assert answer.buttons[3][0].text == "Разместить рекламу"
+
+
+def check_feedback_request(answer):
+    assert answer.button_count == 0
+    assert "Напишите имя/аккаунт мастера, который" in answer.raw_text
+
+
+def check_feedback_done(answer):
+    assert answer.button_count == 1
+    assert "Спасибо за обратную связь!" in answer.raw_text
+    assert answer.buttons[0][0].text == "Оформить ещё заявку"
 
 
 def check_same_reply(answer, warning):
