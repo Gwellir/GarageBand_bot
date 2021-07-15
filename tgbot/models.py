@@ -14,12 +14,13 @@ from garage_band_bot.settings import (
     ADMIN_GROUP_ID,
     DISCUSSION_GROUP_ID,
     FEEDBACK_GROUP_ID,
+    PUBLISHING_CHANNEL_ID,
     PUBLISHING_CHANNEL_NAME,
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
-from tgbot.bot.senders import publish_summary_return_id, send_message_return_id
+from tgbot.bot.senders import send_message_return_id
 from tgbot.exceptions import UserIsBannedError
 
 
@@ -294,11 +295,11 @@ class RegisteredRequest(models.Model):
         reg_request = cls.objects.create(
             request=request,
         )
-        message_id = publish_summary_return_id(
+        message_id = send_message_return_id(
             get_summary_for_request(
                 request.data_as_dict(), request.get_photo(), ready=True
             ),
-            request.user,
+            PUBLISHING_CHANNEL_ID,
             bot,
         )
         reg_request.channel_message_id = message_id

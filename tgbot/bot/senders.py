@@ -2,7 +2,6 @@
 
 from telegram import ParseMode
 
-from garage_band_bot.settings import PUBLISHING_CHANNEL_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
@@ -42,27 +41,5 @@ def send_message_return_id(message_data, user_id, bot, reply_to=None):
         msg = bot.send_message(
             text=message_data["text"], disable_web_page_preview=True, **params_dict
         )
-
-    return msg.message_id
-
-
-def publish_summary_return_id(summary, user, bot):
-    """Размещает сообщение с фотографией в канале публикации.
-    Возвращает message_id сообщения из канала.
-    """
-
-    BOT_LOG.debug(
-        LogStrings.DIALOG_PUBLISH_REQUEST.format(
-            user_id=user.username,
-            channel_id=PUBLISHING_CHANNEL_ID,
-            summary=summary,
-        )
-    )
-    msg = bot.send_photo(
-        caption=summary["caption"],
-        photo=summary["photo"],
-        chat_id=PUBLISHING_CHANNEL_ID,
-        parse_mode=ParseMode.HTML,
-    )
 
     return msg.message_id
