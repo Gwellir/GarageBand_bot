@@ -61,9 +61,9 @@ class DialogProcessor:
     def __init__(self, user_data, message_data):
         self.user, _ = BotUser.get_or_create(user_data)
         self.dialog = Dialog.get_or_create(
-            self.user, load=get_request_state(message_data)
+            message_data["bot"], self.user, load=get_request_state(message_data)
         )
-        self.request = self.dialog.request
+        self.bound = self.dialog.bound
         self.message_data = message_data
 
     # todo довольно сложно понимать, так как часть событий за процессинг происходит
@@ -116,20 +116,20 @@ class DialogProcessor:
 
         try:
             messages.append(
-                get_reply_for_stage(self.request.data_as_dict(), self.dialog.stage)
+                get_reply_for_stage(self.bound.data_as_dict(), self.dialog.stage)
             )
         # это может произойти, если часть пользователей находится в стадии,
         # которая больше не существует (todo сдвинуть стадии в БД?)
         except IndexError:
             self._restart()
             messages.append(
-                get_reply_for_stage(self.request.data_as_dict(), DialogStage.WELCOME)
+                get_reply_for_stage(self.bound.data_as_dict(), DialogStage.WELCOME)
             )
 
         if self.dialog.stage == DialogStage.CHECK_DATA:
             messages.append(
                 get_summary_for_request(
-                    self.request.data_as_dict(), self.request.get_photo()
+                    self.bound.data_as_dict(), self.bound.get_photo()
                 )
             )
 
@@ -154,18 +154,18 @@ class DialogProcessor:
         # this is not saved, just to assure correct messages are displayed
         self.dialog.stage = DialogStage.WELCOME
 
-    def _advance_stage(self, step):
+    def _advance_stage(self):
         """Выполняет выбор новой стадии диалога на основе входных данных."""
 
         callback = self.message_data["callback"]
+        new_stage = None
         # если меняем стадию на первую, то реинициализируемся
         if callback == "restart":
             self._restart()
             return
         elif callback is not None and CALLBACK_TO_STAGE.get(callback.split()[0]):
             new_stage = CALLBACK_TO_STAGE.get(callback.split()[0])
-        else:
-            new_stage = self.dialog.stage + step
+        # todo this is now somewhat obsolete
         BOT_LOG.debug(
             LogStrings.DIALOG_CHANGE_STAGE.format(
                 user_id=self.user.username,
@@ -174,15 +174,13 @@ class DialogProcessor:
                 callback=callback,
             )
         )
-        self.dialog.stage = new_stage
+        if new_stage:
+            self.dialog.stage = new_stage
         self.dialog.save()
 
     def _operate_data(self):
-        """Применяет соответствующий стадии процессор к входным данным.
+        """Применяет соответствующий стадии процессор к входным данным."""
 
-        Возвращает сдвиг номера стадии перед следующей операцией."""
-
-        step = 1
         if self.dialog.stage in PROCESSORS.keys():
-            step = PROCESSORS[self.dialog.stage]()(self, self.message_data)
-        self._advance_stage(step)
+            PROCESSORS[self.dialog.stage]()(self, self.message_data)
+        self._advance_stage()

@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from django.utils.timezone import now
+from telegram import Bot
 from telegram.error import BadRequest
 
 from garage_band_bot.settings import ADMIN_GROUP_ID, PUBLISHING_CHANNEL_ID
@@ -42,7 +43,9 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
     Отправляет уведомление в админскую группу."""
 
     try:
-        bot.delete_message(PUBLISHING_CHANNEL_ID, message_id)
+        Bot(bot.telegram_instance.token).delete_message(
+            PUBLISHING_CHANNEL_ID, message_id
+        )
     except BadRequest:
         raise MessageDoesNotExistError(message_id)
     if callback:

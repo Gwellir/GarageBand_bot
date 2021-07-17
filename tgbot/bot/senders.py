@@ -1,13 +1,12 @@
 """Содержит функции отправки сообщений в telegram."""
-
-from telegram import ParseMode
+from telegram import Bot, ParseMode
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
 
 
-def send_message_return_id(message_data, user_id, bot, reply_to=None):
+def send_message_return_id(message_data, user_id, msg_bot, reply_to=None):
     """Отправляет сообщение через телеграм бота.
 
     Формирует структуру кнопок, определяет, требуется ли отправка обычного сообщения,
@@ -33,6 +32,7 @@ def send_message_return_id(message_data, user_id, bot, reply_to=None):
         reply_to_message_id=reply_to,
     )
     # todo wrap in TRY EXCEPT (ChatMigrated, ...)
+    bot = Bot(msg_bot.telegram_instance.token)
     if "caption" in message_data.keys():
         msg = bot.send_photo(
             caption=message_data["caption"], photo=message_data["photo"], **params_dict

@@ -4,6 +4,8 @@ import tempfile
 
 from django.core.files import File
 from django.db import models, transaction
+from telegram import Bot
+from telegram.error import BadRequest
 
 from convoapp.replies import (
     get_admin_message,
@@ -22,6 +24,48 @@ from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_message_return_id
 from tgbot.exceptions import UserIsBannedError
+
+
+class TGInstance(models.Model):
+    """Модель, описывающая инстанс бота в телеграме"""
+
+    token = models.CharField(
+        verbose_name="Токен ТГ", max_length=50, blank=False, db_index=True
+    )
+    publish_id = models.BigIntegerField(verbose_name="Основной канал бота", blank=False)
+    publish_name = models.CharField(
+        verbose_name="Название канала", max_length=100, blank=False
+    )
+    admin_group_id = models.BigIntegerField(
+        verbose_name="Группа администрирования", null=True
+    )
+    discussion_group_id = models.BigIntegerField(
+        verbose_name="Группа обсуждения", null=True
+    )
+    feedback_group_id = models.BigIntegerField(verbose_name="Группа фидбека", null=True)
+
+
+class MessengerBot(models.Model):
+    """Модель, описывающая бота, предназначенного для конкретной цели"""
+
+    name = models.CharField(verbose_name="Наименование", max_length=150)
+    bound_object = models.CharField(
+        verbose_name="Рабочий объект", max_length=50, blank=False
+    )
+    telegram_instance = models.ForeignKey(
+        TGInstance,
+        related_name="bot",
+        on_delete=models.SET_NULL,
+        null=True,
+        default=None,
+    )
+    is_active = models.BooleanField(
+        verbose_name="Бот включён", default=True, db_index=True
+    )
+
+    @classmethod
+    def get_by_token(cls, token):
+        return cls.objects.get(telegram_instance__token=token)
 
 
 # todo merge with Django Auth User
@@ -163,7 +207,7 @@ class WorkRequest(models.Model):
         "convoapp.Dialog",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="request",
+        related_name="bound",
         default=None,
     )
     # photos backref
@@ -240,7 +284,7 @@ class WorkRequest(models.Model):
         """
 
         for photo in self.photos.all():
-            file = bot.get_file(file_id=photo.tg_file_id)
+            file = Bot(bot.telegram_instance.token).get_file(file_id=photo.tg_file_id)
             temp = tempfile.TemporaryFile()
             file.download(out=temp)
             photo.image.save(f"{photo.tg_file_id}.jpg", temp)
@@ -312,12 +356,16 @@ class RegisteredRequest(models.Model):
     def post_feedback(self, bot):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""
 
-        send_message_return_id(
-            get_feedback_message(self.request.data_as_dict()),
-            DISCUSSION_GROUP_ID,
-            bot,
-            reply_to=self.group_message_id,
-        )
+        try:
+            send_message_return_id(
+                get_feedback_message(self.request.data_as_dict()),
+                DISCUSSION_GROUP_ID,
+                bot,
+                reply_to=self.group_message_id,
+            )
+        except BadRequest:
+            # todo add proper logging
+            pass
         send_message_return_id(
             get_feedback_message(self.request.data_as_dict()),
             FEEDBACK_GROUP_ID,

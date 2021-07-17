@@ -23,7 +23,7 @@ from tgbot.exceptions import (
     UnknownAdminCommandError,
     UserIsBannedError,
 )
-from tgbot.models import BotUser, RegisteredRequest
+from tgbot.models import BotUser, MessengerBot, RegisteredRequest
 
 
 def get_and_verify_callback_data(callback_query, last_id):
@@ -36,7 +36,7 @@ def get_and_verify_callback_data(callback_query, last_id):
 
 
 # todo make this prepare a file object?
-def get_photo_data(message_data, bot):
+def get_photo_data(message_data):
     """Возвращает данные фотографии из формата данных PTB."""
 
     if message_data.photo:
@@ -94,8 +94,9 @@ def admin_command_handler(update, context):
     except KeyError:
         raise UnknownAdminCommandError(command, key)
 
+    bot = MessengerBot.get_by_token(context.bot.token)
     try:
-        action(context.bot, int(key), callback=update.callback_query)
+        action(bot, int(key), callback=update.callback_query)
     except (AdminActionError, UserIsBannedError) as e:
         update.callback_query.answer(e.args[0])
 
@@ -105,6 +106,9 @@ def admin_command_handler(update, context):
 
 
 def show_user_requests_stats(update, context):
+
+    bot = MessengerBot.get_by_token(context.bot.token)
+    # todo optimize db request
     length = 30
     users = BotUser.objects.all().order_by("pk")
     text = ""
@@ -115,12 +119,12 @@ def show_user_requests_stats(update, context):
             text = f"{text}{user.stats_as_tg_html()}\n"
             i += 1
         if i == length - 1:
-            send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
+            send_message_return_id({"text": text}, ADMIN_GROUP_ID, bot)
             sleep(0.5)
             i = 0
             text = ""
     if text:
-        send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
+        send_message_return_id({"text": text}, ADMIN_GROUP_ID, bot)
 
 
 def chat_ban_user(update, context):
@@ -142,8 +146,9 @@ def chat_ban_user(update, context):
         if reply.from_user.username
         else reply.from_user.full_name,
     )
+    bot = MessengerBot.get_by_token(context.bot.token)
     try:
-        context.bot.restrict_chat_member(
+        bot.restrict_chat_member(
             update.effective_chat.id,
             uid,
             until_date=datetime.now() + timedelta(hours=24),
@@ -161,7 +166,7 @@ def chat_ban_user(update, context):
         send_message_return_id(
             {"text": f"Пользователь {nick} {uid} забанен в обсуждении на сутки"},
             update.effective_chat.id,
-            context.bot,
+            bot,
         )
         reply.delete()
     except BadRequest:
@@ -208,12 +213,13 @@ def message_handler(update, context):
         return
 
     # todo привести к неспецифическому для телеграма виде
+    bot = MessengerBot.get_by_token(context.bot.token)
     input_data = {
-        "bot": context.bot,
+        "bot": bot,
         "id": msg.message_id,
         "text": msg.text,
         "caption": msg.caption,
-        "photo": get_photo_data(msg, context.bot),
+        "photo": get_photo_data(msg),
         "callback": command,
     }
 
@@ -231,7 +237,7 @@ def message_handler(update, context):
         return
 
     for reply in replies:
-        last_id = send_message_return_id(reply, update.effective_user.id, context.bot)
+        last_id = send_message_return_id(reply, update.effective_user.id, bot)
         Message.objects.create(
             dialog=dialog_processor.dialog,
             stage=dialog_processor.dialog.stage,
@@ -272,6 +278,7 @@ def error_handler(update, context):
         f" The full traceback:\n\n<code>{escape(trace)}"
         f"</code>"
     )
+    bot = MessengerBot.get_by_token(context.bot.token)
     for dev_id in devs:
-        send_message_return_id({"text": text}, dev_id, context.bot)
+        send_message_return_id({"text": text}, dev_id, bot)
     raise

@@ -1,7 +1,8 @@
+from django.apps import apps
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
-from tgbot.models import BotUser, WorkRequest
+from tgbot.models import BotUser, MessengerBot
 
 
 class DialogStage(models.IntegerChoices):
@@ -27,6 +28,9 @@ class Dialog(models.Model):
     и данные о времени начала и последнем сообщении пользователя.
     """
 
+    bot = models.ForeignKey(
+        MessengerBot, on_delete=models.CASCADE, related_name="dialog", default=1
+    )
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     stage = models.PositiveSmallIntegerField(
         verbose_name="Состояние диалога",
@@ -51,7 +55,7 @@ class Dialog(models.Model):
 
     @classmethod
     @transaction.atomic()
-    def get_or_create(cls, user, load=None):
+    def get_or_create(cls, bot, user, load=None):
         """
         Получает из базы, либо создаёт структуру из пользователя, диалога и заявки.
         Если все связанные с пользователем диалоги завершены - формирует новую пару
@@ -59,13 +63,22 @@ class Dialog(models.Model):
         """
 
         if not load:
-            dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
-            request, r_created = WorkRequest.get_or_create(user, dialog)
+            dialog, d_created = cls.objects.get_or_create(
+                bot=bot, user=user, is_finished=False
+            )
+            # request, r_created = WorkRequest.get_or_create(user, dialog)
+            # todo make a factory
+            Model = apps.get_model(app_label="tgbot", model_name=bot.bound_object)
+            bound, b_created = Model.get_or_create(user, dialog)
         else:
-            curr_dialog = Dialog.objects.filter(user=user, is_finished=False).first()
+            curr_dialog = Dialog.objects.filter(
+                bot=bot, user=user, is_finished=False
+            ).first()
             if curr_dialog:
                 curr_dialog.finish()
-            dialog = Dialog.objects.get(user=user, request__registered__pk=load[0])
+            dialog = Dialog.objects.get(
+                bot=bot, user=user, bound__registered__pk=load[0]
+            )
             dialog.stage = load[1]
             dialog.is_finished = False
 
@@ -79,9 +92,9 @@ class Dialog(models.Model):
         в ином случае - is_finished.
         """
 
-        if not self.request.is_complete:
-            self.request.is_discarded = True
-            self.request.save()
+        if not self.bound.is_complete:
+            self.bound.is_discarded = True
+            self.bound.save()
         self.is_finished = True
         self.save()
 
