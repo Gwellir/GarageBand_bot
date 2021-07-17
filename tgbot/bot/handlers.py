@@ -10,7 +10,7 @@ from telegram.utils.helpers import mention_html
 
 from convoapp.dialog import DialogProcessor
 from convoapp.models import Message
-from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID, PUBLISHING_CHANNEL_ID
+from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
@@ -23,7 +23,7 @@ from tgbot.exceptions import (
     UnknownAdminCommandError,
     UserIsBannedError,
 )
-from tgbot.models import BotUser, MessengerBot, RegisteredRequest
+from tgbot.models import BotUser, RegisteredRequest
 
 
 def get_and_verify_callback_data(callback_query, last_id):
@@ -53,9 +53,10 @@ def post_handler(update, context):
     """
 
     # для работы отзовика нам требуется номер поста из канала в группе
+    publish_id = context.bot_data.get("msg_bot").telegram_instance.publish_id
     fwd_msg_id = update.effective_message.forward_from_message_id
     fwd_from_chat = update.effective_message.forward_from_chat
-    if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == int(PUBLISHING_CHANNEL_ID):
+    if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == publish_id:
         try:
             reg_request = RegisteredRequest.objects.get(channel_message_id=fwd_msg_id)
             reg_request.group_message_id = update.effective_message.message_id
@@ -94,7 +95,7 @@ def admin_command_handler(update, context):
     except KeyError:
         raise UnknownAdminCommandError(command, key)
 
-    bot = MessengerBot.get_by_token(context.bot.token)
+    bot = context.bot_data.get("msg_bot")
     try:
         action(bot, int(key), callback=update.callback_query)
     except (AdminActionError, UserIsBannedError) as e:
@@ -107,7 +108,7 @@ def admin_command_handler(update, context):
 
 def show_user_requests_stats(update, context):
 
-    bot = MessengerBot.get_by_token(context.bot.token)
+    bot = context.bot_data.get("msg_bot")
     # todo optimize db request
     length = 30
     users = BotUser.objects.all().order_by("pk")
@@ -119,12 +120,16 @@ def show_user_requests_stats(update, context):
             text = f"{text}{user.stats_as_tg_html()}\n"
             i += 1
         if i == length - 1:
-            send_message_return_id({"text": text}, ADMIN_GROUP_ID, bot)
+            send_message_return_id(
+                {"text": text}, bot.telegram_instance.admin_group_id, bot
+            )
             sleep(0.5)
             i = 0
             text = ""
     if text:
-        send_message_return_id({"text": text}, ADMIN_GROUP_ID, bot)
+        send_message_return_id(
+            {"text": text}, bot.telegram_instance.admin_group_id, bot
+        )
 
 
 def chat_ban_user(update, context):
@@ -146,9 +151,9 @@ def chat_ban_user(update, context):
         if reply.from_user.username
         else reply.from_user.full_name,
     )
-    bot = MessengerBot.get_by_token(context.bot.token)
+    bot = context.bot_data.get("msg_bot")
     try:
-        bot.restrict_chat_member(
+        context.bot.restrict_chat_member(
             update.effective_chat.id,
             uid,
             until_date=datetime.now() + timedelta(hours=24),
@@ -213,7 +218,7 @@ def message_handler(update, context):
         return
 
     # todo привести к неспецифическому для телеграма виде
-    bot = MessengerBot.get_by_token(context.bot.token)
+    bot = context.bot_data.get("msg_bot")
     input_data = {
         "bot": bot,
         "id": msg.message_id,
@@ -278,7 +283,7 @@ def error_handler(update, context):
         f" The full traceback:\n\n<code>{escape(trace)}"
         f"</code>"
     )
-    bot = MessengerBot.get_by_token(context.bot.token)
+    bot = context.bot_data.get("msg_bot")
     for dev_id in devs:
         send_message_return_id({"text": text}, dev_id, bot)
     raise

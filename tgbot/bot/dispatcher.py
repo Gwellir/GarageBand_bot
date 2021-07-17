@@ -26,3 +26,5 @@ def setup_dispatcher(dp):
     dp.add_error_handler(error_handler)
 
     BOT_LOG.debug("Event handlers initialized.")
+
+    return dp

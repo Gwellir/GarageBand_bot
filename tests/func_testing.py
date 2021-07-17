@@ -26,7 +26,7 @@ async def test_posting(client: TelegramClient, image_path, bot_name):
     """Проводит полный функциональный тест постинга заявки в канал."""
 
     for i in range(1):
-        async with client.conversation(bot_name, timeout=5) as conv:
+        async with client.conversation(bot_name, timeout=10) as conv:
 
             resp = await text_reply(conv, "/start")
 

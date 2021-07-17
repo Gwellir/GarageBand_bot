@@ -12,13 +12,6 @@ from convoapp.replies import (
     get_feedback_message,
     get_summary_for_request,
 )
-from garage_band_bot.settings import (
-    ADMIN_GROUP_ID,
-    DISCUSSION_GROUP_ID,
-    FEEDBACK_GROUP_ID,
-    PUBLISHING_CHANNEL_ID,
-    PUBLISHING_CHANNEL_NAME,
-)
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
@@ -62,10 +55,6 @@ class MessengerBot(models.Model):
     is_active = models.BooleanField(
         verbose_name="Бот включён", default=True, db_index=True
     )
-
-    @classmethod
-    def get_by_token(cls, token):
-        return cls.objects.get(telegram_instance__token=token)
 
 
 # todo merge with Django Auth User
@@ -248,7 +237,7 @@ class WorkRequest(models.Model):
         else:
             tag_name = None
         return dict(
-            channel_name=PUBLISHING_CHANNEL_NAME,
+            channel_name=self.dialog.bot.telegram_instance.publish_name,
             request_pk=self.pk,
             request_tag=tag_name,
             request_desc=self.description,
@@ -325,8 +314,9 @@ class RegisteredRequest(models.Model):
         return f"{self.pk} {self.request.user} ({self.channel_message_id})"
 
     def as_tg_html(self):
+        channel_name = self.request.dialog.bot.telegram_instance.publish_name
         return (
-            f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/'
+            f'<a href="https://t.me/{channel_name}/'
             f'{self.channel_message_id}">#{self.pk}</a>'
         )
 
@@ -343,14 +333,16 @@ class RegisteredRequest(models.Model):
             get_summary_for_request(
                 request.data_as_dict(), request.get_photo(), ready=True
             ),
-            PUBLISHING_CHANNEL_ID,
+            bot.telegram_instance.publish_id,
             bot,
         )
         reg_request.channel_message_id = message_id
         reg_request.save()
         request.save()
         send_message_return_id(
-            get_admin_message(request.data_as_dict()), ADMIN_GROUP_ID, bot
+            get_admin_message(request.data_as_dict()),
+            bot.telegram_instance.admin_group_id,
+            bot,
         )
 
     def post_feedback(self, bot):
@@ -359,7 +351,7 @@ class RegisteredRequest(models.Model):
         try:
             send_message_return_id(
                 get_feedback_message(self.request.data_as_dict()),
-                DISCUSSION_GROUP_ID,
+                bot.telegram_instance.discussion_group_id,
                 bot,
                 reply_to=self.group_message_id,
             )
@@ -368,7 +360,7 @@ class RegisteredRequest(models.Model):
             pass
         send_message_return_id(
             get_feedback_message(self.request.data_as_dict()),
-            FEEDBACK_GROUP_ID,
+            bot.telegram_instance.feedback_group_id,
             bot,
         )
 
