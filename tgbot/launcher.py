@@ -1,4 +1,7 @@
+import platform
+
 import telegram
+from telegram import ParseMode
 from telegram.ext import Updater
 
 from logger.log_config import BOT_LOG
@@ -23,7 +26,9 @@ def run_polling():
         BOT_LOG.info(f"Polling of '{bot_link}' started")
 
         updater.bot.send_message(
-            chat_id=bot.telegram_instance.admin_group_id, text="Бот перезапущен 😉"
+            chat_id=bot.telegram_instance.admin_group_id,
+            text=f"Бот перезапущен 😉\n<b>{platform.system()} @ {platform.node()}</b>",
+            parse_mode=ParseMode.HTML,
         )
 
         updater.start_polling()
