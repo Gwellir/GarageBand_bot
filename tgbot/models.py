@@ -159,6 +159,21 @@ class Tag(models.Model):
         return f"#{self.pk} {self.name}"
 
 
+class WorkRequestStage(models.Model):
+    """
+    Модель стадии оформления заявки.
+    """
+
+    name = models.CharField(
+        verbose_name="Наименование", max_length=50, blank=True, default=""
+    )
+    processor = models.CharField(
+        verbose_name="Процессор обработки", max_length=50, null=True
+    )
+    reply_pattern = models.TextField(verbose_name="Шаблон ответа")
+    buttons = models.JSONField(verbose_name="Набор кнопок")
+
+
 class WorkRequest(models.Model):
     """
     Модель заявки
@@ -199,6 +214,7 @@ class WorkRequest(models.Model):
         related_name="bound",
         default=None,
     )
+    stage = models.ForeignKey(WorkRequestStage, on_delete=models.SET_NULL, null=True)
     # photos backref
     # registered backref
 

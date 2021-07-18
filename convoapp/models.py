@@ -32,12 +32,6 @@ class Dialog(models.Model):
         MessengerBot, on_delete=models.CASCADE, related_name="dialog", default=1
     )
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
-    stage = models.PositiveSmallIntegerField(
-        verbose_name="Состояние диалога",
-        choices=DialogStage.choices,
-        null=False,
-        default=DialogStage.WELCOME,
-    )
     is_finished = models.BooleanField(
         verbose_name="Диалог завершён", default=False, db_index=True
     )
@@ -51,7 +45,7 @@ class Dialog(models.Model):
     )
 
     def __str__(self):
-        return f"{self.pk} {self.user} @{self.stage}"
+        return f"{self.pk} {self.user} @{self.bound.stage_id}"
 
     @classmethod
     @transaction.atomic()
