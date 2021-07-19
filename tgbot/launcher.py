@@ -11,6 +11,7 @@ from tgbot.models import MessengerBot
 
 def run_polling():
     """Запуск в режиме polling"""
+    updaters = []
 
     for bot in MessengerBot.objects.filter(is_active=True).select_related():
         token = bot.telegram_instance.token
@@ -32,4 +33,6 @@ def run_polling():
         )
 
         updater.start_polling()
-        updater.idle()
+        updaters.append(updater)
+    if len(updaters):
+        updaters[0].idle()

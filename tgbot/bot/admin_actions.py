@@ -8,7 +8,7 @@ from telegram.error import BadRequest
 
 from tgbot.bot.senders import send_message_return_id
 from tgbot.exceptions import MessageDoesNotExistError, NoUserWithThisIdError
-from tgbot.models import BotUser, RegisteredRequest
+from tgbot.models import BotUser
 
 
 # todo organize exception control
@@ -21,12 +21,16 @@ def ban_user_by_id(bot, pk, callback=None):
     except BotUser.DoesNotExist:
         raise NoUserWithThisIdError(pk)
     user.ban()
-    user_requests = RegisteredRequest.objects.filter(
-        request__user=user, request__formed_at__gte=now() - timedelta(hours=24)
-    )
+    Model = bot.get_bound_model()
+    user_filter = {
+        "user": user,
+        "formed_at__gte": now() - timedelta(hours=24),
+        "is_complete": True,
+    }
+    user_requests = Model.objects.filter(**user_filter)
     for request in user_requests.all():
         try:
-            delete_channel_message_by_id(bot, request.channel_message_id)
+            delete_channel_message_by_id(bot, request.registered.channel_message_id)
         except MessageDoesNotExistError:
             pass
     msg = {
@@ -49,8 +53,9 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
         raise MessageDoesNotExistError(message_id)
     if callback:
         # todo mark deleted? or rather, move this logic to the model?
-        reg_request = RegisteredRequest.objects.get(channel_message_id=message_id)
-        msg = {"text": f"Заявка #{reg_request.pk} удалена!"}
+        Model = bot.get_bound_model()
+        request = Model.objects.get(registered__channel_message_id=message_id)
+        msg = {"text": f"Заявка #{request.registered.pk} удалена!"}
         callback.answer(msg["text"])
         send_message_return_id(msg, bot.telegram_instance.admin_group_id, bot)
 

@@ -12,7 +12,7 @@ class Dialog(models.Model):
     и данные о времени начала и последнем сообщении пользователя.
     """
 
-    bot = models.ForeignKey(
+    bot: MessengerBot = models.ForeignKey(
         MessengerBot, on_delete=models.CASCADE, related_name="dialog", default=1
     )
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
@@ -31,6 +31,10 @@ class Dialog(models.Model):
     def __str__(self):
         return f"{self.pk} {self.user} @{self.bound.stage_id}"
 
+    @property
+    def bound(self):
+        return getattr(self, f"bound_{self.bot.get_bound_name()}")
+
     @classmethod
     @transaction.atomic()
     def get_or_create(cls, bot, user, load=None):
@@ -46,7 +50,7 @@ class Dialog(models.Model):
             )
             # request, r_created = WorkRequest.get_or_create(user, dialog)
             # todo make a factory
-            Model = apps.get_model(app_label="tgbot", model_name=bot.bound_object)
+            Model = apps.get_model(app_label=bot.bound_app, model_name=bot.bound_object)
             bound, b_created = Model.get_or_create(user, dialog)
         else:
             curr_dialog = Dialog.objects.filter(
@@ -54,7 +58,8 @@ class Dialog(models.Model):
             ).first()
             if curr_dialog:
                 curr_dialog.finish()
-            dialog = Dialog.objects.get(bot=bot, user=user, bound__registered__pk=load)
+            load_filter = {f"bound_{bot.get_bound_name()}__registered__pk": load}
+            dialog = Dialog.objects.get(bot=bot, user=user, **load_filter)
             dialog.bound.stage_id = RequestFormingStage.DONE
             dialog.is_finished = False
 

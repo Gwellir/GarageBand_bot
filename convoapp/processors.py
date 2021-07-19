@@ -50,7 +50,7 @@ class StartInputProcessor(BaseInputProcessor):
     """Процессор сообщения-приглашения."""
 
     def get_step(self, data):
-        if data["text"] == "Оформить заявку":
+        if data["callback"] == "new_request":
             return 1
         return 0
 
@@ -171,7 +171,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
     def set_field(self, data):
         # to avoid awkward behavior while retrying the step multiple times
         self.model.photos.all().delete()
-        if data["text"] == "Пропустить":
+        if data["text"] == "Далее":
             return
 
         description = data["caption"]
@@ -181,7 +181,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
         if data["photo"] and not data["callback"]:
             # todo сильно связано со структурой данных ТГ
             photo_file_id = data["photo"]
-            self.model.photos.create(
+            photo = self.model.photos.create(
                 # todo fix magic number, use textInput preprocessor?
                 description=description[:250],
                 tg_file_id=photo_file_id,
@@ -190,7 +190,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
                 LogStrings.DIALOG_SET_FIELD.format(
                     user_id=self.dialog.user.username,
                     stage=self.model.stage,
-                    model="RequestPhoto",
+                    model=photo,
                     data=data,
                 )
             )

@@ -63,11 +63,11 @@ class TextNotProvidedError(BotProcessingError):
         super().__init__("Запрошенный текст не введён!")
 
 
-class TagDoesNotExist(BotProcessingError):
+class TagDoesNotExistError(BotProcessingError):
     """Возникает, когда пользователь вводит неправильное имя тага"""
 
     def __init__(self, name):
-        super().__init__(f"Таг {name} не существует!")
+        super().__init__(f'Введено неправильное значение категории: "{name}"')
 
 
 class CallbackNotProvidedError(BotProcessingError):
@@ -123,6 +123,20 @@ class CallbackExpiredError(BotProcessingError):
             f"Нажата кнопка в старом сообщении!"
             f"Пользователь: {user_id}, команда: {command}"
         )
+
+
+class NotANumberError(BotProcessingError):
+    """Возникает, когда пользователь вводит не число при запросе числа"""
+
+    def __init__(self):
+        super().__init__("Введено не число!")
+
+
+class IncorrectNumberError(BotProcessingError):
+    """Возникает, когда пользователь вводит число, не подходящее под формат запроса"""
+
+    def __init__(self):
+        super().__init__("Введено неверное число!")
 
 
 class IgnoreActionError(Exception):
