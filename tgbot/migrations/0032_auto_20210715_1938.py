@@ -30,4 +30,36 @@ class Migration(migrations.Migration):
             name='publish_id',
             field=models.BigIntegerField(verbose_name='Основной канал бота'),
         ),
+        migrations.RunSQL("""
+            INSERT INTO tgbot_tginstance (
+                id,
+                token,
+                publish_id,
+                publish_name,
+                admin_group_id,
+                discussion_group_id,
+                feedback_group_id,
+            ) VALUES (
+                1,
+                'n/a',
+                1,
+                'GarageBandTest',
+                1,
+                1,
+                1,
+            );
+            INSERT INTO tgbot_messengerbot (
+                id,
+                name,
+                bound_object,
+                is_active,
+                telegram_instance_id,
+            ) VALUES (
+                1,
+                'бот ремонт',
+                'WorkRequest',
+                1,
+                1,
+            );
+        """),
     ]
