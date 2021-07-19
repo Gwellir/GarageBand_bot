@@ -61,5 +61,5 @@ class Migration(migrations.Migration):
                 1,
                 1,
             );
-        """),
+        """, reverse_sql=""),
     ]
