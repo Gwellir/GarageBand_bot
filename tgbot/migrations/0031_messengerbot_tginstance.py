@@ -31,6 +31,7 @@ class Migration(migrations.Migration):
                 ('bound_object', models.CharField(max_length=50, verbose_name='Рабочий объект')),
                 ('is_active', models.BooleanField(db_index=True, default=True, verbose_name='Бот включён')),
                 ('telegram_instance', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='bot', to='tgbot.tginstance')),
+                ('bound_app', models.CharField(default='tgbot', max_length=50, verbose_name='Приложение для обработки объекта')),
             ],
         ),
     ]
