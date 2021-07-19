@@ -1,4 +1,5 @@
 """Содержит набор утилит для обработчиков бота."""
+import copy
 
 import telegram
 from django.utils.html import escape
@@ -115,3 +116,21 @@ def get_bot_message_as_text(message_data: dict) -> str:
         button_text = get_buttons_as_text(message_data["text_buttons"])
     text = f"{text}{button_text}"
     return text
+
+
+def fill_data(message_data: dict, content_dict: dict) -> dict:
+    """Подставляет нужные данные в тело ответа и параметры кнопок."""
+
+    msg = copy.deepcopy(message_data)
+    msg["text"] = msg["text"].format(**content_dict)
+    if msg.get("buttons") or msg.get("text_buttons"):
+        for row in msg.get("buttons", []):
+            for button in row:
+                for field in button.keys():
+                    button[field] = button[field].format(**content_dict)
+        for row in msg.get("text_buttons", []):
+            for button in row:
+                for field in button.keys():
+                    button[field] = button[field].format(**content_dict)
+
+    return msg

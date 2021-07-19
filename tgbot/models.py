@@ -18,15 +18,12 @@ from convoapp.processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
-from convoapp.replies import (
-    get_admin_message,
-    get_feedback_message,
-    get_summary_for_request,
-)
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
 
 
@@ -322,6 +319,51 @@ class WorkRequest(models.Model):
 
         return tag
 
+    def get_reply_for_stage(self):
+        """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
+
+        num = self.stage_id - 1
+        msg = fill_data(repair_strings.stages_info[num], self.data_as_dict())
+
+        return msg
+
+    def get_feedback_message(self):
+        """Возвращает шаблон сообщения для отзыва."""
+
+        msg = fill_data(repair_strings.feedback, self.data_as_dict())
+
+        return msg
+
+    def get_admin_message(self):
+        """Возвращает шаблон сообщения для администрирования."""
+
+        msg = fill_data(repair_strings.admin, self.data_as_dict())
+
+        return msg
+
+    def get_summary(self, ready=False):
+        """Возвращает шаблон саммари"""
+
+        msg = fill_data(repair_strings.summary, self.data_as_dict())
+        msg["caption"] = msg.pop("text")
+        msg["photo"] = self.get_photo()
+        if ready:
+            msg.pop("buttons")
+
+        return msg
+
+    def check_data(self):
+        return self.stage_id == RequestFormingStage.CHECK_DATA
+
+    def is_done(self):
+        return self.stage_id in [
+            RequestFormingStage.DONE,
+            RequestFormingStage.FEEDBACK_DONE,
+        ]
+
+    def restart(self):
+        self.stage_id = RequestFormingStage.WELCOME
+
     @transaction.atomic
     def set_ready(self, bot):
         """
@@ -389,9 +431,7 @@ class RegisteredRequest(models.Model):
             request=request,
         )
         message_id = send_message_return_id(
-            get_summary_for_request(
-                request.data_as_dict(), request.get_photo(), ready=True
-            ),
+            request.get_summary(ready=True),
             bot.telegram_instance.publish_id,
             bot,
         )
@@ -399,7 +439,7 @@ class RegisteredRequest(models.Model):
         reg_request.save()
         request.save()
         send_message_return_id(
-            get_admin_message(request.data_as_dict()),
+            request.get_admin_message(),
             bot.telegram_instance.admin_group_id,
             bot,
         )
@@ -409,7 +449,7 @@ class RegisteredRequest(models.Model):
 
         try:
             send_message_return_id(
-                get_feedback_message(self.request.data_as_dict()),
+                self.request.get_feedback_message(),
                 bot.telegram_instance.discussion_group_id,
                 bot,
                 reply_to=self.group_message_id,
@@ -418,7 +458,7 @@ class RegisteredRequest(models.Model):
             # todo add proper logging
             pass
         send_message_return_id(
-            get_feedback_message(self.request.data_as_dict()),
+            self.request.get_feedback_message(),
             bot.telegram_instance.feedback_group_id,
             bot,
         )

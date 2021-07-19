@@ -1,15 +1,14 @@
 """Содержит логику ведения диалога с пользователем."""
 
 from convoapp.models import Dialog, Message
-from convoapp.replies import get_reply_for_stage, get_summary_for_request
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.utils import get_user_message_as_text
 from tgbot.exceptions import BotProcessingError, IgnoreActionError
-from tgbot.models import BotUser, RequestFormingStage
+from tgbot.models import BotUser
 
 
-def get_request_state(message_data):
+def get_bound_state(message_data):
     """
     Возвращает номер заявки для подгрузки в процессор диалогов,
     если это требуется.
@@ -18,8 +17,8 @@ def get_request_state(message_data):
     cb = message_data.get("callback")
     if cb and cb.startswith("leave_feedback "):
         try:
-            request_num = int(cb.split()[1])
-            return request_num, RequestFormingStage.DONE
+            bound_num = int(cb.split()[1])
+            return bound_num
         except ValueError:
             pass
 
@@ -35,7 +34,7 @@ class DialogProcessor:
     def __init__(self, user_data, message_data):
         self.user, _ = BotUser.get_or_create(user_data)
         self.dialog = Dialog.get_or_create(
-            message_data["bot"], self.user, load=get_request_state(message_data)
+            message_data["bot"], self.user, load=get_bound_state(message_data)
         )
         self.bound = self.dialog.bound
         self.message_data = message_data
@@ -89,30 +88,17 @@ class DialogProcessor:
             return []
 
         try:
-            messages.append(
-                get_reply_for_stage(self.bound.data_as_dict(), self.bound.stage_id)
-            )
+            messages.append(self.bound.get_reply_for_stage())
         # это может произойти, если часть пользователей находится в стадии,
         # которая больше не существует (todo сдвинуть стадии в БД?)
         except IndexError:
             self._restart()
-            messages.append(
-                get_reply_for_stage(
-                    self.bound.data_as_dict(), RequestFormingStage.WELCOME
-                )
-            )
+            messages.append(self.bound.get_reply_for_stage())
 
-        if self.bound.stage_id == RequestFormingStage.CHECK_DATA:
-            messages.append(
-                get_summary_for_request(
-                    self.bound.data_as_dict(), self.bound.get_photo()
-                )
-            )
+        if self.bound.check_data():
+            messages.append(self.bound.get_summary())
 
-        elif self.bound.stage_id in [
-            RequestFormingStage.DONE,
-            RequestFormingStage.FEEDBACK_DONE,
-        ]:
+        elif self.bound.is_done():
             self.dialog.finish()
 
         return messages
@@ -131,7 +117,7 @@ class DialogProcessor:
 
         self.dialog.finish()
         # this is not saved, just to assure correct messages are displayed
-        self.bound.stage_id = RequestFormingStage.WELCOME
+        self.bound.restart()
 
     def _advance_stage(self):
         """Выполняет выбор новой стадии диалога на основе входных данных."""

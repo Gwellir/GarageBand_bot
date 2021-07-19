@@ -1,7 +1,7 @@
 from django.apps import apps
 from django.db import models, transaction
 
-from tgbot.models import BotUser, MessengerBot
+from tgbot.models import BotUser, MessengerBot, RequestFormingStage
 
 
 class Dialog(models.Model):
@@ -54,10 +54,8 @@ class Dialog(models.Model):
             ).first()
             if curr_dialog:
                 curr_dialog.finish()
-            dialog = Dialog.objects.get(
-                bot=bot, user=user, bound__registered__pk=load[0]
-            )
-            dialog.bound.stage_id = load[1]
+            dialog = Dialog.objects.get(bot=bot, user=user, bound__registered__pk=load)
+            dialog.bound.stage_id = RequestFormingStage.DONE
             dialog.is_finished = False
 
         return dialog
