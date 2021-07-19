@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                 1,
                 'бот ремонт',
                 'WorkRequest',
-                1,
+                TRUE,
                 1
             );
         """, reverse_sql=""),
