@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('convoapp', '0007_alter_message_stage'),
-        ('tgbot', '0037_messengerbot_bound_app'),
+        ('tgbot', '0036_move_stage_info_20210717_1836'),
     ]
 
     operations = [
