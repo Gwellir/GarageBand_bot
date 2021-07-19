@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 publish_name,
                 admin_group_id,
                 discussion_group_id,
-                feedback_group_id,
+                feedback_group_id
             ) VALUES (
                 1,
                 'n/a',
@@ -46,20 +46,20 @@ class Migration(migrations.Migration):
                 'GarageBandTest',
                 1,
                 1,
-                1,
+                1
             );
             INSERT INTO tgbot_messengerbot (
                 id,
                 name,
                 bound_object,
                 is_active,
-                telegram_instance_id,
+                telegram_instance_id
             ) VALUES (
                 1,
                 'бот ремонт',
                 'WorkRequest',
                 1,
-                1,
+                1
             );
         """, reverse_sql=""),
     ]
