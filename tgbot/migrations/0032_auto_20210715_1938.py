@@ -53,13 +53,15 @@ class Migration(migrations.Migration):
                 name,
                 bound_object,
                 is_active,
-                telegram_instance_id
+                telegram_instance_id,
+                bound_app
             ) VALUES (
                 1,
                 'бот ремонт',
                 'WorkRequest',
                 TRUE,
-                1
+                1,
+                'tgbot'
             );
         """, reverse_sql=""),
     ]
