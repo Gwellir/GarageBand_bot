@@ -1,23 +1,7 @@
 from django.apps import apps
 from django.db import models, transaction
-from django.utils.translation import gettext_lazy as _
 
 from tgbot.models import BotUser, MessengerBot
-
-
-class DialogStage(models.IntegerChoices):
-    """Набор стадий проведения диалога."""
-
-    WELCOME = 1, _("Приветствие")
-    GET_NAME = 2, _("Получить имя")
-    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
-    GET_CAR_TYPE = 4, _("Получить тип автомобиля")
-    GET_REQUEST_DESC = 5, _("Получить описание заявки")
-    REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
-    CHECK_DATA = 7, _("Проверить заявку")
-    DONE = 8, _("Работа завершена")
-    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
-    FEEDBACK_DONE = 10, _("Отзыв получен")
 
 
 class Dialog(models.Model):
@@ -73,7 +57,7 @@ class Dialog(models.Model):
             dialog = Dialog.objects.get(
                 bot=bot, user=user, bound__registered__pk=load[0]
             )
-            dialog.stage = load[1]
+            dialog.bound.stage_id = load[1]
             dialog.is_finished = False
 
         return dialog
@@ -105,9 +89,7 @@ class Message(models.Model):
         Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
     )
     text = models.TextField(verbose_name="Текст сообщения")
-    stage = models.PositiveSmallIntegerField(
-        verbose_name="Стадия диалога", choices=DialogStage.choices
-    )
+    stage = models.PositiveSmallIntegerField(verbose_name="Стадия диалога")
     message_id = models.IntegerField(
         verbose_name="Номер сообщения", default=None, null=True
     )

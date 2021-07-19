@@ -1,38 +1,12 @@
 """Содержит логику ведения диалога с пользователем."""
 
-from convoapp.models import Dialog, DialogStage, Message
-from convoapp.processors import (
-    CarTypeInputProcessor,
-    DescriptionInputProcessor,
-    FeedbackInputProcessor,
-    NameInputProcessor,
-    SetReadyInputProcessor,
-    StartInputProcessor,
-    StorePhotoInputProcessor,
-    TagInputProcessor,
-)
+from convoapp.models import Dialog, Message
 from convoapp.replies import get_reply_for_stage, get_summary_for_request
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.utils import get_user_message_as_text
 from tgbot.exceptions import BotProcessingError, IgnoreActionError
-from tgbot.models import BotUser
-
-PROCESSORS = {
-    DialogStage.WELCOME: StartInputProcessor,
-    DialogStage.GET_NAME: NameInputProcessor,
-    DialogStage.GET_REQUEST_TAG: TagInputProcessor,
-    DialogStage.GET_CAR_TYPE: CarTypeInputProcessor,
-    DialogStage.GET_REQUEST_DESC: DescriptionInputProcessor,
-    DialogStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
-    DialogStage.CHECK_DATA: SetReadyInputProcessor,
-    DialogStage.LEAVE_FEEDBACK: FeedbackInputProcessor,
-}
-CALLBACK_TO_STAGE = {
-    "new_request": DialogStage.GET_NAME,
-    "restart": DialogStage.WELCOME,
-    "leave_feedback": DialogStage.LEAVE_FEEDBACK,
-}
+from tgbot.models import BotUser, RequestFormingStage
 
 
 def get_request_state(message_data):
@@ -45,7 +19,7 @@ def get_request_state(message_data):
     if cb and cb.startswith("leave_feedback "):
         try:
             request_num = int(cb.split()[1])
-            return request_num, DialogStage.DONE
+            return request_num, RequestFormingStage.DONE
         except ValueError:
             pass
 
@@ -77,7 +51,7 @@ class DialogProcessor:
         Возвращает список сообщений для отправки пользователю.
         """
 
-        current_log_stage = self.dialog.stage
+        current_log_stage = self.dialog.bound.stage_id
         Message.objects.create(
             dialog=self.dialog,
             stage=current_log_stage,
@@ -88,7 +62,7 @@ class DialogProcessor:
         BOT_LOG.debug(
             LogStrings.DIALOG_INCOMING_MESSAGE.format(
                 user_id=self.user.username,
-                stage=self.dialog.stage,
+                stage=self.dialog.bound.stage,
                 input_data=self.message_data,
             )
         )
@@ -99,7 +73,7 @@ class DialogProcessor:
             BOT_LOG.debug(
                 LogStrings.DIALOG_INPUT_ERROR.format(
                     user_id=self.user.username,
-                    stage=self.dialog.stage,
+                    stage=self.dialog.bound.stage,
                     args=e.args,
                 )
             )
@@ -108,7 +82,7 @@ class DialogProcessor:
             BOT_LOG.debug(
                 LogStrings.DIALOG_INPUT_ERROR.format(
                     user_id=self.user.username,
-                    stage=self.dialog.stage,
+                    stage=self.dialog.bound.stage,
                     args=e.args,
                 )
             )
@@ -116,24 +90,29 @@ class DialogProcessor:
 
         try:
             messages.append(
-                get_reply_for_stage(self.bound.data_as_dict(), self.dialog.stage)
+                get_reply_for_stage(self.bound.data_as_dict(), self.bound.stage_id)
             )
         # это может произойти, если часть пользователей находится в стадии,
         # которая больше не существует (todo сдвинуть стадии в БД?)
         except IndexError:
             self._restart()
             messages.append(
-                get_reply_for_stage(self.bound.data_as_dict(), DialogStage.WELCOME)
+                get_reply_for_stage(
+                    self.bound.data_as_dict(), RequestFormingStage.WELCOME
+                )
             )
 
-        if self.dialog.stage == DialogStage.CHECK_DATA:
+        if self.bound.stage_id == RequestFormingStage.CHECK_DATA:
             messages.append(
                 get_summary_for_request(
                     self.bound.data_as_dict(), self.bound.get_photo()
                 )
             )
 
-        elif self.dialog.stage in [DialogStage.DONE, DialogStage.FEEDBACK_DONE]:
+        elif self.bound.stage_id in [
+            RequestFormingStage.DONE,
+            RequestFormingStage.FEEDBACK_DONE,
+        ]:
             self.dialog.finish()
 
         return messages
@@ -146,13 +125,13 @@ class DialogProcessor:
         BOT_LOG.debug(
             LogStrings.DIALOG_RESTART.format(
                 user_id=self.user.username,
-                stage=self.dialog.stage,
+                stage=self.bound.stage,
             )
         )
 
         self.dialog.finish()
         # this is not saved, just to assure correct messages are displayed
-        self.dialog.stage = DialogStage.WELCOME
+        self.bound.stage_id = RequestFormingStage.WELCOME
 
     def _advance_stage(self):
         """Выполняет выбор новой стадии диалога на основе входных данных."""
@@ -163,24 +142,26 @@ class DialogProcessor:
         if callback == "restart":
             self._restart()
             return
-        elif callback is not None and CALLBACK_TO_STAGE.get(callback.split()[0]):
-            new_stage = CALLBACK_TO_STAGE.get(callback.split()[0])
+        elif callback is not None:
+            new_stage = self.bound.stage.get_by_callback(callback.split()[0])
         # todo this is now somewhat obsolete
         BOT_LOG.debug(
             LogStrings.DIALOG_CHANGE_STAGE.format(
                 user_id=self.user.username,
-                stage=self.dialog.stage,
+                stage=self.bound.stage,
                 new_stage=new_stage,
                 callback=callback,
             )
         )
         if new_stage:
-            self.dialog.stage = new_stage
+            self.bound.stage_id = new_stage
+        self.bound.save()
         self.dialog.save()
 
     def _operate_data(self):
         """Применяет соответствующий стадии процессор к входным данным."""
 
-        if self.dialog.stage in PROCESSORS.keys():
-            PROCESSORS[self.dialog.stage]()(self, self.message_data)
+        processor = self.bound.stage.get_processor()
+        if processor:
+            processor()(self, self.message_data)
         self._advance_stage()

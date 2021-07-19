@@ -4,9 +4,20 @@ import tempfile
 
 from django.core.files import File
 from django.db import models, transaction
+from django.utils.translation import gettext_lazy as _
 from telegram import Bot
 from telegram.error import BadRequest
 
+from convoapp.processors import (
+    CarTypeInputProcessor,
+    DescriptionInputProcessor,
+    FeedbackInputProcessor,
+    NameInputProcessor,
+    SetReadyInputProcessor,
+    StartInputProcessor,
+    StorePhotoInputProcessor,
+    TagInputProcessor,
+)
 from convoapp.replies import (
     get_admin_message,
     get_feedback_message,
@@ -173,6 +184,28 @@ class WorkRequestStage(models.Model):
     reply_pattern = models.TextField(verbose_name="Шаблон ответа")
     buttons = models.JSONField(verbose_name="Набор кнопок")
 
+    def get_processor(self):
+        processors = {
+            RequestFormingStage.WELCOME: StartInputProcessor,
+            RequestFormingStage.GET_NAME: NameInputProcessor,
+            RequestFormingStage.GET_REQUEST_TAG: TagInputProcessor,
+            RequestFormingStage.GET_CAR_TYPE: CarTypeInputProcessor,
+            RequestFormingStage.GET_REQUEST_DESC: DescriptionInputProcessor,
+            RequestFormingStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
+            RequestFormingStage.CHECK_DATA: SetReadyInputProcessor,
+            RequestFormingStage.LEAVE_FEEDBACK: FeedbackInputProcessor,
+        }
+        return processors.get(self.pk)
+
+    def get_by_callback(self, callback):
+        callback_to_stage = {
+            "new_request": RequestFormingStage.GET_NAME,
+            "restart": RequestFormingStage.WELCOME,
+            "leave_feedback": RequestFormingStage.LEAVE_FEEDBACK,
+        }
+
+        return callback_to_stage.get(callback)
+
 
 class WorkRequest(models.Model):
     """
@@ -214,7 +247,9 @@ class WorkRequest(models.Model):
         related_name="bound",
         default=None,
     )
-    stage = models.ForeignKey(WorkRequestStage, on_delete=models.SET_NULL, null=True)
+    stage = models.ForeignKey(
+        WorkRequestStage, on_delete=models.SET_NULL, null=True, default=1
+    )
     # photos backref
     # registered backref
 
@@ -278,6 +313,14 @@ class WorkRequest(models.Model):
             return self.photos.all()[0].tg_file_id
         else:
             return File(open(DEFAULT_LOGO_FILE, "rb"))
+
+    def get_related_tag(self, text):
+        try:
+            tag = Tag.objects.get(name=text)
+        except Tag.DoesNotExist:
+            tag = Tag.objects.get(pk=1)  # default "Другое"
+
+        return tag
 
     @transaction.atomic
     def set_ready(self, bot):
@@ -394,3 +437,18 @@ class RequestPhoto(models.Model):
     request = models.ForeignKey(
         WorkRequest, on_delete=models.CASCADE, related_name="photos", db_index=True
     )
+
+
+class RequestFormingStage(models.IntegerChoices):
+    """Набор стадий проведения диалога."""
+
+    WELCOME = 1, _("Приветствие")
+    GET_NAME = 2, _("Получить имя")
+    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
+    GET_CAR_TYPE = 4, _("Получить тип автомобиля")
+    GET_REQUEST_DESC = 5, _("Получить описание заявки")
+    REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
+    CHECK_DATA = 7, _("Проверить заявку")
+    DONE = 8, _("Работа завершена")
+    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
+    FEEDBACK_DONE = 10, _("Отзыв получен")

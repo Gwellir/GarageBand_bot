@@ -245,7 +245,7 @@ def message_handler(update, context):
         last_id = send_message_return_id(reply, update.effective_user.id, bot)
         Message.objects.create(
             dialog=dialog_processor.dialog,
-            stage=dialog_processor.dialog.stage,
+            stage=dialog_processor.dialog.bound.stage_id,
             message_id=last_id,
             text=get_bot_message_as_text(reply),
             is_incoming=False,

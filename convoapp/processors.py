@@ -15,7 +15,6 @@ from tgbot.exceptions import (
     TextTooLongError,
     TextTooShortError,
 )
-from tgbot.models import Tag
 
 
 class BaseInputProcessor:
@@ -34,7 +33,7 @@ class BaseInputProcessor:
         if step > 0:
             self.set_field(data)
 
-        self.dialog.dialog.stage += step
+        self.dialog.bound.stage_id += step
         return step
 
     def set_field(self, data):
@@ -87,7 +86,7 @@ class TextInputProcessor(BaseInputProcessor):
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=self.dialog.user.username,
-                stage=self.dialog.dialog.stage,
+                stage=self.dialog.bound.stage,
                 model=self.model,
                 data=value,
             )
@@ -120,12 +119,7 @@ class TagInputProcessor(TextInputProcessor):
         if not data["text"]:
             raise TextNotProvidedError
         text = data["text"]
-        try:
-            tag = Tag.objects.get(name=text)
-        except Tag.DoesNotExist:
-            tag = Tag.objects.get(pk=1)  # default "Другое"
-
-        return tag
+        return self.model.get_related_tag(text)
 
 
 class CarTypeInputProcessor(TextInputProcessor):
@@ -195,7 +189,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
             BOT_LOG.debug(
                 LogStrings.DIALOG_SET_FIELD.format(
                     user_id=self.dialog.user.username,
-                    stage=self.dialog.dialog.stage,
+                    stage=self.model.stage,
                     model="RequestPhoto",
                     data=data,
                 )
@@ -221,7 +215,7 @@ class SetReadyInputProcessor(BaseInputProcessor):
             return
         elif data["callback"].split() == ["final_confirm", str(dialog.bound.pk)]:
             dialog.bound.set_ready(data["bot"])
-            dialog.dialog.stage += 1
+            dialog.bound.stage_id += 1
             return
         raise ButtonIsLockedError
 
