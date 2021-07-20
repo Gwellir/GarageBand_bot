@@ -38,6 +38,7 @@ class DialogProcessor:
         )
         self.bound = self.dialog.bound
         self.message_data = message_data
+        self.suppress_output = False
 
     # todo довольно сложно понимать, так как часть событий за процессинг происходит
     #  в одной стадии, а часть - в другой
@@ -87,13 +88,14 @@ class DialogProcessor:
             )
             return []
 
-        try:
-            messages.append(self.bound.get_reply_for_stage())
-        # это может произойти, если часть пользователей находится в стадии,
-        # которая больше не существует (todo сдвинуть стадии в БД?)
-        except IndexError:
-            self._restart()
-            messages.append(self.bound.get_reply_for_stage())
+        if not self.suppress_output:
+            try:
+                messages.append(self.bound.get_reply_for_stage())
+            # это может произойти, если часть пользователей находится в стадии,
+            # которая больше не существует (todo сдвинуть стадии в БД?)
+            except IndexError:
+                self._restart()
+                messages.append(self.bound.get_reply_for_stage())
 
         if self.bound.check_data():
             messages.append(self.bound.get_summary())

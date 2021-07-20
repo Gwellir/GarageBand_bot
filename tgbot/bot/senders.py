@@ -6,7 +6,7 @@ from logger.log_strings import LogStrings
 from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
 
 
-def send_message_return_id(message_data, user_id, msg_bot, reply_to=None):
+def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     """Отправляет сообщение через телеграм бота.
 
     Формирует структуру кнопок, определяет, требуется ли отправка обычного сообщения,
@@ -37,9 +37,25 @@ def send_message_return_id(message_data, user_id, msg_bot, reply_to=None):
         msg = bot.send_photo(
             caption=message_data["caption"], photo=message_data["photo"], **params_dict
         )
+        ids = [msg.message_id]
+    elif "album" in message_data.keys():
+        if len(message_data["album"]) > 1:
+            msgs = bot.send_media_group(chat_id=user_id, media=message_data["album"])
+        else:
+            msgs = [bot.send_photo(photo=message_data["album"][0], chat_id=user_id)]
+        text_msg = bot.send_message(
+            text=message_data["text"],
+            disable_web_page_preview=True,
+            timeout=10,
+            **params_dict
+        )
+        ids = [msg.message_id for msg in msgs]
+        ids.append(text_msg.message_id)
     else:
         msg = bot.send_message(
             text=message_data["text"], disable_web_page_preview=True, **params_dict
         )
+        ids = [msg.message_id]
 
-    return msg.message_id
+    # todo change to queue implementation
+    return ids

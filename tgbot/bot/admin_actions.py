@@ -3,10 +3,9 @@
 from datetime import timedelta
 
 from django.utils.timezone import now
-from telegram import Bot
 from telegram.error import BadRequest
 
-from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
 from tgbot.exceptions import MessageDoesNotExistError, NoUserWithThisIdError
 from tgbot.models import BotUser
 
@@ -37,7 +36,7 @@ def ban_user_by_id(bot, pk, callback=None):
         "text": f"Пользователь {user} забанен, его посты за последние сутки удалены!"
     }
     callback.answer(msg["text"])
-    send_message_return_id(msg, bot.telegram_instance.admin_group_id, bot)
+    send_messages_return_ids(msg, bot.telegram_instance.admin_group_id, bot)
 
 
 def delete_channel_message_by_id(bot, message_id, callback=None):
@@ -46,18 +45,16 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
     Отправляет уведомление в админскую группу."""
 
     try:
-        Bot(bot.telegram_instance.token).delete_message(
-            bot.telegram_instance.publish_id, message_id
-        )
+        # todo mark deleted? or rather, move this logic to the model?
+        Model = bot.get_bound_model()
+        bound = Model.objects.get(registered__channel_message_id=message_id)
+        bound.delete_post()
     except BadRequest:
         raise MessageDoesNotExistError(message_id)
     if callback:
-        # todo mark deleted? or rather, move this logic to the model?
-        Model = bot.get_bound_model()
-        request = Model.objects.get(registered__channel_message_id=message_id)
-        msg = {"text": f"Заявка #{request.registered.pk} удалена!"}
+        msg = {"text": f"Заявка #{bound.registered.pk} удалена!"}
         callback.answer(msg["text"])
-        send_message_return_id(msg, bot.telegram_instance.admin_group_id, bot)
+        send_messages_return_ids(msg, bot.telegram_instance.admin_group_id, bot)
 
 
 ADMIN_ACTIONS = {

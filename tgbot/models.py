@@ -23,7 +23,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
-from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
 
@@ -309,7 +309,7 @@ class WorkRequest(models.Model):
             registered_feedback=registered_feedback,
         )
 
-    def get_photo(self):
+    def get_media(self):
         """
         Возвращает объект фотографии, пригодный для передачи в Телеграм.
 
@@ -357,7 +357,7 @@ class WorkRequest(models.Model):
 
         msg = fill_data(repair_strings.summary, self.data_as_dict())
         msg["caption"] = msg.pop("text")
-        msg["photo"] = self.get_photo()
+        msg["photo"] = self.get_media()
         if ready:
             msg.pop("buttons")
 
@@ -374,6 +374,11 @@ class WorkRequest(models.Model):
 
     def restart(self):
         self.stage_id = RequestFormingStage.WELCOME
+
+    def delete_post(self):
+        instance = self.dialog.bot.telegram_instance
+        bot = Bot(instance.token)
+        bot.delete_message(instance.publish_id, self.registered.channel_message_id)
 
     @transaction.atomic
     def set_ready(self, bot):
@@ -441,15 +446,15 @@ class RegisteredRequest(models.Model):
         reg_request = cls.objects.create(
             bound=bound,
         )
-        message_id = send_message_return_id(
+        message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             bot.telegram_instance.publish_id,
             bot,
         )
-        reg_request.channel_message_id = message_id
+        reg_request.channel_message_id = message_ids[0]
         reg_request.save()
         bound.save()
-        send_message_return_id(
+        send_messages_return_ids(
             bound.get_admin_message(),
             bot.telegram_instance.admin_group_id,
             bot,
@@ -459,7 +464,7 @@ class RegisteredRequest(models.Model):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""
 
         try:
-            send_message_return_id(
+            send_messages_return_ids(
                 self.bound.get_feedback_message(),
                 bot.telegram_instance.discussion_group_id,
                 bot,
@@ -468,7 +473,7 @@ class RegisteredRequest(models.Model):
         except BadRequest:
             # todo add proper logging
             pass
-        send_message_return_id(
+        send_messages_return_ids(
             self.bound.get_feedback_message(),
             bot.telegram_instance.feedback_group_id,
             bot,

@@ -3,10 +3,11 @@ import tempfile
 from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
-from telegram import Bot
+from telegram import Bot, InputMediaPhoto
 
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.processors import (
+    AlbumPhotoProcessor,
     MileageInputProcessor,
     PriceInputProcessor,
     PriceTagInputProcessor,
@@ -19,12 +20,11 @@ from convoapp.processors import (
     PhoneNumberInputProcessor,
     SetReadyInputProcessor,
     StartInputProcessor,
-    StorePhotoInputProcessor,
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE
-from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import TagDoesNotExistError
 from tgbot.models import BotUser
@@ -81,7 +81,7 @@ class SaleAdStage(models.Model):
             AdFormingStage.GET_PRICE_TAG: PriceTagInputProcessor,
             AdFormingStage.GET_EXACT_PRICE: PriceInputProcessor,
             AdFormingStage.GET_DESC: DescriptionInputProcessor,
-            AdFormingStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
+            AdFormingStage.REQUEST_PHOTOS: AlbumPhotoProcessor,
             AdFormingStage.GET_LOCATION: LocationInputProcessor,
             AdFormingStage.CHECK_DATA: SetReadyInputProcessor,
         }
@@ -110,7 +110,7 @@ class SaleAd(models.Model):
     exact_price = models.CharField(verbose_name="Цена", max_length=30, null=True)
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
-        verbose_name="Подробное описание", max_length=700, blank=True
+        verbose_name="Подробное описание", max_length=4000, blank=True
     )
     formed_at = models.DateTimeField(
         verbose_name="Время составления", auto_now=True, db_index=True
@@ -193,7 +193,7 @@ class SaleAd(models.Model):
             registered_feedback=registered_feedback,
         )
 
-    def get_photo(self):
+    def get_media(self):
         """
         Возвращает объект фотографии, пригодный для передачи в Телеграм.
 
@@ -202,9 +202,11 @@ class SaleAd(models.Model):
         """
 
         if self.photos.all():
-            return self.photos.all()[0].tg_file_id
+            return [
+                InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:10]
+            ]
         else:
-            return File(open(DEFAULT_AD_LOGO_FILE, "rb"))
+            return [File(open(DEFAULT_AD_LOGO_FILE, "rb"))]
 
     def get_related_tag(self, text):
         try:
@@ -239,9 +241,9 @@ class SaleAd(models.Model):
     def get_summary(self, ready=False):
         """Возвращает шаблон саммари"""
 
+        media = self.get_media()
         msg = fill_data(bazaar_strings.summary, self.data_as_dict())
-        msg["caption"] = msg.pop("text")
-        msg["photo"] = self.get_photo()
+        msg["album"] = media
         if ready:
             msg.pop("buttons")
 
@@ -257,6 +259,15 @@ class SaleAd(models.Model):
 
     def restart(self):
         self.stage_id = AdFormingStage.WELCOME
+
+    def delete_post(self):
+        instance = self.dialog.bot.telegram_instance
+        bot = Bot(instance.token)
+        bot.delete_message(instance.publish_id, self.registered.channel_message_id)
+        for msg_id in range(
+            self.registered.album_start_id, self.registered.album_end_id + 1
+        ):
+            bot.delete_message(instance.publish_id, msg_id)
 
     @transaction.atomic
     def set_ready(self, bot):
@@ -295,6 +306,12 @@ class RegisteredAd(models.Model):
     bound = models.OneToOneField(
         SaleAd, on_delete=models.CASCADE, related_name="registered"
     )
+    album_start_id = models.PositiveIntegerField(
+        verbose_name="Первое сообщение в альбоме", null=True
+    )
+    album_end_id = models.PositiveIntegerField(
+        verbose_name="Последнее сообщение в альбоме", null=True
+    )
     channel_message_id = models.PositiveIntegerField(
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
     )
@@ -324,15 +341,17 @@ class RegisteredAd(models.Model):
         reg_request = cls.objects.create(
             bound=bound,
         )
-        message_id = send_message_return_id(
+        message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             bot.telegram_instance.publish_id,
             bot,
         )
-        reg_request.channel_message_id = message_id
+        reg_request.channel_message_id = message_ids[-1]
+        reg_request.album_start_id = message_ids[0]
+        reg_request.album_end_id = message_ids[-2]
         reg_request.save()
         bound.save()
-        send_message_return_id(
+        send_messages_return_ids(
             bound.get_admin_message(),
             bot.telegram_instance.admin_group_id,
             bot,

@@ -30,7 +30,7 @@ class BaseInputProcessor:
         self.model = dialog.bound
         self.messages = []
         step = self.get_step(data)
-        if step > 0:
+        if step >= 0:
             self.set_field(data)
 
         self.dialog.bound.stage_id += step
@@ -39,8 +39,12 @@ class BaseInputProcessor:
     def set_field(self, data):
         pass
 
+    def cancel_step(self):
+        pass
+
     def get_step(self, data):
         if data["text"] == "Отменить":
+            self.cancel_step()
             return -1
         else:
             return 1

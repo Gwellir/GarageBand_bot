@@ -14,7 +14,7 @@ from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
-from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_text
 from tgbot.exceptions import (
     AdminActionError,
@@ -120,14 +120,14 @@ def show_user_requests_stats(update, context):
             text = f"{text}{user.stats_as_tg_html()}\n"
             i += 1
         if i == length - 1:
-            send_message_return_id(
+            send_messages_return_ids(
                 {"text": text}, bot.telegram_instance.admin_group_id, bot
             )
             sleep(0.5)
             i = 0
             text = ""
     if text:
-        send_message_return_id(
+        send_messages_return_ids(
             {"text": text}, bot.telegram_instance.admin_group_id, bot
         )
 
@@ -168,7 +168,7 @@ def chat_ban_user(update, context):
                 can_pin_messages=False,
             ),
         )
-        send_message_return_id(
+        send_messages_return_ids(
             {"text": f"Пользователь {nick} {uid} забанен в обсуждении на сутки"},
             update.effective_chat.id,
             bot,
@@ -242,16 +242,16 @@ def message_handler(update, context):
         return
 
     for reply in replies:
-        last_id = send_message_return_id(reply, update.effective_user.id, bot)
+        ids = send_messages_return_ids(reply, update.effective_user.id, bot)
         Message.objects.create(
             dialog=dialog_processor.dialog,
             stage=dialog_processor.dialog.bound.stage_id,
-            message_id=last_id,
+            message_id=ids[0],
             text=get_bot_message_as_text(reply),
             is_incoming=False,
         )
     if replies:
-        context.user_data["last_message_id"] = last_id
+        context.user_data["last_message_id"] = ids[-1]
 
 
 def error_handler(update, context):
@@ -285,5 +285,5 @@ def error_handler(update, context):
     )
     bot = context.bot_data.get("msg_bot")
     for dev_id in devs:
-        send_message_return_id({"text": text}, dev_id, bot)
+        send_messages_return_ids({"text": text}, dev_id, bot)
     raise
