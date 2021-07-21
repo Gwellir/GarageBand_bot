@@ -1,7 +1,8 @@
 from django.apps import apps
 from django.db import models, transaction
 
-from tgbot.models import BotUser, MessengerBot, RequestFormingStage
+from tgbot.exceptions import ActionAlreadyCompletedError
+from tgbot.models import BotUser, MessengerBot
 
 
 class Dialog(models.Model):
@@ -53,14 +54,17 @@ class Dialog(models.Model):
             Model = apps.get_model(app_label=bot.bound_app, model_name=bot.bound_object)
             bound, b_created = Model.get_or_create(user, dialog)
         else:
+            load_filter = {f"bound_{bot.get_bound_name()}__registered__pk": load}
+            dialog = Dialog.objects.get(bot=bot, user=user, **load_filter)
+            if dialog.bound.is_locked:
+                raise ActionAlreadyCompletedError(bot.get_bound_name(), load)
             curr_dialog = Dialog.objects.filter(
                 bot=bot, user=user, is_finished=False
             ).first()
             if curr_dialog:
                 curr_dialog.finish()
-            load_filter = {f"bound_{bot.get_bound_name()}__registered__pk": load}
-            dialog = Dialog.objects.get(bot=bot, user=user, **load_filter)
-            dialog.bound.stage_id = RequestFormingStage.DONE
+
+            dialog.bound.stage_id = dialog.bound.get_ready_stage()
             dialog.is_finished = False
 
         return dialog

@@ -143,13 +143,20 @@ stages_info = [
     {  # 12 stage finished
         "text": "Благодарим за сотрудничество!\n"
         'Ваше объявление <a href="https://t.me/{channel_name}/{registered_msg_id}">'
-        "#{registered_pk}</a> опубликовано.\n",
+        "#{registered_pk}</a> опубликовано.\n\n"
+        "Не забудьте закрыть заявку после продажи автомобиля.",
         "buttons": [
             [
                 {
                     "text": "Перейти к вашему объявлению в канале",
                     "url": "https://t.me/{channel_name}/{registered_msg_id}",
                 }
+            ],
+            [
+                {
+                    "text": "ЗАКРЫТЬ ЗАЯВКУ",
+                    "callback_data": "complete {registered_pk}",
+                },
             ],
             [
                 {
@@ -165,21 +172,15 @@ stages_info = [
             ],
         ],
     },
-    {  # stage feedback
-        "text": "Заявка #{registered_pk}\n\n"
-        "Напишите имя/аккаунт мастера, который проводил работы, "
-        "и ваши общие ощущения от проведённых работ.",
-        "text_buttons": None,
-    },
-    {  # stage feedback done
-        "text": "Спасибо за обратную связь!",
+    {  # stage 13
+        "text": 'Ваше объявление #{registered_pk} переведено в статус "ПРОДАНО"',
         "buttons": [
             [
                 {
-                    "text": "Оформить ещё заявку",
+                    "text": "Разместить ещё объявление",
                     "callback_data": "new_request",
                 },
-            ],
+            ]
         ],
     },
 ]

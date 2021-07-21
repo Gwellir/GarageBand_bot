@@ -15,7 +15,7 @@ def get_bound_state(message_data):
     """
 
     cb = message_data.get("callback")
-    if cb and cb.startswith("leave_feedback "):
+    if cb and (cb.startswith("leave_feedback ") or cb.startswith("complete ")):
         try:
             bound_num = int(cb.split()[1])
             return bound_num

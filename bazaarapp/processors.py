@@ -2,6 +2,8 @@ from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.exceptions import (
+    ButtonIsLockedError,
+    CallbackNotProvidedError,
     ImageNotProvidedError,
     IncorrectNumberError,
     NotANumberError,
@@ -97,3 +99,24 @@ class AlbumPhotoProcessor(BaseInputProcessor):
 
         else:
             raise ImageNotProvidedError
+
+
+class SetCompleteInputProcessor(BaseInputProcessor):
+    """Процессор подтверждения завершения продажи.
+
+    Проверяет, что нажата кнопка подтверждения и запускает процесс перевода
+    объявления в завершённое состояние.
+    Иначе обрабатывает исключительные ситуации (ввод
+    данных вместо нажатия кнопки.
+    """
+
+    def __call__(self, dialog, data):
+        if not data["callback"]:
+            raise CallbackNotProvidedError
+        elif data["callback"] == "restart":
+            return
+        elif data["callback"].split() == ["complete", str(dialog.bound.registered.pk)]:
+            dialog.bound.set_sold()
+            dialog.bound.stage_id += 1
+            return
+        raise ButtonIsLockedError

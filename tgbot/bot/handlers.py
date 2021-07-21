@@ -17,6 +17,7 @@ from tgbot.bot.admin_actions import ADMIN_ACTIONS
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_text
 from tgbot.exceptions import (
+    ActionAlreadyCompletedError,
     AdminActionError,
     CallbackExpiredError,
     MessageIsAnEditError,
@@ -239,6 +240,16 @@ def message_handler(update, context):
                 args=e.args[0],
             )
         )
+        return
+    except ActionAlreadyCompletedError as e:
+        BOT_LOG.warning(
+            LogStrings.DIALOG_INPUT_ERROR.format(
+                user_id=user_data.get("username"),
+                stage=None,
+                args=e.args[0],
+            )
+        )
+        update.callback_query.answer("Это действие уже совершено!")
         return
 
     for reply in replies:

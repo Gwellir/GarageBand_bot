@@ -21,5 +21,6 @@ class LogStrings:
     DIALOG_SET_READY = (
         "READY: User: {user_id}, request: {request_id}, saved {photos_count} photos"
     )
+    DIALOG_SET_SOLD = "SOLD: User: {user_id}, ad: {request_id}"
 
     CHANNEL_POST = "POST: channel: {channel_id}"

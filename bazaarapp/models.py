@@ -4,6 +4,7 @@ from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot, InputMediaPhoto
+from telegram.error import BadRequest
 
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.processors import (
@@ -11,6 +12,7 @@ from bazaarapp.processors import (
     MileageInputProcessor,
     PriceInputProcessor,
     PriceTagInputProcessor,
+    SetCompleteInputProcessor,
 )
 from convoapp.processors import (
     CarTypeInputProcessor,
@@ -23,7 +25,7 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE
+from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import TagDoesNotExistError
@@ -45,6 +47,7 @@ class AdFormingStage(models.IntegerChoices):
     GET_LOCATION = 10, _("Получить местоположение")
     CHECK_DATA = 11, _("Проверить заявку")
     DONE = 12, _("Работа завершена")
+    SALE_COMPLETE = 13, _("Заявка закрыта")
 
 
 class PriceTag(models.Model):
@@ -84,6 +87,7 @@ class SaleAdStage(models.Model):
             AdFormingStage.REQUEST_PHOTOS: AlbumPhotoProcessor,
             AdFormingStage.GET_LOCATION: LocationInputProcessor,
             AdFormingStage.CHECK_DATA: SetReadyInputProcessor,
+            AdFormingStage.DONE: SetCompleteInputProcessor,
         }
         return processors.get(self.pk)
 
@@ -129,6 +133,9 @@ class SaleAd(models.Model):
     )
     is_discarded = models.BooleanField(
         verbose_name="Флаг отказа от проведения заявки", default=False, db_index=True
+    )
+    is_locked = models.BooleanField(
+        verbose_name="Флаг завершения продажи", default=False, db_index=True
     )
     dialog = models.OneToOneField(
         "convoapp.Dialog",
@@ -249,12 +256,16 @@ class SaleAd(models.Model):
 
         return msg
 
+    def get_ready_stage(self):
+        return AdFormingStage.DONE
+
     def check_data(self):
         return self.stage_id == AdFormingStage.CHECK_DATA
 
     def is_done(self):
         return self.stage_id in [
             AdFormingStage.DONE,
+            AdFormingStage.SALE_COMPLETE,
         ]
 
     def restart(self):
@@ -268,6 +279,40 @@ class SaleAd(models.Model):
             self.registered.album_start_id, self.registered.album_end_id + 1
         ):
             bot.delete_message(instance.publish_id, msg_id)
+
+    @transaction.atomic
+    def set_sold(self):
+        """
+        Выставляет объявлению статус завершения.
+
+        Выставляет флаг блокировки, заменяет фотографии в канале на "ПРОДАНО"
+        """
+
+        self.is_locked = True
+        self.save()
+        instance = self.dialog.bot.telegram_instance
+        bot = Bot(instance.token)
+        for msg_id in range(
+            self.registered.album_start_id + 1, self.registered.album_end_id + 1
+        ):
+            try:
+                bot.delete_message(
+                    instance.publish_id,
+                    msg_id,
+                )
+            except BadRequest:
+                pass
+        bot.edit_message_media(
+            chat_id=instance.publish_id,
+            message_id=self.registered.album_start_id,
+            media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+        )
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SET_SOLD.format(
+                user_id=self.user.username,
+                request_id=self.pk,
+            )
+        )
 
     @transaction.atomic
     def set_ready(self, bot):

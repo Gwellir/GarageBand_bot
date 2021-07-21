@@ -139,6 +139,16 @@ class IncorrectNumberError(BotProcessingError):
         super().__init__("Введено неверное число!")
 
 
+class ActionAlreadyCompletedError(BotProcessingError):
+    """
+    Возникает, когда пользователь пытается загрузить старый объект
+    для совершения вторичного действия, но действие уже выполнено.
+    """
+
+    def __init__(self, obj_name, obj_num):
+        super().__init__(f"Попытка загрузки завершённого {obj_name} #{obj_num}!")
+
+
 class IgnoreActionError(Exception):
     """
     Применяется для обработки действий, которые требуют полного игнорирования

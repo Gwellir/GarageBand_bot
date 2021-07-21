@@ -250,6 +250,11 @@ class WorkRequest(models.Model):
     is_discarded = models.BooleanField(
         verbose_name="Флаг отказа от проведения заявки", default=False, db_index=True
     )
+    is_locked = models.BooleanField(
+        verbose_name="Флаг полного завершения работы по заявке",
+        default=False,
+        db_index=True,
+    )
     dialog = models.OneToOneField(
         "convoapp.Dialog",
         on_delete=models.SET_NULL,
@@ -362,6 +367,9 @@ class WorkRequest(models.Model):
             msg.pop("buttons")
 
         return msg
+
+    def get_ready_stage(self):
+        return RequestFormingStage.DONE
 
     def check_data(self):
         return self.stage_id == RequestFormingStage.CHECK_DATA
