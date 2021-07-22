@@ -39,10 +39,12 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
         )
         ids = [msg.message_id]
     elif "album" in message_data.keys():
-        if len(message_data["album"]) > 1:
-            msgs = bot.send_media_group(chat_id=user_id, media=message_data["album"])
-        else:
-            msgs = [bot.send_photo(photo=message_data["album"][0], chat_id=user_id)]
+        album = message_data["album"]
+        msgs = []
+        if len(album) > 1:
+            msgs = bot.send_media_group(chat_id=user_id, media=album)
+        elif len(album):
+            msgs = [bot.send_photo(photo=album[0], chat_id=user_id)]
         text_msg = bot.send_message(
             text=message_data["text"],
             disable_web_page_preview=True,

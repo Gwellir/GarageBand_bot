@@ -207,6 +207,18 @@ summary = {
     ],
 }
 
+summary_sold = {
+    "text": "<b>[ ПРОДАНО ]</b>\n\n"
+    "<b>#{registered_pk}</b>\n\n"
+    "{ad_price_range} {ad_car_type}\n\n"
+    "🚘 {ad_desc}\n\n"
+    "🎛 Пробег {ad_mileage} км\n\n"
+    "<s>💸 Цена <b>{ad_price}</b></s>\n\n"
+    "<s>📍 {ad_location}</s>\n\n"
+    "🖋 {user_name}\n\n",
+    "text_buttons": None,
+}
+
 feedback = {
     "text": "<b>Отзыв клиента по заявке "
     '<a href="https://t.me/{channel_name}/{registered_msg_id}">'

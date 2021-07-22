@@ -3,7 +3,7 @@ import tempfile
 from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
-from telegram import Bot, InputMediaPhoto
+from telegram import Bot, InputMediaPhoto, ParseMode
 from telegram.error import BadRequest
 
 from bazaarapp import strings as bazaar_strings
@@ -213,7 +213,7 @@ class SaleAd(models.Model):
                 InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:10]
             ]
         else:
-            return [File(open(DEFAULT_AD_LOGO_FILE, "rb"))]
+            return []
 
     def get_related_tag(self, text):
         try:
@@ -256,6 +256,10 @@ class SaleAd(models.Model):
 
         return msg
 
+    def get_summary_sold(self):
+        msg = fill_data(bazaar_strings.summary_sold, self.data_as_dict())
+        return msg["text"]
+
     def get_ready_stage(self):
         return AdFormingStage.DONE
 
@@ -275,10 +279,11 @@ class SaleAd(models.Model):
         instance = self.dialog.bot.telegram_instance
         bot = Bot(instance.token)
         bot.delete_message(instance.publish_id, self.registered.channel_message_id)
-        for msg_id in range(
-            self.registered.album_start_id, self.registered.album_end_id + 1
-        ):
-            bot.delete_message(instance.publish_id, msg_id)
+        if self.registered.album_start_id:
+            for msg_id in range(
+                self.registered.album_start_id, self.registered.album_end_id + 1
+            ):
+                bot.delete_message(instance.publish_id, msg_id)
 
     @transaction.atomic
     def set_sold(self):
@@ -292,20 +297,27 @@ class SaleAd(models.Model):
         self.save()
         instance = self.dialog.bot.telegram_instance
         bot = Bot(instance.token)
-        for msg_id in range(
-            self.registered.album_start_id + 1, self.registered.album_end_id + 1
-        ):
-            try:
-                bot.delete_message(
-                    instance.publish_id,
-                    msg_id,
-                )
-            except BadRequest:
-                pass
-        bot.edit_message_media(
+        if self.registered.album_start_id:
+            for msg_id in range(
+                self.registered.album_start_id + 1, self.registered.album_end_id + 1
+            ):
+                try:
+                    bot.delete_message(
+                        instance.publish_id,
+                        msg_id,
+                    )
+                except BadRequest:
+                    pass
+            bot.edit_message_media(
+                chat_id=instance.publish_id,
+                message_id=self.registered.album_start_id,
+                media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+            )
+        bot.edit_message_text(
             chat_id=instance.publish_id,
-            message_id=self.registered.album_start_id,
-            media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+            message_id=self.registered.channel_message_id,
+            parse_mode=ParseMode.HTML,
+            text=self.get_summary_sold(),
         )
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
@@ -392,8 +404,9 @@ class RegisteredAd(models.Model):
             bot,
         )
         reg_request.channel_message_id = message_ids[-1]
-        reg_request.album_start_id = message_ids[0]
-        reg_request.album_end_id = message_ids[-2]
+        if len(message_ids) > 1:
+            reg_request.album_start_id = message_ids[0]
+            reg_request.album_end_id = message_ids[-2]
         reg_request.save()
         bound.save()
         send_messages_return_ids(
