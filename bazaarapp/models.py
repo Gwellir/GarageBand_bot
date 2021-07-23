@@ -1,6 +1,5 @@
 import tempfile
 
-from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot, InputMediaPhoto, ParseMode
@@ -9,6 +8,7 @@ from telegram.error import BadRequest
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.processors import (
     AlbumPhotoProcessor,
+    BargainSelectProcessor,
     MileageInputProcessor,
     PriceInputProcessor,
     PriceTagInputProcessor,
@@ -25,10 +25,10 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
+from tgbot.bot.constants import DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.exceptions import TagDoesNotExistError
+from tgbot.exceptions import IncorrectChoiceError
 from tgbot.models import BotUser
 
 
@@ -42,12 +42,13 @@ class AdFormingStage(models.IntegerChoices):
     GET_CAR_MILEAGE = 5, _("Получить пробег автомобиля")
     GET_PRICE_TAG = 6, _("Получить ценовую категорию объявления")
     GET_EXACT_PRICE = 7, _("Получить точную цену")
-    GET_DESC = 8, _("Получить описание объявления")
-    REQUEST_PHOTOS = 9, _("Предложить отправить фотографии")
-    GET_LOCATION = 10, _("Получить местоположение")
-    CHECK_DATA = 11, _("Проверить заявку")
-    DONE = 12, _("Работа завершена")
-    SALE_COMPLETE = 13, _("Заявка закрыта")
+    GET_BARGAIN = 8, _("Узнать возможность торга ")
+    GET_DESC = 9, _("Получить описание объявления")
+    REQUEST_PHOTOS = 10, _("Предложить отправить фотографии")
+    GET_LOCATION = 11, _("Получить местоположение")
+    CHECK_DATA = 12, _("Проверить заявку")
+    DONE = 13, _("Работа завершена")
+    SALE_COMPLETE = 14, _("Заявка закрыта")
 
 
 class PriceTag(models.Model):
@@ -83,6 +84,7 @@ class SaleAdStage(models.Model):
             AdFormingStage.GET_CAR_MILEAGE: MileageInputProcessor,
             AdFormingStage.GET_PRICE_TAG: PriceTagInputProcessor,
             AdFormingStage.GET_EXACT_PRICE: PriceInputProcessor,
+            AdFormingStage.GET_BARGAIN: BargainSelectProcessor,
             AdFormingStage.GET_DESC: DescriptionInputProcessor,
             AdFormingStage.REQUEST_PHOTOS: AlbumPhotoProcessor,
             AdFormingStage.GET_LOCATION: LocationInputProcessor,
@@ -112,6 +114,7 @@ class SaleAd(models.Model):
         PriceTag, on_delete=models.SET_NULL, db_index=True, null=True
     )
     exact_price = models.CharField(verbose_name="Цена", max_length=30, null=True)
+    can_bargain = models.BooleanField(verbose_name="Торг возможен", null=True)
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
         verbose_name="Подробное описание", max_length=4000, blank=True
@@ -178,6 +181,10 @@ class SaleAd(models.Model):
         else:
             registered_pk = registered_msg_id = "000"
             registered_feedback = None
+        if self.can_bargain:
+            ad_bargain_string = "торг"
+        else:
+            ad_bargain_string = ""
         if self.price_tag:
             tag_name = self.price_tag.name.replace("$", "").replace(" ", "_")
         else:
@@ -190,6 +197,7 @@ class SaleAd(models.Model):
             ad_desc=self.description,
             ad_mileage=self.mileage,
             ad_price=self.exact_price,
+            ad_bargain_string=ad_bargain_string,
             ad_location=self.location,
             user_pk=self.user.pk,
             user_name=self.user.name,
@@ -219,7 +227,7 @@ class SaleAd(models.Model):
         try:
             tag = PriceTag.objects.get(name=text)
         except PriceTag.DoesNotExist:
-            raise TagDoesNotExistError(text)
+            raise IncorrectChoiceError(text)
 
         return tag
 
@@ -278,12 +286,18 @@ class SaleAd(models.Model):
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
         bot = Bot(instance.token)
-        bot.delete_message(instance.publish_id, self.registered.channel_message_id)
-        if self.registered.album_start_id:
-            for msg_id in range(
-                self.registered.album_start_id, self.registered.album_end_id + 1
-            ):
-                bot.delete_message(instance.publish_id, msg_id)
+        try:
+            bot.delete_message(instance.publish_id, self.registered.channel_message_id)
+            if self.registered.album_start_id:
+                for msg_id in range(
+                    self.registered.album_start_id, self.registered.album_end_id + 1
+                ):
+                    bot.delete_message(instance.publish_id, msg_id)
+        except BadRequest:
+            pass
+        finally:
+            self.is_locked = True
+            self.save()
 
     @transaction.atomic
     def set_sold(self):
@@ -313,6 +327,7 @@ class SaleAd(models.Model):
                 message_id=self.registered.album_start_id,
                 media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
             )
+            self.registered.album_end_id = self.registered.album_start_id
         bot.edit_message_text(
             chat_id=instance.publish_id,
             message_id=self.registered.channel_message_id,

@@ -386,7 +386,13 @@ class WorkRequest(models.Model):
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
         bot = Bot(instance.token)
-        bot.delete_message(instance.publish_id, self.registered.channel_message_id)
+        try:
+            bot.delete_message(instance.publish_id, self.registered.channel_message_id)
+        except BadRequest:
+            pass
+        finally:
+            self.is_locked = True
+            self.save()
 
     @transaction.atomic
     def set_ready(self, bot):

@@ -44,7 +44,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
         if len(album) > 1:
             msgs = bot.send_media_group(chat_id=user_id, media=album)
         elif len(album):
-            msgs = [bot.send_photo(photo=album[0], chat_id=user_id)]
+            msgs = [bot.send_photo(photo=album[0].media, chat_id=user_id)]
         text_msg = bot.send_message(
             text=message_data["text"],
             disable_web_page_preview=True,

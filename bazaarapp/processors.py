@@ -5,6 +5,7 @@ from tgbot.exceptions import (
     ButtonIsLockedError,
     CallbackNotProvidedError,
     ImageNotProvidedError,
+    IncorrectChoiceError,
     IncorrectNumberError,
     NotANumberError,
     TextNotProvidedError,
@@ -27,28 +28,92 @@ class PriceTagInputProcessor(TextInputProcessor):
         return self.model.get_related_tag(text)
 
 
-class PriceInputProcessor(TextInputProcessor):
-    """Процессор ввода цены с форматом валюты"""
+class IntNumberInputProcessor(BaseInputProcessor):
+    min_value = 0
+    max_value = 1000000000
 
-    attr_name = "exact_price"
-
-
-class MileageInputProcessor(TextInputProcessor):
-    """Обработчик ввода километража."""
-
-    attr_name = "mileage"
+    def get_int_value(self, text):
+        try:
+            result = int(float(text))
+        except ValueError:
+            raise NotANumberError
+        if result < self.min_value or result > self.max_value:
+            raise IncorrectNumberError
+        return result
 
     def get_field_value(self, data):
         if not data["text"] or data["callback"]:
             raise TextNotProvidedError
         text = data.get("text")
-        try:
-            num = int(text)
-        except ValueError:
-            raise NotANumberError
-        if num < 0:
-            raise IncorrectNumberError
-        return num
+        return self.get_int_value(text)
+
+    def set_field(self, data):
+        value = self.get_field_value(data)
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SET_FIELD.format(
+                user_id=self.dialog.user.username,
+                stage=self.dialog.bound.stage,
+                model=self.model,
+                data=value,
+            )
+        )
+        setattr(self.model, self.attr_name, value)
+        self.model.save()
+
+
+class PriceInputProcessor(IntNumberInputProcessor):
+    """Процессор ввода цены в долларах"""
+
+    attr_name = "exact_price"
+
+
+class MileageInputProcessor(IntNumberInputProcessor):
+    """Обработчик ввода километража."""
+
+    attr_name = "mileage"
+    max_value = 100000
+
+
+class BinarySelectProcessor(BaseInputProcessor):
+    """Обработчик ввода опций с бинарным выбором"""
+
+    true_option_string = None
+    false_option_string = None
+
+    def get_binary_value(self, text):
+        if text == self.true_option_string:
+            return True
+        elif text == self.false_option_string:
+            return False
+        else:
+            raise IncorrectChoiceError(text)
+
+    def get_field_value(self, data):
+        if not data["text"] or data["callback"]:
+            raise TextNotProvidedError
+        text = data.get("text")
+        return self.get_binary_value(text)
+
+    def set_field(self, data):
+        selection: bool = self.get_field_value(data)
+        BOT_LOG.debug(
+            LogStrings.DIALOG_SET_FIELD.format(
+                user_id=self.dialog.user.username,
+                stage=self.dialog.bound.stage,
+                model=self.model,
+                data=selection,
+            )
+        )
+        setattr(self.model, self.attr_name, selection)
+        self.model.save()
+
+
+class BargainSelectProcessor(BinarySelectProcessor):
+    """Описывает выбор возможности торга"""
+
+    attr_name = "can_bargain"
+    true_option_string = "Торг"
+    false_option_string = "Без торга"
 
 
 class AlbumPhotoProcessor(BaseInputProcessor):

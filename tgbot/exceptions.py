@@ -63,11 +63,11 @@ class TextNotProvidedError(BotProcessingError):
         super().__init__("Запрошенный текст не введён!")
 
 
-class TagDoesNotExistError(BotProcessingError):
-    """Возникает, когда пользователь вводит неправильное имя тага"""
+class IncorrectChoiceError(BotProcessingError):
+    """Возникает, когда пользователь вводит неправильное имя для выборной опции"""
 
     def __init__(self, name):
-        super().__init__(f'Введено неправильное значение категории: "{name}"')
+        super().__init__(f'Выбранное значение не существует: "{name}"')
 
 
 class CallbackNotProvidedError(BotProcessingError):
