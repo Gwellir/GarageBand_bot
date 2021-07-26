@@ -53,12 +53,14 @@ class Migration(migrations.Migration):
                 name,
                 bound_object,
                 is_active,
+                is_debug,
                 telegram_instance_id,
                 bound_app
             ) VALUES (
                 1,
                 'бот ремонт',
                 'WorkRequest',
+                TRUE,
                 TRUE,
                 1,
                 'tgbot'
