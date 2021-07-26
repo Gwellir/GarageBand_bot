@@ -70,6 +70,9 @@ class MessengerBot(models.Model):
     is_active = models.BooleanField(
         verbose_name="Бот включён", default=True, db_index=True
     )
+    is_debug = models.BooleanField(
+        verbose_name="Для дебага", default=True, db_index=True,
+    )
 
     def get_bound_model(self):
         return apps.get_model(app_label=self.bound_app, model_name=self.bound_object)
