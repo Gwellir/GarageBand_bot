@@ -35,5 +35,5 @@ def run_polling():
 
         updater.start_polling()
         updaters.append(updater)
-    if len(updaters):
-        updaters[0].idle()
+    # if len(updaters):
+    #     updaters[0].idle()
