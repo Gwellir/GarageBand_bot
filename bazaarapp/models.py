@@ -341,6 +341,15 @@ class SaleAd(models.Model):
             )
         )
 
+    def save_photos(self, bot):
+        pass
+        # for photo in self.photos.all():
+        #     file = Bot(bot.telegram_instance.token).get_file(file_id=photo.tg_file_id)
+        #     temp = tempfile.TemporaryFile()
+        #     file.download(out=temp)
+        #     photo.image.save(f"{photo.tg_file_id}.jpg", temp)
+        #     temp.close()
+
     @transaction.atomic
     def set_ready(self, bot):
         """
@@ -350,12 +359,7 @@ class SaleAd(models.Model):
         готовности, а затем публикует заявку в канал
         """
 
-        for photo in self.photos.all():
-            file = Bot(bot.telegram_instance.token).get_file(file_id=photo.tg_file_id)
-            temp = tempfile.TemporaryFile()
-            file.download(out=temp)
-            photo.image.save(f"{photo.tg_file_id}.jpg", temp)
-            temp.close()
+        self.save_photos(bot)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
