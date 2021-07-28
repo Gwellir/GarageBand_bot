@@ -71,7 +71,9 @@ class MessengerBot(models.Model):
         verbose_name="Бот включён", default=True, db_index=True
     )
     is_debug = models.BooleanField(
-        verbose_name="Для дебага", default=True, db_index=True,
+        verbose_name="Для дебага",
+        default=True,
+        db_index=True,
     )
 
     def get_bound_model(self):
