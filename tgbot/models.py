@@ -7,7 +7,7 @@ from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot
-from telegram.error import BadRequest
+from telegram.error import BadRequest, TimedOut
 
 from convoapp.processors import (
     CarTypeInputProcessor,
@@ -408,12 +408,21 @@ class WorkRequest(models.Model):
         готовности, а затем публикует заявку в канал
         """
 
-        for photo in self.photos.all():
-            file = Bot(bot.telegram_instance.token).get_file(file_id=photo.tg_file_id)
-            temp = tempfile.TemporaryFile()
-            file.download(out=temp)
-            photo.image.save(f"{photo.tg_file_id}.jpg", temp)
-            temp.close()
+        # todo implement a load queue
+        try:
+            for photo in self.photos.all():
+                file = Bot(bot.telegram_instance.token).get_file(
+                    file_id=photo.tg_file_id
+                )
+                temp = tempfile.TemporaryFile()
+                file.download(out=temp)
+                photo.image.save(f"{photo.tg_file_id}.jpg", temp)
+                temp.close()
+        except TimedOut:
+            BOT_LOG.warning(
+                f"Timed Out during getting an image file, bot {bot.id}, user {self.user.user_id}"
+            )
+
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
