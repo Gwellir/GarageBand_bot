@@ -30,6 +30,11 @@ def get_and_verify_callback_data(callback_query, last_id):
     """Проверяет, что коллбек не пуст, и возвращает содержимое, иначе None"""
 
     if callback_query:
+        if callback_query.data:
+            try:
+                callback_query.answer()
+            except BadRequest:
+                pass
         return callback_query.data
     else:
         return None
@@ -203,8 +208,6 @@ def message_handler(update, context):
     last_id = context.user_data.get("last_message_id", None)
 
     command = get_and_verify_callback_data(update.callback_query, last_id)
-    if command:
-        update.callback_query.answer()
 
     # todo привести к неспецифическому для телеграма виде
     bot = context.bot_data.get("msg_bot")
