@@ -1,4 +1,5 @@
 import tempfile
+import time
 
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
@@ -428,6 +429,7 @@ class RegisteredAd(models.Model):
             reg_request.album_end_id = message_ids[-2]
         reg_request.save()
         bound.save()
+        time.sleep(1)
         send_messages_return_ids(
             bound.get_admin_message(),
             bot.telegram_instance.admin_group_id,
