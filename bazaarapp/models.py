@@ -182,7 +182,7 @@ class SaleAd(models.Model):
             registered_pk = registered_msg_id = "000"
             registered_feedback = None
         if self.can_bargain:
-            ad_bargain_string = "торг"
+            ad_bargain_string = "Торг!"
         else:
             ad_bargain_string = ""
         if self.price_tag:
@@ -259,6 +259,7 @@ class SaleAd(models.Model):
         media = self.get_media()
         msg = fill_data(bazaar_strings.summary, self.data_as_dict())
         msg["album"] = media
+        msg["ready"] = ready
         if ready:
             msg.pop("buttons")
 

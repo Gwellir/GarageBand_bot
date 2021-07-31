@@ -171,7 +171,7 @@ stages_info = [
             ],
             [
                 {
-                    "text": "ЗАКРЫТЬ ЗАЯВКУ",
+                    "text": "Снять Авто с продажи",
                     "callback_data": "complete {registered_pk}",
                 },
             ],
