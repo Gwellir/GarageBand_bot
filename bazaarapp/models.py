@@ -218,7 +218,7 @@ class SaleAd(models.Model):
 
         if self.photos.all():
             return [
-                InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:10]
+                InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:9]
             ]
         else:
             return []
