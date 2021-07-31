@@ -3,7 +3,7 @@ from time import sleep
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot, InputMediaPhoto, ParseMode
-from telegram.error import BadRequest
+from telegram.error import BadRequest, TimedOut
 
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.processors import (
@@ -332,12 +332,15 @@ class SaleAd(models.Model):
             except BadRequest:
                 pass
             self.registered.album_end_id = self.registered.album_start_id
-        bot.edit_message_text(
-            chat_id=instance.publish_id,
-            message_id=self.registered.channel_message_id,
-            parse_mode=ParseMode.HTML,
-            text=self.get_summary_sold(),
-        )
+        try:
+            bot.edit_message_text(
+                chat_id=instance.publish_id,
+                message_id=self.registered.channel_message_id,
+                parse_mode=ParseMode.HTML,
+                text=self.get_summary_sold(),
+            )
+        except TimedOut:
+            pass
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
                 user_id=self.user.username,
