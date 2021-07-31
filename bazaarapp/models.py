@@ -1,3 +1,5 @@
+from time import sleep
+
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot, InputMediaPhoto, ParseMode
@@ -318,13 +320,17 @@ class SaleAd(models.Model):
                         instance.publish_id,
                         msg_id,
                     )
+                    sleep(0.1)
                 except BadRequest:
                     pass
-            bot.edit_message_media(
-                chat_id=instance.publish_id,
-                message_id=self.registered.album_start_id,
-                media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-            )
+            try:
+                bot.edit_message_media(
+                    chat_id=instance.publish_id,
+                    message_id=self.registered.album_start_id,
+                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+                )
+            except BadRequest:
+                pass
             self.registered.album_end_id = self.registered.album_start_id
         bot.edit_message_text(
             chat_id=instance.publish_id,
