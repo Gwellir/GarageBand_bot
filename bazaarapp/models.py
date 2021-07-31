@@ -320,7 +320,7 @@ class SaleAd(models.Model):
                         instance.publish_id,
                         msg_id,
                     )
-                    sleep(0.1)
+                    sleep(1)
                 except BadRequest:
                     pass
             try:
