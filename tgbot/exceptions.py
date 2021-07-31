@@ -63,11 +63,11 @@ class TextNotProvidedError(BotProcessingError):
         super().__init__("Запрошенный текст не введён!")
 
 
-class TagDoesNotExist(BotProcessingError):
-    """Возникает, когда пользователь вводит неправильное имя тага"""
+class IncorrectChoiceError(BotProcessingError):
+    """Возникает, когда пользователь вводит неправильное имя для выборной опции"""
 
     def __init__(self, name):
-        super().__init__(f"Таг {name} не существует!")
+        super().__init__(f'Выбранное значение не существует: "{name}"')
 
 
 class CallbackNotProvidedError(BotProcessingError):
@@ -123,6 +123,30 @@ class CallbackExpiredError(BotProcessingError):
             f"Нажата кнопка в старом сообщении!"
             f"Пользователь: {user_id}, команда: {command}"
         )
+
+
+class NotANumberError(BotProcessingError):
+    """Возникает, когда пользователь вводит не число при запросе числа"""
+
+    def __init__(self):
+        super().__init__("Введено не число!")
+
+
+class IncorrectNumberError(BotProcessingError):
+    """Возникает, когда пользователь вводит число, не подходящее под формат запроса"""
+
+    def __init__(self):
+        super().__init__("Введено неверное число!")
+
+
+class ActionAlreadyCompletedError(BotProcessingError):
+    """
+    Возникает, когда пользователь пытается загрузить старый объект
+    для совершения вторичного действия, но действие уже выполнено.
+    """
+
+    def __init__(self, obj_name, obj_num):
+        super().__init__(f"Попытка загрузки завершённого {obj_name} #{obj_num}!")
 
 
 class IgnoreActionError(Exception):

@@ -2,25 +2,85 @@
 
 import tempfile
 
+from django.apps import apps
 from django.core.files import File
 from django.db import models, transaction
+from django.utils.translation import gettext_lazy as _
+from telegram import Bot
+from telegram.error import BadRequest, TimedOut
 
-from convoapp.replies import (
-    get_admin_message,
-    get_feedback_message,
-    get_summary_for_request,
-)
-from garage_band_bot.settings import (
-    ADMIN_GROUP_ID,
-    DISCUSSION_GROUP_ID,
-    FEEDBACK_GROUP_ID,
-    PUBLISHING_CHANNEL_NAME,
+from convoapp.processors import (
+    CarTypeInputProcessor,
+    DescriptionInputProcessor,
+    FeedbackInputProcessor,
+    NameInputProcessor,
+    SetReadyInputProcessor,
+    StartInputProcessor,
+    StorePhotoInputProcessor,
+    TagInputProcessor,
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
-from tgbot.bot.senders import publish_summary_return_id, send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
+from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
+
+
+class TGInstance(models.Model):
+    """Модель, описывающая инстанс бота в телеграме"""
+
+    token = models.CharField(
+        verbose_name="Токен ТГ", max_length=50, blank=False, db_index=True
+    )
+    publish_id = models.BigIntegerField(verbose_name="Основной канал бота", blank=False)
+    publish_name = models.CharField(
+        verbose_name="Название канала", max_length=100, blank=False
+    )
+    admin_group_id = models.BigIntegerField(
+        verbose_name="Группа администрирования", null=True
+    )
+    discussion_group_id = models.BigIntegerField(
+        verbose_name="Группа обсуждения", null=True
+    )
+    feedback_group_id = models.BigIntegerField(verbose_name="Группа фидбека", null=True)
+
+
+class MessengerBot(models.Model):
+    """Модель, описывающая бота, предназначенного для конкретной цели"""
+
+    name = models.CharField(verbose_name="Наименование", max_length=150)
+    bound_app = models.CharField(
+        verbose_name="Приложение для обработки объекта",
+        max_length=50,
+        blank=False,
+        default="tgbot",
+    )
+    bound_object = models.CharField(
+        verbose_name="Рабочий объект", max_length=50, blank=False
+    )
+    telegram_instance = models.ForeignKey(
+        TGInstance,
+        related_name="bot",
+        on_delete=models.SET_NULL,
+        null=True,
+        default=None,
+    )
+    is_active = models.BooleanField(
+        verbose_name="Бот включён", default=True, db_index=True
+    )
+    is_debug = models.BooleanField(
+        verbose_name="Для дебага",
+        default=True,
+        db_index=True,
+    )
+
+    def get_bound_model(self):
+        return apps.get_model(app_label=self.bound_app, model_name=self.bound_object)
+
+    def get_bound_name(self):
+        return self.bound_object.lower()
 
 
 # todo merge with Django Auth User
@@ -125,6 +185,43 @@ class Tag(models.Model):
         return f"#{self.pk} {self.name}"
 
 
+class WorkRequestStage(models.Model):
+    """
+    Модель стадии оформления заявки.
+    """
+
+    name = models.CharField(
+        verbose_name="Наименование", max_length=50, blank=True, default=""
+    )
+    processor = models.CharField(
+        verbose_name="Процессор обработки", max_length=50, null=True
+    )
+    reply_pattern = models.TextField(verbose_name="Шаблон ответа")
+    buttons = models.JSONField(verbose_name="Набор кнопок")
+
+    def get_processor(self):
+        processors = {
+            RequestFormingStage.WELCOME: StartInputProcessor,
+            RequestFormingStage.GET_NAME: NameInputProcessor,
+            RequestFormingStage.GET_REQUEST_TAG: TagInputProcessor,
+            RequestFormingStage.GET_CAR_TYPE: CarTypeInputProcessor,
+            RequestFormingStage.GET_DESC: DescriptionInputProcessor,
+            RequestFormingStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
+            RequestFormingStage.CHECK_DATA: SetReadyInputProcessor,
+            RequestFormingStage.LEAVE_FEEDBACK: FeedbackInputProcessor,
+        }
+        return processors.get(self.pk)
+
+    def get_by_callback(self, callback):
+        callback_to_stage = {
+            "new_request": RequestFormingStage.GET_NAME,
+            "restart": RequestFormingStage.WELCOME,
+            "leave_feedback": RequestFormingStage.LEAVE_FEEDBACK,
+        }
+
+        return callback_to_stage.get(callback)
+
+
 class WorkRequest(models.Model):
     """
     Модель заявки
@@ -158,12 +255,20 @@ class WorkRequest(models.Model):
     is_discarded = models.BooleanField(
         verbose_name="Флаг отказа от проведения заявки", default=False, db_index=True
     )
+    is_locked = models.BooleanField(
+        verbose_name="Флаг полного завершения работы по заявке",
+        default=False,
+        db_index=True,
+    )
     dialog = models.OneToOneField(
         "convoapp.Dialog",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="request",
+        related_name="bound_workrequest",
         default=None,
+    )
+    stage = models.ForeignKey(
+        WorkRequestStage, on_delete=models.SET_NULL, null=True, default=1
     )
     # photos backref
     # registered backref
@@ -180,9 +285,7 @@ class WorkRequest(models.Model):
         либо если отброшена.
         """
 
-        return WorkRequest.objects.get_or_create(
-            user=user, dialog=dialog, is_discarded=False
-        )
+        return cls.objects.get_or_create(user=user, dialog=dialog, is_discarded=False)
 
     # todo separate into a manager?
     def data_as_dict(self):
@@ -203,7 +306,7 @@ class WorkRequest(models.Model):
         else:
             tag_name = None
         return dict(
-            channel_name=PUBLISHING_CHANNEL_NAME,
+            channel_name=self.dialog.bot.telegram_instance.publish_name,
             request_pk=self.pk,
             request_tag=tag_name,
             request_desc=self.description,
@@ -216,7 +319,7 @@ class WorkRequest(models.Model):
             registered_feedback=registered_feedback,
         )
 
-    def get_photo(self):
+    def get_media(self):
         """
         Возвращает объект фотографии, пригодный для передачи в Телеграм.
 
@@ -229,6 +332,73 @@ class WorkRequest(models.Model):
         else:
             return File(open(DEFAULT_LOGO_FILE, "rb"))
 
+    def get_related_tag(self, text):
+        try:
+            tag = Tag.objects.get(name=text)
+        except Tag.DoesNotExist:
+            tag = Tag.objects.get(pk=1)  # default "Другое"
+
+        return tag
+
+    def get_reply_for_stage(self):
+        """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
+
+        num = self.stage_id - 1
+        msg = fill_data(repair_strings.stages_info[num], self.data_as_dict())
+
+        return msg
+
+    def get_feedback_message(self):
+        """Возвращает шаблон сообщения для отзыва."""
+
+        msg = fill_data(repair_strings.feedback, self.data_as_dict())
+
+        return msg
+
+    def get_admin_message(self):
+        """Возвращает шаблон сообщения для администрирования."""
+
+        msg = fill_data(repair_strings.admin, self.data_as_dict())
+
+        return msg
+
+    def get_summary(self, ready=False):
+        """Возвращает шаблон саммари"""
+
+        msg = fill_data(repair_strings.summary, self.data_as_dict())
+        msg["caption"] = msg.pop("text")
+        msg["photo"] = self.get_media()
+        if ready:
+            msg.pop("buttons")
+
+        return msg
+
+    def get_ready_stage(self):
+        return RequestFormingStage.DONE
+
+    def check_data(self):
+        return self.stage_id == RequestFormingStage.CHECK_DATA
+
+    def is_done(self):
+        return self.stage_id in [
+            RequestFormingStage.DONE,
+            RequestFormingStage.FEEDBACK_DONE,
+        ]
+
+    def restart(self):
+        self.stage_id = RequestFormingStage.WELCOME
+
+    def delete_post(self):
+        instance = self.dialog.bot.telegram_instance
+        bot = Bot(instance.token)
+        try:
+            bot.delete_message(instance.publish_id, self.registered.channel_message_id)
+        except BadRequest:
+            pass
+        finally:
+            self.is_locked = True
+            self.save()
+
     @transaction.atomic
     def set_ready(self, bot):
         """
@@ -238,12 +408,22 @@ class WorkRequest(models.Model):
         готовности, а затем публикует заявку в канал
         """
 
-        for photo in self.photos.all():
-            file = bot.get_file(file_id=photo.tg_file_id)
-            temp = tempfile.TemporaryFile()
-            file.download(out=temp)
-            photo.image.save(f"{photo.tg_file_id}.jpg", temp)
-            temp.close()
+        # todo implement a load queue
+        try:
+            for photo in self.photos.all():
+                file = Bot(bot.telegram_instance.token).get_file(
+                    file_id=photo.tg_file_id
+                )
+                temp = tempfile.TemporaryFile()
+                file.download(out=temp)
+                photo.image.save(f"{photo.tg_file_id}.jpg", temp)
+                temp.close()
+        except TimedOut:
+            BOT_LOG.warning(
+                f"Timed Out during getting an image file, bot {bot.id},"
+                f" user {self.user.user_id}"
+            )
+
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
@@ -263,7 +443,7 @@ class RegisteredRequest(models.Model):
     Содержит связь с заявкой, а также информацию о посте в канале (номер сообщения)
     """
 
-    request = models.OneToOneField(
+    bound = models.OneToOneField(
         WorkRequest, on_delete=models.CASCADE, related_name="registered"
     )
     channel_message_id = models.PositiveIntegerField(
@@ -277,55 +457,60 @@ class RegisteredRequest(models.Model):
     )
 
     def __str__(self):
-        return f"{self.pk} {self.request.user} ({self.channel_message_id})"
+        return f"{self.pk} {self.bound.user} ({self.channel_message_id})"
 
     def as_tg_html(self):
+        channel_name = self.bound.dialog.bot.telegram_instance.publish_name
         return (
-            f'<a href="https://t.me/{PUBLISHING_CHANNEL_NAME}/'
+            f'<a href="https://t.me/{channel_name}/'
             f'{self.channel_message_id}">#{self.pk}</a>'
         )
 
     @classmethod
     @transaction.atomic
-    def publish(cls, request, bot):
+    def publish(cls, bound, bot):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
         reg_request = cls.objects.create(
-            request=request,
+            bound=bound,
         )
-        message_id = publish_summary_return_id(
-            get_summary_for_request(
-                request.data_as_dict(), request.get_photo(), ready=True
-            ),
-            request.user,
+        message_ids = send_messages_return_ids(
+            bound.get_summary(ready=True),
+            bot.telegram_instance.publish_id,
             bot,
         )
-        reg_request.channel_message_id = message_id
+        reg_request.channel_message_id = message_ids[0]
         reg_request.save()
-        request.save()
-        send_message_return_id(
-            get_admin_message(request.data_as_dict()), ADMIN_GROUP_ID, bot
+        bound.save()
+        send_messages_return_ids(
+            bound.get_admin_message(),
+            bot.telegram_instance.admin_group_id,
+            bot,
         )
 
     def post_feedback(self, bot):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""
 
-        send_message_return_id(
-            get_feedback_message(self.request.data_as_dict()),
-            DISCUSSION_GROUP_ID,
-            bot,
-            reply_to=self.group_message_id,
-        )
-        send_message_return_id(
-            get_feedback_message(self.request.data_as_dict()),
-            FEEDBACK_GROUP_ID,
+        try:
+            send_messages_return_ids(
+                self.bound.get_feedback_message(),
+                bot.telegram_instance.discussion_group_id,
+                bot,
+                reply_to=self.group_message_id,
+            )
+        except BadRequest:
+            # todo add proper logging
+            pass
+        send_messages_return_ids(
+            self.bound.get_feedback_message(),
+            bot.telegram_instance.feedback_group_id,
             bot,
         )
 
 
 class RequestPhoto(models.Model):
-    """Модель для хранения сопровождающих фотографий"""
+    """Модель для хранения сопровождающих фотографий к заявке"""
 
     description = models.CharField(
         verbose_name="Описание фото", max_length=255, null=True
@@ -337,3 +522,18 @@ class RequestPhoto(models.Model):
     request = models.ForeignKey(
         WorkRequest, on_delete=models.CASCADE, related_name="photos", db_index=True
     )
+
+
+class RequestFormingStage(models.IntegerChoices):
+    """Набор стадий проведения диалога."""
+
+    WELCOME = 1, _("Приветствие")
+    GET_NAME = 2, _("Получить имя")
+    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
+    GET_CAR_TYPE = 4, _("Получить тип автомобиля")
+    GET_DESC = 5, _("Получить описание заявки")
+    REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
+    CHECK_DATA = 7, _("Проверить заявку")
+    DONE = 8, _("Работа завершена")
+    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
+    FEEDBACK_DONE = 10, _("Отзыв получен")

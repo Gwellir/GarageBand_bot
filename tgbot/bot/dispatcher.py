@@ -1,15 +1,7 @@
 """Содержит функции запуска и настройки telegram-бота."""
 
-import telegram
-from telegram.ext import (
-    CallbackQueryHandler,
-    CommandHandler,
-    Filters,
-    MessageHandler,
-    Updater,
-)
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 
-from garage_band_bot.settings import ADMIN_GROUP_ID, TELEGRAM_TOKEN
 from logger.log_config import BOT_LOG
 from tgbot.bot.handlers import (
     admin_command_handler,
@@ -35,21 +27,4 @@ def setup_dispatcher(dp):
 
     BOT_LOG.debug("Event handlers initialized.")
 
-
-def run_polling():
-    """Запуск в режиме polling"""
-
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
-
-    dp = updater.dispatcher
-    dp = setup_dispatcher(dp)
-
-    bot_info = telegram.Bot(TELEGRAM_TOKEN).get_me()
-    bot_link = f"https://t.me/{bot_info['username']}"
-
-    BOT_LOG.info(f"Polling of '{bot_link}' started")
-
-    updater.bot.send_message(chat_id=ADMIN_GROUP_ID, text="Бот перезапущен 😉")
-
-    updater.start_polling()
-    updater.idle()
+    return dp

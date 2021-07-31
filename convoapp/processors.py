@@ -15,7 +15,6 @@ from tgbot.exceptions import (
     TextTooLongError,
     TextTooShortError,
 )
-from tgbot.models import Tag
 
 
 class BaseInputProcessor:
@@ -28,18 +27,24 @@ class BaseInputProcessor:
 
     def __call__(self, dialog, data):
         self.dialog = dialog
-        self.model = dialog.request
+        self.model = dialog.bound
+        self.messages = []
         step = self.get_step(data)
-        if step > 0:
+        if step >= 0:
             self.set_field(data)
 
+        self.dialog.bound.stage_id += step
         return step
 
     def set_field(self, data):
         pass
 
+    def cancel_step(self):
+        pass
+
     def get_step(self, data):
         if data["text"] == "Отменить":
+            self.cancel_step()
             return -1
         else:
             return 1
@@ -49,7 +54,7 @@ class StartInputProcessor(BaseInputProcessor):
     """Процессор сообщения-приглашения."""
 
     def get_step(self, data):
-        if data["text"] == "Оформить заявку":
+        if data["callback"] == "new_request":
             return 1
         return 0
 
@@ -85,7 +90,7 @@ class TextInputProcessor(BaseInputProcessor):
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
                 user_id=self.dialog.user.username,
-                stage=self.dialog.dialog.stage,
+                stage=self.dialog.bound.stage,
                 model=self.model,
                 data=value,
             )
@@ -118,12 +123,7 @@ class TagInputProcessor(TextInputProcessor):
         if not data["text"]:
             raise TextNotProvidedError
         text = data["text"]
-        try:
-            tag = Tag.objects.get(name=text)
-        except Tag.DoesNotExist:
-            tag = Tag.objects.get(pk=1)  # default "Другое"
-
-        return tag
+        return self.model.get_related_tag(text)
 
 
 class CarTypeInputProcessor(TextInputProcessor):
@@ -175,7 +175,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
     def set_field(self, data):
         # to avoid awkward behavior while retrying the step multiple times
         self.model.photos.all().delete()
-        if data["text"] == "Пропустить":
+        if data["text"] == "Далее":
             return
 
         description = data["caption"]
@@ -185,7 +185,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
         if data["photo"] and not data["callback"]:
             # todo сильно связано со структурой данных ТГ
             photo_file_id = data["photo"]
-            self.model.photos.create(
+            photo = self.model.photos.create(
                 # todo fix magic number, use textInput preprocessor?
                 description=description[:250],
                 tg_file_id=photo_file_id,
@@ -193,8 +193,8 @@ class StorePhotoInputProcessor(BaseInputProcessor):
             BOT_LOG.debug(
                 LogStrings.DIALOG_SET_FIELD.format(
                     user_id=self.dialog.user.username,
-                    stage=self.dialog.dialog.stage,
-                    model="RequestPhoto",
+                    stage=self.model.stage,
+                    model=photo,
                     data=data,
                 )
             )
@@ -216,10 +216,11 @@ class SetReadyInputProcessor(BaseInputProcessor):
         if not data["callback"]:
             raise CallbackNotProvidedError
         elif data["callback"] == "restart":
-            return 0
-        elif data["callback"].split() == ["final_confirm", str(dialog.request.pk)]:
-            dialog.request.set_ready(data["bot"])
-            return 1
+            return
+        elif data["callback"].split() == ["final_confirm", str(dialog.bound.pk)]:
+            dialog.bound.set_ready(data["bot"])
+            dialog.bound.stage_id += 1
+            return
         raise ButtonIsLockedError
 
 
@@ -233,6 +234,6 @@ class FeedbackInputProcessor(TextInputProcessor):
         return 1
 
     def set_field(self, data):
-        self.model = self.dialog.request.registered
+        self.model = self.dialog.bound.registered
         super().set_field(data)
         self.model.post_feedback(data["bot"])

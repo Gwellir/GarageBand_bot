@@ -1,22 +1,8 @@
+from django.apps import apps
 from django.db import models, transaction
-from django.utils.translation import gettext_lazy as _
 
-from tgbot.models import BotUser, WorkRequest
-
-
-class DialogStage(models.IntegerChoices):
-    """Набор стадий проведения диалога."""
-
-    WELCOME = 1, _("Приветствие")
-    GET_NAME = 2, _("Получить имя")
-    GET_REQUEST_TAG = 3, _("Получить категорию заявки")
-    GET_CAR_TYPE = 4, _("Получить тип автомобиля")
-    GET_REQUEST_DESC = 5, _("Получить описание заявки")
-    REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
-    CHECK_DATA = 7, _("Проверить заявку")
-    DONE = 8, _("Работа завершена")
-    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
-    FEEDBACK_DONE = 10, _("Отзыв получен")
+from tgbot.exceptions import ActionAlreadyCompletedError
+from tgbot.models import BotUser, MessengerBot
 
 
 class Dialog(models.Model):
@@ -27,13 +13,10 @@ class Dialog(models.Model):
     и данные о времени начала и последнем сообщении пользователя.
     """
 
-    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
-    stage = models.PositiveSmallIntegerField(
-        verbose_name="Состояние диалога",
-        choices=DialogStage.choices,
-        null=False,
-        default=DialogStage.WELCOME,
+    bot: MessengerBot = models.ForeignKey(
+        MessengerBot, on_delete=models.CASCADE, related_name="dialog", default=1
     )
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     is_finished = models.BooleanField(
         verbose_name="Диалог завершён", default=False, db_index=True
     )
@@ -47,11 +30,15 @@ class Dialog(models.Model):
     )
 
     def __str__(self):
-        return f"{self.pk} {self.user} @{self.stage}"
+        return f"{self.pk} {self.user} @{self.bound.stage_id}"
+
+    @property
+    def bound(self):
+        return getattr(self, f"bound_{self.bot.get_bound_name()}")
 
     @classmethod
     @transaction.atomic()
-    def get_or_create(cls, user, load=None):
+    def get_or_create(cls, bot, user, load=None):
         """
         Получает из базы, либо создаёт структуру из пользователя, диалога и заявки.
         Если все связанные с пользователем диалоги завершены - формирует новую пару
@@ -59,14 +46,25 @@ class Dialog(models.Model):
         """
 
         if not load:
-            dialog, d_created = cls.objects.get_or_create(user=user, is_finished=False)
-            request, r_created = WorkRequest.get_or_create(user, dialog)
+            dialog, d_created = cls.objects.get_or_create(
+                bot=bot, user=user, is_finished=False
+            )
+            # request, r_created = WorkRequest.get_or_create(user, dialog)
+            # todo make a factory
+            Model = apps.get_model(app_label=bot.bound_app, model_name=bot.bound_object)
+            bound, b_created = Model.get_or_create(user, dialog)
         else:
-            curr_dialog = Dialog.objects.filter(user=user, is_finished=False).first()
+            load_filter = {f"bound_{bot.get_bound_name()}__registered__pk": load}
+            dialog = Dialog.objects.get(bot=bot, user=user, **load_filter)
+            if dialog.bound.is_locked:
+                raise ActionAlreadyCompletedError(bot.get_bound_name(), load)
+            curr_dialog = Dialog.objects.filter(
+                bot=bot, user=user, is_finished=False
+            ).first()
             if curr_dialog:
                 curr_dialog.finish()
-            dialog = Dialog.objects.get(user=user, request__registered__pk=load[0])
-            dialog.stage = load[1]
+
+            dialog.bound.stage_id = dialog.bound.get_ready_stage()
             dialog.is_finished = False
 
         return dialog
@@ -79,9 +77,9 @@ class Dialog(models.Model):
         в ином случае - is_finished.
         """
 
-        if not self.request.is_complete:
-            self.request.is_discarded = True
-            self.request.save()
+        if not self.bound.is_complete:
+            self.bound.is_discarded = True
+            self.bound.save()
         self.is_finished = True
         self.save()
 
@@ -98,9 +96,7 @@ class Message(models.Model):
         Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
     )
     text = models.TextField(verbose_name="Текст сообщения")
-    stage = models.PositiveSmallIntegerField(
-        verbose_name="Стадия диалога", choices=DialogStage.choices
-    )
+    stage = models.PositiveSmallIntegerField(verbose_name="Стадия диалога")
     message_id = models.IntegerField(
         verbose_name="Номер сообщения", default=None, null=True
     )

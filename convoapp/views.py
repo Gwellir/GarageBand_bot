@@ -13,8 +13,8 @@ def get_registered_pk(dialog):
     :type dialog: :class:`convoapp.models.Dialog`
     """
 
-    if hasattr(dialog, "request") and hasattr(dialog.request, "registered"):
-        return dialog.request.registered.pk
+    if hasattr(dialog, "bound") and hasattr(dialog.bound, "registered"):
+        return dialog.bound.registered.pk
     return None
 
 
@@ -26,8 +26,8 @@ def get_message_id(dialog):
     :type dialog: :class:`convoapp.models.Dialog`
     """
 
-    if hasattr(dialog, "request") and hasattr(dialog.request, "registered"):
-        return dialog.request.registered.channel_message_id
+    if hasattr(dialog, "bound") and hasattr(dialog.bound, "registered"):
+        return dialog.bound.registered.channel_message_id
     return None
 
 
@@ -38,7 +38,7 @@ def get_is_complete(dialog):
     :type dialog: :class:`convoapp.models.Dialog`
     """
 
-    return hasattr(dialog, "request") and dialog.request.is_complete
+    return hasattr(dialog, "bound") and dialog.bound.is_complete
 
 
 def get_is_discarded(dialog):
@@ -48,7 +48,7 @@ def get_is_discarded(dialog):
     :type dialog: :class:`convoapp.models.Dialog`
     """
 
-    return hasattr(dialog, "request") and dialog.request.is_discarded
+    return hasattr(dialog, "bound") and dialog.bound.is_discarded
 
 
 def get_tag(dialog):
@@ -58,8 +58,8 @@ def get_tag(dialog):
     :type dialog: :class:`convoapp.models.Dialog`
     """
 
-    if hasattr(dialog, "request"):
-        return dialog.request.tag
+    if hasattr(dialog, "bound"):
+        return dialog.bound.tag
     return None
 
 

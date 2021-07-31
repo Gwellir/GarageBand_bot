@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "tgbot",
     "adminapp",
     "convoapp",
+    "bazaarapp",
+    "repairsapp",
 ]
 
 MIDDLEWARE = [

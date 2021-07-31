@@ -10,15 +10,15 @@ from telegram.utils.helpers import mention_html
 
 from convoapp.dialog import DialogProcessor
 from convoapp.models import Message
-from garage_band_bot.settings import ADMIN_GROUP_ID, DEV_TG_ID, PUBLISHING_CHANNEL_ID
+from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
-from tgbot.bot.senders import send_message_return_id
+from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_text
 from tgbot.exceptions import (
+    ActionAlreadyCompletedError,
     AdminActionError,
-    CallbackExpiredError,
     MessageIsAnEditError,
     UnknownAdminCommandError,
     UserIsBannedError,
@@ -36,7 +36,7 @@ def get_and_verify_callback_data(callback_query, last_id):
 
 
 # todo make this prepare a file object?
-def get_photo_data(message_data, bot):
+def get_photo_data(message_data):
     """Возвращает данные фотографии из формата данных PTB."""
 
     if message_data.photo:
@@ -53,9 +53,10 @@ def post_handler(update, context):
     """
 
     # для работы отзовика нам требуется номер поста из канала в группе
+    publish_id = context.bot_data.get("msg_bot").telegram_instance.publish_id
     fwd_msg_id = update.effective_message.forward_from_message_id
     fwd_from_chat = update.effective_message.forward_from_chat
-    if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == int(PUBLISHING_CHANNEL_ID):
+    if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == publish_id:
         try:
             reg_request = RegisteredRequest.objects.get(channel_message_id=fwd_msg_id)
             reg_request.group_message_id = update.effective_message.message_id
@@ -94,8 +95,9 @@ def admin_command_handler(update, context):
     except KeyError:
         raise UnknownAdminCommandError(command, key)
 
+    bot = context.bot_data.get("msg_bot")
     try:
-        action(context.bot, int(key), callback=update.callback_query)
+        action(bot, int(key), callback=update.callback_query)
     except (AdminActionError, UserIsBannedError) as e:
         update.callback_query.answer(e.args[0])
 
@@ -105,6 +107,9 @@ def admin_command_handler(update, context):
 
 
 def show_user_requests_stats(update, context):
+
+    bot = context.bot_data.get("msg_bot")
+    # todo optimize db request
     length = 30
     users = BotUser.objects.all().order_by("pk")
     text = ""
@@ -115,12 +120,16 @@ def show_user_requests_stats(update, context):
             text = f"{text}{user.stats_as_tg_html()}\n"
             i += 1
         if i == length - 1:
-            send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
+            send_messages_return_ids(
+                {"text": text}, bot.telegram_instance.admin_group_id, bot
+            )
             sleep(0.5)
             i = 0
             text = ""
     if text:
-        send_message_return_id({"text": text}, ADMIN_GROUP_ID, context.bot)
+        send_messages_return_ids(
+            {"text": text}, bot.telegram_instance.admin_group_id, bot
+        )
 
 
 def chat_ban_user(update, context):
@@ -142,6 +151,7 @@ def chat_ban_user(update, context):
         if reply.from_user.username
         else reply.from_user.full_name,
     )
+    bot = context.bot_data.get("msg_bot")
     try:
         context.bot.restrict_chat_member(
             update.effective_chat.id,
@@ -158,10 +168,10 @@ def chat_ban_user(update, context):
                 can_pin_messages=False,
             ),
         )
-        send_message_return_id(
+        send_messages_return_ids(
             {"text": f"Пользователь {nick} {uid} забанен в обсуждении на сутки"},
             update.effective_chat.id,
-            context.bot,
+            bot,
         )
         reply.delete()
     except BadRequest:
@@ -192,28 +202,18 @@ def message_handler(update, context):
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
 
-    try:
-        command = get_and_verify_callback_data(update.callback_query, last_id)
-        if command:
-            update.callback_query.answer()
-    except CallbackExpiredError as e:
-        BOT_LOG.warning(
-            LogStrings.DIALOG_INPUT_ERROR.format(
-                user_id=update.effective_user.username,
-                stage=None,
-                args=e.args,
-            )
-        )
-        update.callback_query.answer("Используйте кнопки из последнего сообщения!")
-        return
+    command = get_and_verify_callback_data(update.callback_query, last_id)
+    if command:
+        update.callback_query.answer()
 
     # todo привести к неспецифическому для телеграма виде
+    bot = context.bot_data.get("msg_bot")
     input_data = {
-        "bot": context.bot,
+        "bot": bot,
         "id": msg.message_id,
         "text": msg.text,
         "caption": msg.caption,
-        "photo": get_photo_data(msg, context.bot),
+        "photo": get_photo_data(msg),
         "callback": command,
     }
 
@@ -229,18 +229,28 @@ def message_handler(update, context):
             )
         )
         return
+    except ActionAlreadyCompletedError as e:
+        BOT_LOG.warning(
+            LogStrings.DIALOG_INPUT_ERROR.format(
+                user_id=user_data.get("username"),
+                stage=None,
+                args=e.args[0],
+            )
+        )
+        update.callback_query.answer("Это действие уже совершено!")
+        return
 
     for reply in replies:
-        last_id = send_message_return_id(reply, update.effective_user.id, context.bot)
+        ids = send_messages_return_ids(reply, update.effective_user.id, bot)
         Message.objects.create(
             dialog=dialog_processor.dialog,
-            stage=dialog_processor.dialog.stage,
-            message_id=last_id,
+            stage=dialog_processor.dialog.bound.stage_id,
+            message_id=ids[0],
             text=get_bot_message_as_text(reply),
             is_incoming=False,
         )
     if replies:
-        context.user_data["last_message_id"] = last_id
+        context.user_data["last_message_id"] = ids[-1]
 
 
 def error_handler(update, context):
@@ -250,6 +260,7 @@ def error_handler(update, context):
             text = (
                 "Извините, при обработке вашего сообщения"
                 " произошла непредвиденная ошибка.\n"
+                "Попробуйте повторить через несколько минут.\n"
                 "Уведомление разработчикам отправлено!"
             )
             update.effective_message.reply_text(text)
@@ -272,6 +283,7 @@ def error_handler(update, context):
         f" The full traceback:\n\n<code>{escape(trace)}"
         f"</code>"
     )
+    bot = context.bot_data.get("msg_bot")
     for dev_id in devs:
-        send_message_return_id({"text": text}, dev_id, context.bot)
+        send_messages_return_ids({"text": text}, dev_id, bot)
     raise
