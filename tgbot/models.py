@@ -420,7 +420,8 @@ class WorkRequest(models.Model):
                 temp.close()
         except TimedOut:
             BOT_LOG.warning(
-                f"Timed Out during getting an image file, bot {bot.id}, user {self.user.user_id}"
+                f"Timed Out during getting an image file, bot {bot.id},"
+                f" user {self.user.user_id}"
             )
 
         BOT_LOG.debug(

@@ -19,7 +19,6 @@ from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_te
 from tgbot.exceptions import (
     ActionAlreadyCompletedError,
     AdminActionError,
-    CallbackExpiredError,
     MessageIsAnEditError,
     UnknownAdminCommandError,
     UserIsBannedError,
@@ -203,20 +202,9 @@ def message_handler(update, context):
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
 
-    try:
-        command = get_and_verify_callback_data(update.callback_query, last_id)
-        if command:
-            update.callback_query.answer()
-    except CallbackExpiredError as e:
-        BOT_LOG.warning(
-            LogStrings.DIALOG_INPUT_ERROR.format(
-                user_id=update.effective_user.username,
-                stage=None,
-                args=e.args,
-            )
-        )
-        update.callback_query.answer("Используйте кнопки из последнего сообщения!")
-        return
+    command = get_and_verify_callback_data(update.callback_query, last_id)
+    if command:
+        update.callback_query.answer()
 
     # todo привести к неспецифическому для телеграма виде
     bot = context.bot_data.get("msg_bot")
