@@ -430,11 +430,11 @@ class RegisteredAd(models.Model):
         reg_request.save()
         bound.save()
         time.sleep(1)
-        send_messages_return_ids(
-            bound.get_admin_message(),
-            bot.telegram_instance.admin_group_id,
-            bot,
-        )
+        # send_messages_return_ids(
+        #     bound.get_admin_message(),
+        #     bot.telegram_instance.admin_group_id,
+        #     bot,
+        # )
 
 
 class AdPhoto(models.Model):
