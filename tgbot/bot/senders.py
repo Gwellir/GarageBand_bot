@@ -39,7 +39,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     if "caption" in message_data.keys():
         msg = bot.send_photo(
             caption=message_data["caption"], photo=message_data["photo"], **params_dict
-        )
+        ).result()
         ids = [msg.message_id]
     elif "album" in message_data.keys():
         msgs = []
@@ -49,15 +49,14 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
                 disable_web_page_preview=True,
                 timeout=10,
                 **params_dict
-            )
-            time.sleep(1)
+            ).result()
 
         album = message_data["album"]
         if len(album) > 1:
-            msgs = bot.send_media_group(chat_id=user_id, media=album)
+            for _ in range(3):
+                msgs = bot.send_media_group(chat_id=user_id, media=album).result()
         elif len(album):
-            msgs = [bot.send_photo(photo=album[0].media, chat_id=user_id)]
-        time.sleep(1)
+            msgs = [bot.send_photo(photo=album[0].media, chat_id=user_id).result()]
 
         if not message_data.get("ready"):
             text_msg = bot.send_message(
@@ -65,15 +64,14 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
                 disable_web_page_preview=True,
                 timeout=10,
                 **params_dict
-            )
-            time.sleep(1)
+            ).result()
 
         ids = [msg.message_id for msg in msgs]
         ids.append(text_msg.message_id)
     else:
         msg = bot.send_message(
             text=message_data["text"], disable_web_page_preview=True, **params_dict
-        )
+        ).result()
         ids = [msg.message_id]
 
     # todo change to queue implementation
