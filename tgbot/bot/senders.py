@@ -53,8 +53,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
 
         album = message_data["album"]
         if len(album) > 1:
-            for _ in range(3):
-                msgs = bot.send_media_group(chat_id=user_id, media=album).result()
+            msgs = bot.send_media_group(chat_id=user_id, media=album).result()
         elif len(album):
             msgs = [bot.send_photo(photo=album[0].media, chat_id=user_id).result()]
 
