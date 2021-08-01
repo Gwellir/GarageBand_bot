@@ -23,6 +23,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
+from tgbot.bot.queue_bot import MQBot
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
@@ -390,7 +391,7 @@ class WorkRequest(models.Model):
 
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = MQBot(instance.token)
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
         except BadRequest:
@@ -411,7 +412,7 @@ class WorkRequest(models.Model):
         # todo implement a load queue
         try:
             for photo in self.photos.all():
-                file = Bot(bot.telegram_instance.token).get_file(
+                file = MQBot(bot.telegram_instance.token).get_file(
                     file_id=photo.tg_file_id
                 )
                 temp = tempfile.TemporaryFile()

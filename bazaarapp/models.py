@@ -26,6 +26,7 @@ from convoapp.processors import (
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_AD_SOLD_FILE
+from tgbot.bot.queue_bot import MQBot
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
@@ -286,7 +287,7 @@ class SaleAd(models.Model):
 
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = MQBot(instance.token)
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
             if self.registered.album_start_id:
@@ -311,7 +312,7 @@ class SaleAd(models.Model):
         self.is_locked = True
         self.save()
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = MQBot(instance.token)
         if self.registered.album_start_id:
             for msg_id in range(
                 self.registered.album_start_id + 1, self.registered.album_end_id + 1
