@@ -313,16 +313,6 @@ class SaleAd(models.Model):
         self.save()
         instance = self.dialog.bot.telegram_instance
         bot = MQBot(instance.token)
-        if self.registered.album_start_id:
-            try:
-                bot.edit_message_media(
-                    chat_id=instance.publish_id,
-                    message_id=self.registered.album_start_id,
-                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-                )
-                sleep(2)
-            except BadRequest:
-                pass
         try:
             bot.edit_message_text(
                 chat_id=instance.publish_id,
@@ -333,17 +323,27 @@ class SaleAd(models.Model):
             sleep(2)
         except TimedOut:
             pass
-        for msg_id in range(
-                self.registered.album_start_id + 1, self.registered.album_end_id + 1
-        ):
+        if self.registered.album_start_id:
             try:
-                bot.delete_message(
-                    instance.publish_id,
-                    msg_id,
+                bot.edit_message_media(
+                    chat_id=instance.publish_id,
+                    message_id=self.registered.album_start_id,
+                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
                 )
                 sleep(2)
             except BadRequest:
                 pass
+            for msg_id in range(
+                    self.registered.album_start_id + 1, self.registered.album_end_id + 1
+            ):
+                try:
+                    bot.delete_message(
+                        instance.publish_id,
+                        msg_id,
+                    )
+                    sleep(2)
+                except BadRequest:
+                    pass
             self.registered.album_end_id = self.registered.album_start_id
 
         BOT_LOG.debug(
