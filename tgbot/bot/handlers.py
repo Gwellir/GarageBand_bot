@@ -240,7 +240,7 @@ def message_handler(update, context):
                 args=e.args[0],
             )
         )
-        update.callback_query.answer("Это действие уже совершено!")
+        # update.callback_query.answer("Это действие уже совершено!")
         return
 
     for reply in replies:
