@@ -260,14 +260,14 @@ def message_handler(update, context):
 def error_handler(update, context):
     devs = [DEV_TG_ID]
     try:
-        if update.effective_message:
-            text = (
-                "Извините, при обработке вашего сообщения"
-                " произошла непредвиденная ошибка.\n"
-                "Попробуйте повторить через несколько минут.\n"
-                "Уведомление разработчикам отправлено!"
-            )
-            update.effective_message.reply_text(text)
+        # if update.effective_message:
+        #     text = (
+        #         "Извините, при обработке вашего сообщения"
+        #         " произошла непредвиденная ошибка.\n"
+        #         "Попробуйте повторить через несколько минут.\n"
+        #         "Уведомление разработчикам отправлено!"
+        #     )
+            # update.effective_message.reply_text(text)
         trace = "".join(traceback.format_tb(sys.exc_info()[2]))
         payload = ""
         if update.effective_user:
