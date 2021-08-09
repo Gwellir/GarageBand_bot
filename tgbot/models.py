@@ -6,7 +6,6 @@ from django.apps import apps
 from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
-from telegram import Bot
 from telegram.error import BadRequest, TimedOut
 
 from convoapp.processors import (
@@ -26,6 +25,7 @@ from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
+from tgbot.launcher import tg_bots
 
 
 class TGInstance(models.Model):
@@ -390,7 +390,7 @@ class WorkRequest(models.Model):
 
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = tg_bots.get(instance.token)
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
         except BadRequest:
@@ -411,7 +411,7 @@ class WorkRequest(models.Model):
         # todo implement a load queue
         try:
             for photo in self.photos.all():
-                file = Bot(bot.telegram_instance.token).get_file(
+                file = tg_bots.get(bot.telegram_instance.token).get_file(
                     file_id=photo.tg_file_id
                 )
                 temp = tempfile.TemporaryFile()

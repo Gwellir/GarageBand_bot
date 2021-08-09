@@ -1,7 +1,9 @@
+from time import sleep
+
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
-from telegram import Bot, InputMediaPhoto, ParseMode
-from telegram.error import BadRequest
+from telegram import InputMediaPhoto, ParseMode
+from telegram.error import BadRequest, TimedOut
 
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.processors import (
@@ -27,6 +29,7 @@ from tgbot.bot.constants import DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
+from tgbot.launcher import tg_bots
 from tgbot.models import BotUser
 
 
@@ -180,7 +183,7 @@ class SaleAd(models.Model):
             registered_pk = registered_msg_id = "000"
             registered_feedback = None
         if self.can_bargain:
-            ad_bargain_string = "торг"
+            ad_bargain_string = "Торг!"
         else:
             ad_bargain_string = ""
         if self.price_tag:
@@ -257,6 +260,7 @@ class SaleAd(models.Model):
         media = self.get_media()
         msg = fill_data(bazaar_strings.summary, self.data_as_dict())
         msg["album"] = media
+        msg["ready"] = ready
         if ready:
             msg.pop("buttons")
 
@@ -283,7 +287,7 @@ class SaleAd(models.Model):
 
     def delete_post(self):
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = tg_bots.get(instance.token)
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
             if self.registered.album_start_id:
@@ -308,8 +312,27 @@ class SaleAd(models.Model):
         self.is_locked = True
         self.save()
         instance = self.dialog.bot.telegram_instance
-        bot = Bot(instance.token)
+        bot = tg_bots.get(instance.token)
+        try:
+            bot.edit_message_text(
+                chat_id=instance.publish_id,
+                message_id=self.registered.channel_message_id,
+                parse_mode=ParseMode.HTML,
+                text=self.get_summary_sold(),
+            )
+            sleep(2)
+        except TimedOut:
+            pass
         if self.registered.album_start_id:
+            try:
+                bot.edit_message_media(
+                    chat_id=instance.publish_id,
+                    message_id=self.registered.album_start_id,
+                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+                )
+                sleep(2)
+            except BadRequest:
+                pass
             for msg_id in range(
                 self.registered.album_start_id + 1, self.registered.album_end_id + 1
             ):
@@ -318,20 +341,11 @@ class SaleAd(models.Model):
                         instance.publish_id,
                         msg_id,
                     )
+                    sleep(2)
                 except BadRequest:
                     pass
-            bot.edit_message_media(
-                chat_id=instance.publish_id,
-                message_id=self.registered.album_start_id,
-                media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-            )
             self.registered.album_end_id = self.registered.album_start_id
-        bot.edit_message_text(
-            chat_id=instance.publish_id,
-            message_id=self.registered.channel_message_id,
-            parse_mode=ParseMode.HTML,
-            text=self.get_summary_sold(),
-        )
+
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
                 user_id=self.user.username,
