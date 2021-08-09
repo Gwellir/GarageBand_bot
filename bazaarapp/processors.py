@@ -121,18 +121,28 @@ class AlbumPhotoProcessor(BaseInputProcessor):
 
     Проверяет, не пропускается ли этот шаг, создаёт новый инстанс фото в БД."""
 
+    album_dict = {}
+
     def cancel_step(self):
         self.model.photos.all().delete()
 
     def get_step(self, data):
         if data["text"] == "Отменить":
             self.cancel_step()
+            if self.__class__.album_dict.get(self.dialog.user.user_id):
+                self.__class__.album_dict.pop(self.dialog.user.user_id)
             return -1
         elif data["text"] == "Далее":
             self.dialog.suppress_output = False
+            if self.__class__.album_dict.get(self.dialog.user.user_id):
+                self.__class__.album_dict.pop(self.dialog.user.user_id)
             return 1
         else:
-            self.dialog.suppress_output = True
+            if data["media_group_id"] and self.__class__.album_dict.get(self.dialog.user.user_id) == data["media_group_id"]:
+                self.dialog.suppress_output = True
+            else:
+                self.dialog.suppress_output = False
+            self.__class__.album_dict[self.dialog.user.user_id] = data["media_group_id"]
             return 0
 
     def set_field(self, data):

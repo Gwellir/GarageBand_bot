@@ -190,6 +190,10 @@ class SaleAd(models.Model):
             tag_name = self.price_tag.name.replace("$", "").replace(" ", "_")
         else:
             tag_name = None
+        if self.photos.count():
+            photos_loaded = "<pre>Фотографии загружены</pre>\n"
+        else:
+            photos_loaded = ""
         return dict(
             channel_name=self.dialog.bot.telegram_instance.publish_name,
             request_pk=self.pk,
@@ -204,6 +208,7 @@ class SaleAd(models.Model):
             user_name=self.user.name,
             user_phone=self.user.phone,
             user_tg_id=self.user.user_id,
+            photos_loaded=photos_loaded,
             registered_pk=registered_pk,
             registered_msg_id=registered_msg_id,
             registered_feedback=registered_feedback,

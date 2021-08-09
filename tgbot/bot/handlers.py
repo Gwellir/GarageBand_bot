@@ -218,6 +218,7 @@ def message_handler(update, context):
         "caption": msg.caption,
         "photo": get_photo_data(msg),
         "callback": command,
+        "media_group_id": msg.media_group_id,
     }
 
     try:
