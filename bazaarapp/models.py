@@ -30,7 +30,7 @@ from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.launcher import tg_bots
-from tgbot.models import BotUser
+from tgbot.models import BotUser, TrackableUpdateCreateModel
 
 
 class AdFormingStage(models.IntegerChoices):
@@ -103,7 +103,7 @@ class SaleAdStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class SaleAd(models.Model):
+class SaleAd(TrackableUpdateCreateModel):
     """
     Модель заявки
 
@@ -119,9 +119,6 @@ class SaleAd(models.Model):
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
         verbose_name="Подробное описание", max_length=4000, blank=True
-    )
-    formed_at = models.DateTimeField(
-        verbose_name="Время составления", auto_now=True, db_index=True
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
@@ -389,7 +386,7 @@ class SaleAd(models.Model):
         RegisteredAd.publish(self, bot)
 
 
-class RegisteredAd(models.Model):
+class RegisteredAd(TrackableUpdateCreateModel):
     """
     Модель зарегистрированных объявлений
 
