@@ -1,5 +1,6 @@
 from time import sleep
 
+from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import InputMediaPhoto, ParseMode
@@ -25,7 +26,7 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_SOLD_FILE
+from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
@@ -224,7 +225,7 @@ class SaleAd(TrackableUpdateCreateModel):
                 InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:9]
             ]
         else:
-            return []
+            return [File(open(DEFAULT_AD_LOGO_FILE, "rb"))]
 
     def get_related_tag(self, text):
         try:
@@ -261,7 +262,9 @@ class SaleAd(TrackableUpdateCreateModel):
 
         media = self.get_media()
         msg = fill_data(bazaar_strings.summary, self.data_as_dict())
-        msg["album"] = media
+        msg["caption"] = msg.pop("text")
+        if media:
+            msg["photo"] = media[0].media
         msg["ready"] = ready
         if ready:
             msg.pop("buttons")
@@ -316,37 +319,21 @@ class SaleAd(TrackableUpdateCreateModel):
         instance = self.dialog.bot.telegram_instance
         bot = tg_bots.get(instance.token)
         try:
-            bot.edit_message_text(
+            bot.edit_message_media(
+                chat_id=instance.publish_id,
+                message_id=self.registered.channel_message_id,
+                media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+            )
+            sleep(2)
+            bot.edit_message_caption(
                 chat_id=instance.publish_id,
                 message_id=self.registered.channel_message_id,
                 parse_mode=ParseMode.HTML,
-                text=self.get_summary_sold(),
+                caption=self.get_summary_sold(),
             )
             sleep(2)
-        except TimedOut:
+        except (TimedOut, BadRequest):
             pass
-        if self.registered.album_start_id:
-            try:
-                bot.edit_message_media(
-                    chat_id=instance.publish_id,
-                    message_id=self.registered.album_start_id,
-                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-                )
-                sleep(2)
-            except BadRequest:
-                pass
-            for msg_id in range(
-                self.registered.album_start_id + 1, self.registered.album_end_id + 1
-            ):
-                try:
-                    bot.delete_message(
-                        instance.publish_id,
-                        msg_id,
-                    )
-                    sleep(2)
-                except BadRequest:
-                    pass
-            self.registered.album_end_id = self.registered.album_start_id
 
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
@@ -409,7 +396,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
         verbose_name="Идентификатор сообщения в группе", null=True, db_index=True
     )
     feedback = models.TextField(
-        verbose_name="Отзыв пользователя", null=True, max_length=4000
+        verbose_name="Отзыв пользователя", null=True, max_length=750
     )
 
     def __str__(self):
@@ -436,18 +423,15 @@ class RegisteredAd(TrackableUpdateCreateModel):
             bot.telegram_instance.publish_id,
             bot,
         )
-        reg_request.channel_message_id = message_ids[-1]
-        if len(message_ids) > 1:
-            reg_request.album_start_id = message_ids[0]
-            reg_request.album_end_id = message_ids[-2]
+        reg_request.channel_message_id = message_ids[0]
         reg_request.save()
         bound.save()
-        # time.sleep(1)
-        # send_messages_return_ids(
-        #     bound.get_admin_message(),
-        #     bot.telegram_instance.admin_group_id,
-        #     bot,
-        # )
+        sleep(1)
+        send_messages_return_ids(
+            bound.get_admin_message(),
+            bot.telegram_instance.admin_group_id,
+            bot,
+        )
 
 
 class AdPhoto(models.Model):
@@ -468,11 +452,25 @@ class AdPhoto(models.Model):
 class Region(models.Model):
     """Модель для описания региона (для разделения локаций)"""
 
-    name = models.CharField(verbose_name="Наименование", max_length=20, blank=False, db_index=True, unique=True)
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=20,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
 
 
 class Location(models.Model):
     """Модель локации со всеми её версиями названий"""
 
-    name = models.CharField(verbose_name="Наименование", max_length=50, blank=False, db_index=True, unique=True)
-    region = models.ForeignKey(Region, on_delete=models.CASCADE, db_index=True, related_name="locations")
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=50,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
+    )

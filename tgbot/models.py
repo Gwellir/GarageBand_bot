@@ -29,7 +29,10 @@ from tgbot.launcher import tg_bots
 
 
 class TrackableUpdateCreateModel(models.Model):
-    """Базовый компонент модели с полями для отслеживания времени создания и обновления."""
+    """
+    Базовый компонент модели
+    с полями для отслеживания времени создания и обновления.
+    """
 
     created_at = models.DateTimeField(
         verbose_name="Время создания", auto_now_add=True, db_index=True
