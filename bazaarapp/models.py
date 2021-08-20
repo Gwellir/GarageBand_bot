@@ -1,6 +1,5 @@
 from time import sleep
 
-from django.core.files import File
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram import InputMediaPhoto, ParseMode
@@ -225,7 +224,7 @@ class SaleAd(TrackableUpdateCreateModel):
                 InputMediaPhoto(photo.tg_file_id) for photo in self.photos.all()[:9]
             ]
         else:
-            return [File(open(DEFAULT_AD_LOGO_FILE, "rb"))]
+            return []
 
     def get_related_tag(self, text):
         try:
@@ -265,6 +264,8 @@ class SaleAd(TrackableUpdateCreateModel):
         msg["caption"] = msg.pop("text")
         if media:
             msg["photo"] = media[0].media
+        else:
+            msg["photo"] = InputMediaPhoto(open(DEFAULT_AD_LOGO_FILE, "rb")).media
         msg["ready"] = ready
         if ready:
             msg.pop("buttons")
