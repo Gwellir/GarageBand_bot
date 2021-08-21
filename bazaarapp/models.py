@@ -25,12 +25,12 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_SOLD_FILE
+from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.launcher import tg_bots
-from tgbot.models import BotUser
+from tgbot.models import BotUser, TrackableUpdateCreateModel
 
 
 class AdFormingStage(models.IntegerChoices):
@@ -103,7 +103,7 @@ class SaleAdStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class SaleAd(models.Model):
+class SaleAd(TrackableUpdateCreateModel):
     """
     Модель заявки
 
@@ -119,9 +119,6 @@ class SaleAd(models.Model):
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
         verbose_name="Подробное описание", max_length=4000, blank=True
-    )
-    formed_at = models.DateTimeField(
-        verbose_name="Время составления", auto_now=True, db_index=True
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
@@ -264,7 +261,11 @@ class SaleAd(models.Model):
 
         media = self.get_media()
         msg = fill_data(bazaar_strings.summary, self.data_as_dict())
-        msg["album"] = media
+        msg["caption"] = msg.pop("text")
+        if media:
+            msg["photo"] = media[0].media
+        else:
+            msg["photo"] = InputMediaPhoto(open(DEFAULT_AD_LOGO_FILE, "rb")).media
         msg["ready"] = ready
         if ready:
             msg.pop("buttons")
@@ -319,37 +320,21 @@ class SaleAd(models.Model):
         instance = self.dialog.bot.telegram_instance
         bot = tg_bots.get(instance.token)
         try:
-            bot.edit_message_text(
+            bot.edit_message_media(
+                chat_id=instance.publish_id,
+                message_id=self.registered.channel_message_id,
+                media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+            )
+            sleep(2)
+            bot.edit_message_caption(
                 chat_id=instance.publish_id,
                 message_id=self.registered.channel_message_id,
                 parse_mode=ParseMode.HTML,
-                text=self.get_summary_sold(),
+                caption=self.get_summary_sold(),
             )
             sleep(2)
-        except TimedOut:
+        except (TimedOut, BadRequest):
             pass
-        if self.registered.album_start_id:
-            try:
-                bot.edit_message_media(
-                    chat_id=instance.publish_id,
-                    message_id=self.registered.album_start_id,
-                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-                )
-                sleep(2)
-            except BadRequest:
-                pass
-            for msg_id in range(
-                self.registered.album_start_id + 1, self.registered.album_end_id + 1
-            ):
-                try:
-                    bot.delete_message(
-                        instance.publish_id,
-                        msg_id,
-                    )
-                    sleep(2)
-                except BadRequest:
-                    pass
-            self.registered.album_end_id = self.registered.album_start_id
 
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
@@ -389,7 +374,7 @@ class SaleAd(models.Model):
         RegisteredAd.publish(self, bot)
 
 
-class RegisteredAd(models.Model):
+class RegisteredAd(TrackableUpdateCreateModel):
     """
     Модель зарегистрированных объявлений
 
@@ -412,7 +397,7 @@ class RegisteredAd(models.Model):
         verbose_name="Идентификатор сообщения в группе", null=True, db_index=True
     )
     feedback = models.TextField(
-        verbose_name="Отзыв пользователя", null=True, max_length=4000
+        verbose_name="Отзыв пользователя", null=True, max_length=750
     )
 
     def __str__(self):
@@ -439,18 +424,15 @@ class RegisteredAd(models.Model):
             bot.telegram_instance.publish_id,
             bot,
         )
-        reg_request.channel_message_id = message_ids[-1]
-        if len(message_ids) > 1:
-            reg_request.album_start_id = message_ids[0]
-            reg_request.album_end_id = message_ids[-2]
+        reg_request.channel_message_id = message_ids[0]
         reg_request.save()
         bound.save()
-        # time.sleep(1)
-        # send_messages_return_ids(
-        #     bound.get_admin_message(),
-        #     bot.telegram_instance.admin_group_id,
-        #     bot,
-        # )
+        sleep(1)
+        send_messages_return_ids(
+            bound.get_admin_message(),
+            bot.telegram_instance.admin_group_id,
+            bot,
+        )
 
 
 class AdPhoto(models.Model):
@@ -465,4 +447,31 @@ class AdPhoto(models.Model):
     image = models.ImageField(verbose_name="Фотография", upload_to="user_photos")
     ad = models.ForeignKey(
         SaleAd, on_delete=models.CASCADE, related_name="photos", db_index=True
+    )
+
+
+class Region(models.Model):
+    """Модель для описания региона (для разделения локаций)"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=20,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
+
+
+class Location(models.Model):
+    """Модель локации со всеми её версиями названий"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=50,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
     )

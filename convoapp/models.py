@@ -2,10 +2,10 @@ from django.apps import apps
 from django.db import models, transaction
 
 from tgbot.exceptions import ActionAlreadyCompletedError
-from tgbot.models import BotUser, MessengerBot
+from tgbot.models import BotUser, MessengerBot, TrackableUpdateCreateModel
 
 
-class Dialog(models.Model):
+class Dialog(TrackableUpdateCreateModel):
     """
     Модель диалога с пользователем
 
@@ -19,14 +19,6 @@ class Dialog(models.Model):
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name="dialog")
     is_finished = models.BooleanField(
         verbose_name="Диалог завершён", default=False, db_index=True
-    )
-    last_active = models.DateTimeField(
-        verbose_name="Время последней активности",
-        auto_now=True,
-    )
-    created_at = models.DateTimeField(
-        verbose_name="Время создания",
-        auto_now_add=True,
     )
 
     def __str__(self):
@@ -84,7 +76,7 @@ class Dialog(models.Model):
         self.save()
 
 
-class Message(models.Model):
+class Message(TrackableUpdateCreateModel):
     """
     Модель для хранения сообщений из диалога
 
@@ -102,7 +94,4 @@ class Message(models.Model):
     )
     is_incoming = models.BooleanField(
         verbose_name="Входящее", db_index=True, default=True
-    )
-    created_at = models.DateTimeField(
-        verbose_name="Время создания", auto_now_add=True, db_index=True
     )

@@ -28,6 +28,23 @@ from tgbot.exceptions import UserIsBannedError
 from tgbot.launcher import tg_bots
 
 
+class TrackableUpdateCreateModel(models.Model):
+    """
+    Базовый компонент модели
+    с полями для отслеживания времени создания и обновления.
+    """
+
+    created_at = models.DateTimeField(
+        verbose_name="Время создания", auto_now_add=True, db_index=True
+    )
+    updated_at = models.DateTimeField(
+        verbose_name="Время последней активности", auto_now=True, db_index=True
+    )
+
+    class Meta:
+        abstract = True
+
+
 class TGInstance(models.Model):
     """Модель, описывающая инстанс бота в телеграме"""
 
@@ -84,7 +101,7 @@ class MessengerBot(models.Model):
 
 
 # todo merge with Django Auth User
-class BotUser(models.Model):
+class BotUser(TrackableUpdateCreateModel):
     """
     Модель с информацией о пользователях бота.
 
@@ -107,15 +124,6 @@ class BotUser(models.Model):
         verbose_name="Указанное местоположение", null=True, blank=True, max_length=100
     )
     phone = models.CharField(verbose_name="Номер телефона", blank=True, max_length=20)
-    # todo move to some base TrackableModelMixin?
-    last_active = models.DateTimeField(
-        verbose_name="Время последней активности",
-        auto_now=True,
-    )
-    created_at = models.DateTimeField(
-        verbose_name="Время создания",
-        auto_now_add=True,
-    )
     is_banned = models.BooleanField(
         verbose_name="В бане", default=False, null=False, db_index=True
     )
@@ -222,7 +230,7 @@ class WorkRequestStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class WorkRequest(models.Model):
+class WorkRequest(TrackableUpdateCreateModel):
     """
     Модель заявки
 
@@ -236,9 +244,6 @@ class WorkRequest(models.Model):
     )
     description = models.TextField(
         verbose_name="Подробное описание", max_length=700, blank=True
-    )
-    formed_at = models.DateTimeField(
-        verbose_name="Время составления", auto_now=True, db_index=True
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="requests"
@@ -436,7 +441,7 @@ class WorkRequest(models.Model):
         RegisteredRequest.publish(self, bot)
 
 
-class RegisteredRequest(models.Model):
+class RegisteredRequest(TrackableUpdateCreateModel):
     """
     Модель зарегистрированных заявок
 

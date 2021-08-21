@@ -23,7 +23,7 @@ from tgbot.exceptions import (
     UnknownAdminCommandError,
     UserIsBannedError,
 )
-from tgbot.models import BotUser, RegisteredRequest
+from tgbot.models import BotUser
 
 
 def get_and_verify_callback_data(callback_query, last_id):
@@ -58,15 +58,35 @@ def post_handler(update, context):
     """
 
     # для работы отзовика нам требуется номер поста из канала в группе
-    publish_id = context.bot_data.get("msg_bot").telegram_instance.publish_id
+    if update.edited_message:
+        return
+    msg_bot = context.bot_data.get("msg_bot")
+    publish_id = msg_bot.telegram_instance.publish_id
     fwd_msg_id = update.effective_message.forward_from_message_id
     fwd_from_chat = update.effective_message.forward_from_chat
     if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == publish_id:
+        model = msg_bot.get_bound_model()
         try:
-            reg_request = RegisteredRequest.objects.get(channel_message_id=fwd_msg_id)
-            reg_request.group_message_id = update.effective_message.message_id
-            reg_request.save()
-        except RegisteredRequest.DoesNotExist:
+            reg_object = model.objects.get(registered__channel_message_id=fwd_msg_id)
+            reg_object.registered.group_message_id = update.effective_message.message_id
+            reg_object.registered.save()
+
+            if msg_bot.get_bound_name() == "salead":
+                album = reg_object.get_media()
+                if len(album) > 1:
+                    context.bot.send_media_group(
+                        chat_id=msg_bot.telegram_instance.discussion_group_id,
+                        media=album,
+                        reply_to_message_id=reg_object.registered.group_message_id,
+                    )
+                elif len(album):
+                    context.bot.send_photo(
+                        photo=album[0].media,
+                        chat_id=msg_bot.telegram_instance.discussion_group_id,
+                        reply_to_message_id=reg_object.registered.group_message_id,
+                    )
+
+        except model.DoesNotExist:
             pass
 
     BOT_LOG.info(
@@ -267,7 +287,7 @@ def error_handler(update, context):
         #         "Попробуйте повторить через несколько минут.\n"
         #         "Уведомление разработчикам отправлено!"
         #     )
-            # update.effective_message.reply_text(text)
+        # update.effective_message.reply_text(text)
         trace = "".join(traceback.format_tb(sys.exc_info()[2]))
         payload = ""
         if update.effective_user:
