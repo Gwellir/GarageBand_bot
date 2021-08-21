@@ -228,7 +228,7 @@ class SaleAd(TrackableUpdateCreateModel):
             return []
 
     def post_media(self):
-        album = self.get_media()
+        album = self.get_media()[1:]
         instance = self.get_tg_instance()
         bot = instance.tg_bot
         if len(album) > 1:
