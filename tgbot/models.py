@@ -440,6 +440,10 @@ class WorkRequest(TrackableUpdateCreateModel):
         self.save()
         RegisteredRequest.publish(self, bot)
 
+    @classmethod
+    def setup_jobs(cls, updater):
+        pass
+
 
 class RegisteredRequest(TrackableUpdateCreateModel):
     """

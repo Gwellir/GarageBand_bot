@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from time import sleep
 
 from django.db import models, transaction
@@ -6,6 +7,7 @@ from telegram import InputMediaPhoto, ParseMode
 from telegram.error import BadRequest, TimedOut
 
 from bazaarapp import strings as bazaar_strings
+from bazaarapp.jobs import DeleteJob
 from bazaarapp.processors import (
     AlbumPhotoProcessor,
     BargainSelectProcessor,
@@ -118,7 +120,7 @@ class SaleAd(TrackableUpdateCreateModel):
     can_bargain = models.BooleanField(verbose_name="Торг возможен", null=True)
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
-        verbose_name="Подробное описание", max_length=4000, blank=True
+        verbose_name="Подробное описание", max_length=750, blank=True
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
@@ -373,6 +375,28 @@ class SaleAd(TrackableUpdateCreateModel):
         self.save()
         RegisteredAd.publish(self, bot)
 
+    @classmethod
+    def setup_jobs(cls, updater):
+        jobs = updater.job_queue
+        delete_time = datetime.strptime("11:20 +0300", "%H:%M %z").time()
+        filters = [
+            dict(
+                before=timedelta(days=21),
+                after=timedelta(days=22, hours=1),
+                is_locked=False,
+            ),
+            dict(
+                before=timedelta(days=14),
+                after=timedelta(days=15, hours=1),
+                is_locked=True,
+            ),
+        ]
+        jobs.run_daily(
+            DeleteJob(cls, updater, filters),
+            delete_time,
+            name="cleanup",
+        )
+
 
 class RegisteredAd(TrackableUpdateCreateModel):
     """
@@ -397,7 +421,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
         verbose_name="Идентификатор сообщения в группе", null=True, db_index=True
     )
     feedback = models.TextField(
-        verbose_name="Отзыв пользователя", null=True, max_length=750
+        verbose_name="Отзыв пользователя", null=True, max_length=4000
     )
 
     def __str__(self):
@@ -470,7 +494,6 @@ class Location(models.Model):
         max_length=50,
         blank=False,
         db_index=True,
-        unique=True,
     )
     region = models.ForeignKey(
         Region, on_delete=models.CASCADE, db_index=True, related_name="locations"

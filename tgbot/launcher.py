@@ -32,6 +32,8 @@ def run_polling():
         tg_bots[token] = MQBot(token, request=request, mqueue=q)
         updater = Updater(bot=tg_bots.get(token), use_context=True)
 
+        bot.get_bound_model().setup_jobs(updater)
+
         dp = updater.dispatcher
         dp = setup_dispatcher(dp)
         dp.bot_data["msg_bot"] = bot
