@@ -31,7 +31,6 @@ from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
-from tgbot.launcher import tg_bots
 from tgbot.models import BotUser, TrackableUpdateCreateModel
 
 
@@ -228,6 +227,23 @@ class SaleAd(TrackableUpdateCreateModel):
         else:
             return []
 
+    def post_media(self):
+        album = self.get_media()
+        instance = self.get_tg_instance()
+        bot = instance.tg_bot
+        if len(album) > 1:
+            bot.send_media_group(
+                chat_id=instance.discussion_group_id,
+                media=album,
+                reply_to_message_id=self.registered.group_message_id,
+            )
+        elif len(album):
+            bot.send_photo(
+                photo=album[0].media,
+                chat_id=instance.discussion_group_id,
+                reply_to_message_id=self.registered.group_message_id,
+            )
+
     def get_related_tag(self, text):
         try:
             tag = PriceTag.objects.get(name=text)
@@ -293,9 +309,12 @@ class SaleAd(TrackableUpdateCreateModel):
     def restart(self):
         self.stage_id = AdFormingStage.WELCOME
 
+    def get_tg_instance(self):
+        return self.dialog.bot.telegram_instance
+
     def delete_post(self):
-        instance = self.dialog.bot.telegram_instance
-        bot = tg_bots.get(instance.token)
+        instance = self.get_tg_instance()
+        bot = instance.tg_bot
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
             if self.registered.album_start_id:
@@ -319,8 +338,8 @@ class SaleAd(TrackableUpdateCreateModel):
 
         self.is_locked = True
         self.save()
-        instance = self.dialog.bot.telegram_instance
-        bot = tg_bots.get(instance.token)
+        instance = self.get_tg_instance()
+        bot = instance.tg_bot
         try:
             bot.edit_message_media(
                 chat_id=instance.publish_id,
@@ -338,6 +357,28 @@ class SaleAd(TrackableUpdateCreateModel):
         except (TimedOut, BadRequest):
             pass
 
+        # todo old post version compatibility DELETE SOON
+        try:
+            bot.edit_message_text(
+                chat_id=instance.publish_id,
+                message_id=self.registered.channel_message_id,
+                parse_mode=ParseMode.HTML,
+                text=self.get_summary_sold(),
+            )
+            sleep(2)
+        except (TimedOut, BadRequest):
+            pass
+        if self.registered.album_start_id:
+            try:
+                bot.edit_message_media(
+                    chat_id=instance.publish_id,
+                    message_id=self.registered.album_start_id,
+                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
+                )
+                sleep(2)
+            except (TimedOut, BadRequest):
+                pass
+
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
                 user_id=self.user.username,
@@ -348,14 +389,14 @@ class SaleAd(TrackableUpdateCreateModel):
     def save_photos(self, bot):
         pass
         # for photo in self.photos.all():
-        #     file = Bot(bot.telegram_instance.token).get_file(file_id=photo.tg_file_id)
+        #     file = bot.get_file(file_id=photo.tg_file_id)
         #     temp = tempfile.TemporaryFile()
         #     file.download(out=temp)
         #     photo.image.save(f"{photo.tg_file_id}.jpg", temp)
         #     temp.close()
 
     @transaction.atomic
-    def set_ready(self, bot):
+    def set_ready(self):
         """
         Выставляет заявке статус готовности.
 
@@ -363,6 +404,7 @@ class SaleAd(TrackableUpdateCreateModel):
         готовности, а затем публикует заявку в канал
         """
 
+        bot = self.get_tg_instance().tg_bot
         self.save_photos(bot)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
@@ -373,7 +415,7 @@ class SaleAd(TrackableUpdateCreateModel):
         )
         self.is_complete = True
         self.save()
-        RegisteredAd.publish(self, bot)
+        RegisteredAd.publish(self)
 
     @classmethod
     def setup_jobs(cls, updater):
@@ -436,17 +478,18 @@ class RegisteredAd(TrackableUpdateCreateModel):
 
     @classmethod
     @transaction.atomic
-    def publish(cls, bound, bot):
+    def publish(cls, bound):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
         reg_request = cls.objects.create(
             bound=bound,
         )
+        instance = bound.get_tg_instance()
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
-            bot.telegram_instance.publish_id,
-            bot,
+            instance.publish_id,
+            instance.bot,
         )
         reg_request.channel_message_id = message_ids[0]
         reg_request.save()
@@ -454,8 +497,8 @@ class RegisteredAd(TrackableUpdateCreateModel):
         sleep(1)
         send_messages_return_ids(
             bound.get_admin_message(),
-            bot.telegram_instance.admin_group_id,
-            bot,
+            instance.admin_group_id,
+            instance.bot,
         )
 
 

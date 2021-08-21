@@ -62,6 +62,11 @@ class TGInstance(models.Model):
         verbose_name="Группа обсуждения", null=True
     )
     feedback_group_id = models.BigIntegerField(verbose_name="Группа фидбека", null=True)
+    # bot backref
+
+    @property
+    def tg_bot(self):
+        return tg_bots.get(self.token)
 
 
 class MessengerBot(models.Model):
@@ -77,7 +82,7 @@ class MessengerBot(models.Model):
     bound_object = models.CharField(
         verbose_name="Рабочий объект", max_length=50, blank=False
     )
-    telegram_instance = models.ForeignKey(
+    telegram_instance = models.OneToOneField(
         TGInstance,
         related_name="bot",
         on_delete=models.SET_NULL,
@@ -393,9 +398,12 @@ class WorkRequest(TrackableUpdateCreateModel):
     def restart(self):
         self.stage_id = RequestFormingStage.WELCOME
 
+    def get_tg_instance(self):
+        return self.dialog.bot.telegram_instance
+
     def delete_post(self):
-        instance = self.dialog.bot.telegram_instance
-        bot = tg_bots.get(instance.token)
+        instance = self.get_tg_instance()
+        bot = instance.tg_bot
         try:
             bot.delete_message(instance.publish_id, self.registered.channel_message_id)
         except BadRequest:
@@ -405,7 +413,7 @@ class WorkRequest(TrackableUpdateCreateModel):
             self.save()
 
     @transaction.atomic
-    def set_ready(self, bot):
+    def set_ready(self):
         """
         Выставляет заявке статус готовности.
 
@@ -414,18 +422,17 @@ class WorkRequest(TrackableUpdateCreateModel):
         """
 
         # todo implement a load queue
+        bot = self.get_tg_instance().tg_bot
         try:
             for photo in self.photos.all():
-                file = tg_bots.get(bot.telegram_instance.token).get_file(
-                    file_id=photo.tg_file_id
-                )
+                file = bot.get_file(file_id=photo.tg_file_id)
                 temp = tempfile.TemporaryFile()
                 file.download(out=temp)
                 photo.image.save(f"{photo.tg_file_id}.jpg", temp)
                 temp.close()
         except TimedOut:
             BOT_LOG.warning(
-                f"Timed Out during getting an image file, bot {bot.id},"
+                f"Timed Out during getting an image file, bot {bot.get_me()},"
                 f" user {self.user.user_id}"
             )
 
@@ -438,7 +445,7 @@ class WorkRequest(TrackableUpdateCreateModel):
         )
         self.is_complete = True
         self.save()
-        RegisteredRequest.publish(self, bot)
+        RegisteredRequest.publish(self)
 
     @classmethod
     def setup_jobs(cls, updater):
@@ -477,35 +484,37 @@ class RegisteredRequest(TrackableUpdateCreateModel):
 
     @classmethod
     @transaction.atomic
-    def publish(cls, bound, bot):
+    def publish(cls, bound):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
         reg_request = cls.objects.create(
             bound=bound,
         )
+        instance = bound.get_tg_instance()
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
-            bot.telegram_instance.publish_id,
-            bot,
+            instance.publish_id,
+            instance.bot,
         )
         reg_request.channel_message_id = message_ids[0]
         reg_request.save()
         bound.save()
         send_messages_return_ids(
             bound.get_admin_message(),
-            bot.telegram_instance.admin_group_id,
-            bot,
+            instance.admin_group_id,
+            instance.bot,
         )
 
-    def post_feedback(self, bot):
+    def post_feedback(self):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""
 
+        instance = self.bound.get_tg_instance()
         try:
             send_messages_return_ids(
                 self.bound.get_feedback_message(),
-                bot.telegram_instance.discussion_group_id,
-                bot,
+                instance.discussion_group_id,
+                instance.bot,
                 reply_to=self.group_message_id,
             )
         except BadRequest:
@@ -513,8 +522,8 @@ class RegisteredRequest(TrackableUpdateCreateModel):
             pass
         send_messages_return_ids(
             self.bound.get_feedback_message(),
-            bot.telegram_instance.feedback_group_id,
-            bot,
+            instance.feedback_group_id,
+            instance.bot,
         )
 
 

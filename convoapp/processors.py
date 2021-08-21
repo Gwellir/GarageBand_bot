@@ -218,7 +218,7 @@ class SetReadyInputProcessor(BaseInputProcessor):
         elif data["callback"] == "restart":
             return
         elif data["callback"].split() == ["final_confirm", str(dialog.bound.pk)]:
-            dialog.bound.set_ready(data["bot"])
+            dialog.bound.set_ready()
             dialog.bound.stage_id += 1
             return
         raise ButtonIsLockedError
@@ -236,4 +236,4 @@ class FeedbackInputProcessor(TextInputProcessor):
     def set_field(self, data):
         self.model = self.dialog.bound.registered
         super().set_field(data)
-        self.model.post_feedback(data["bot"])
+        self.model.post_feedback()
