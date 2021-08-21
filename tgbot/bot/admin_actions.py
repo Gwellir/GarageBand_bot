@@ -45,7 +45,6 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
     Отправляет уведомление в админскую группу."""
 
     try:
-        # todo mark deleted? or rather, move this logic to the model?
         Model = bot.get_bound_model()
         bound = Model.objects.get(registered__channel_message_id=message_id)
         bound.delete_post()
