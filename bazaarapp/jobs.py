@@ -9,10 +9,11 @@ class DeleteJob:
 
     def __call__(self, *args, **kwargs):
         for interval in self.intervals:
+            i_ = interval.copy()
             filter_ = dict(
-                registered__created_at__lte=now() - interval.pop("before"),
-                registered__created_at__gt=now() - interval.pop("after"),
-                **interval,
+                registered__created_at__lte=now() - i_.pop("before"),
+                registered__created_at__gt=now() - i_.pop("after"),
+                **i_,
             )
             selection = self.model.objects.filter(**filter_).order_by("-created_at")
             print(selection)

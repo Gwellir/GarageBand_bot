@@ -193,7 +193,7 @@ class SaleAd(TrackableUpdateCreateModel):
         else:
             photos_loaded = ""
         return dict(
-            channel_name=self.dialog.bot.telegram_instance.publish_name,
+            channel_name=self.get_tg_instance().publish_name,
             request_pk=self.pk,
             ad_price_range=tag_name,
             ad_car_type=self.car_type,
