@@ -104,6 +104,10 @@ class MessengerBot(models.Model):
     def get_bound_name(self):
         return self.bound_object.lower()
 
+    @classmethod
+    def get_by_model_name(cls, name):
+        return cls.objects.get(bound_object=name)
+
 
 # todo merge with Django Auth User
 class BotUser(TrackableUpdateCreateModel):

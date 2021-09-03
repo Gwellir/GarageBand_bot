@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "convoapp",
     "bazaarapp",
     "repairsapp",
+    "filterapp",
 ]
 
 MIDDLEWARE = [

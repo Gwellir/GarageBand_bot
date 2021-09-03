@@ -62,6 +62,10 @@ class PriceTag(models.Model):
     def __str__(self):
         return f"#{self.pk} {self.name}"
 
+    @classmethod
+    def get_tag_by_text(cls, text):
+        return cls.objects.get(name=text)
+
 
 class SaleAdStage(models.Model):
     """
@@ -470,7 +474,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
         return f"{self.pk} {self.bound.user} ({self.channel_message_id})"
 
     def as_tg_html(self):
-        channel_name = self.bound.dialog.bot.telegram_instance.publish_name
+        channel_name = self.bound.get_tg_instance().publish_name
         return (
             f'<a href="https://t.me/{channel_name}/'
             f'{self.channel_message_id}">#{self.pk}</a>'
@@ -482,7 +486,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
-        reg_request = cls.objects.create(
+        from filterapp.models import BazaarFilter
+
+        reg_ad = cls.objects.create(
             bound=bound,
         )
         instance = bound.get_tg_instance()
@@ -491,8 +497,8 @@ class RegisteredAd(TrackableUpdateCreateModel):
             instance.publish_id,
             instance.bot,
         )
-        reg_request.channel_message_id = message_ids[0]
-        reg_request.save()
+        reg_ad.channel_message_id = message_ids[0]
+        reg_ad.save()
         bound.save()
         sleep(1)
         send_messages_return_ids(
@@ -500,6 +506,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
             instance.admin_group_id,
             instance.bot,
         )
+        BazaarFilter.trigger_send(reg_ad)
 
 
 class AdPhoto(models.Model):
@@ -527,6 +534,10 @@ class Region(models.Model):
         db_index=True,
         unique=True,
     )
+
+    @classmethod
+    def get_tag_by_text(cls, text):
+        return cls.objects.get(name=text)
 
 
 class Location(models.Model):
