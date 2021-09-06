@@ -124,8 +124,11 @@ class SaleAd(TrackableUpdateCreateModel):
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
     )
-    location = models.CharField(
+    location_desc = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=100
+    )
+    location_key = models.ForeignKey(
+        "tgbot.Location", on_delete=models.SET_NULL, null=True, related_name="sale_ads"
     )
     car_type = models.CharField(
         verbose_name="Тип автомобиля", blank=True, max_length=50
@@ -201,7 +204,7 @@ class SaleAd(TrackableUpdateCreateModel):
             ad_mileage=self.mileage,
             ad_price=self.exact_price,
             ad_bargain_string=ad_bargain_string,
-            ad_location=self.location,
+            ad_location=self.location_desc,
             user_pk=self.user.pk,
             user_name=self.user.name,
             user_phone=self.user.phone,
@@ -514,30 +517,4 @@ class AdPhoto(models.Model):
     image = models.ImageField(verbose_name="Фотография", upload_to="user_photos")
     ad = models.ForeignKey(
         SaleAd, on_delete=models.CASCADE, related_name="photos", db_index=True
-    )
-
-
-class Region(models.Model):
-    """Модель для описания региона (для разделения локаций)"""
-
-    name = models.CharField(
-        verbose_name="Наименование",
-        max_length=20,
-        blank=False,
-        db_index=True,
-        unique=True,
-    )
-
-
-class Location(models.Model):
-    """Модель локации со всеми её версиями названий"""
-
-    name = models.CharField(
-        verbose_name="Наименование",
-        max_length=50,
-        blank=False,
-        db_index=True,
-    )
-    region = models.ForeignKey(
-        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
     )

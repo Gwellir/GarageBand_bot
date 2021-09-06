@@ -555,3 +555,29 @@ class RequestFormingStage(models.IntegerChoices):
     DONE = 8, _("Работа завершена")
     LEAVE_FEEDBACK = 9, _("Оставить отзыв")
     FEEDBACK_DONE = 10, _("Отзыв получен")
+
+
+class Region(models.Model):
+    """Модель для описания региона (для разделения локаций)"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=20,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
+
+
+class Location(models.Model):
+    """Модель локации со всеми её версиями названий"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=50,
+        blank=False,
+        db_index=True,
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
+    )
