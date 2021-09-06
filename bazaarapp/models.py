@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from time import sleep
 
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from telegram import InputMediaPhoto, ParseMode
 from telegram.error import BadRequest, TimedOut
@@ -14,7 +15,7 @@ from bazaarapp.processors import (
     MileageInputProcessor,
     PriceInputProcessor,
     PriceTagInputProcessor,
-    SetCompleteInputProcessor,
+    SetCompleteInputProcessor, LocationKeyInputProcessor,
 )
 from convoapp.processors import (
     CarTypeInputProcessor,
@@ -42,15 +43,14 @@ class AdFormingStage(models.IntegerChoices):
     GET_PHONE = 3, _("Получить телефон")
     GET_CAR_TYPE = 4, _("Получить тип автомобиля")
     GET_CAR_MILEAGE = 5, _("Получить пробег автомобиля")
-    GET_PRICE_TAG = 6, _("Получить ценовую категорию объявления")
-    GET_EXACT_PRICE = 7, _("Получить точную цену")
-    GET_BARGAIN = 8, _("Узнать возможность торга ")
-    GET_DESC = 9, _("Получить описание объявления")
-    REQUEST_PHOTOS = 10, _("Предложить отправить фотографии")
-    GET_LOCATION = 11, _("Получить местоположение")
-    CHECK_DATA = 12, _("Проверить заявку")
-    DONE = 13, _("Работа завершена")
-    SALE_COMPLETE = 14, _("Заявка закрыта")
+    GET_EXACT_PRICE = 6, _("Получить точную цену")
+    GET_BARGAIN = 7, _("Узнать возможность торга ")
+    GET_DESC = 8, _("Получить описание объявления")
+    REQUEST_PHOTOS = 9, _("Предложить отправить фотографии")
+    GET_LOCATION = 10, _("Получить местоположение")
+    CHECK_DATA = 11, _("Проверить заявку")
+    DONE = 12, _("Работа завершена")
+    SALE_COMPLETE = 13, _("Заявка закрыта")
 
 
 class PriceTag(models.Model):
@@ -58,9 +58,18 @@ class PriceTag(models.Model):
 
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
     short_name = models.CharField(verbose_name="Краткое наименование", max_length=20)
+    low = models.PositiveIntegerField(verbose_name="Нижняя граница цены", null=True)
+    high = models.PositiveIntegerField(verbose_name="Верхняя граница цены", null=True)
 
     def __str__(self):
         return f"#{self.pk} {self.name}"
+
+    @classmethod
+    def get_by_price(cls, price: int) -> 'PriceTag':
+        return cls.objects.get(
+            Q(low__lte=price) | Q(low=None),
+            Q(high__gte=price) | Q(high=None)
+        )
 
 
 class SaleAdStage(models.Model):
@@ -84,12 +93,11 @@ class SaleAdStage(models.Model):
             AdFormingStage.GET_PHONE: PhoneNumberInputProcessor,
             AdFormingStage.GET_CAR_TYPE: CarTypeInputProcessor,
             AdFormingStage.GET_CAR_MILEAGE: MileageInputProcessor,
-            AdFormingStage.GET_PRICE_TAG: PriceTagInputProcessor,
             AdFormingStage.GET_EXACT_PRICE: PriceInputProcessor,
             AdFormingStage.GET_BARGAIN: BargainSelectProcessor,
             AdFormingStage.GET_DESC: DescriptionInputProcessor,
             AdFormingStage.REQUEST_PHOTOS: AlbumPhotoProcessor,
-            AdFormingStage.GET_LOCATION: LocationInputProcessor,
+            AdFormingStage.GET_LOCATION: LocationKeyInputProcessor,
             AdFormingStage.CHECK_DATA: SetReadyInputProcessor,
             AdFormingStage.DONE: SetCompleteInputProcessor,
         }
@@ -252,6 +260,14 @@ class SaleAd(TrackableUpdateCreateModel):
             tag = PriceTag.objects.get(name=text)
         except PriceTag.DoesNotExist:
             raise IncorrectChoiceError(text)
+
+        return tag
+
+    def get_tag_by_price(self, price: int) -> PriceTag:
+        try:
+            tag = PriceTag.get_by_price(price)
+        except PriceTag.DoesNotExist:
+            raise IncorrectChoiceError(price)
 
         return tag
 

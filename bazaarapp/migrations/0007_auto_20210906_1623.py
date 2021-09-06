@@ -10,7 +10,7 @@ def set_location_key(apps, schema_editor):
     Location = apps.get_model("tgbot", "location")
     location_names = [entry.name for entry in Location.objects.all()]
     db_alias = schema_editor.connection.alias
-    loc = Location.objects.filter(
+    loc = Location.objects.using(db_alias).filter(
         name=OuterRef('location_desc')
     ).values_list(
         'pk'

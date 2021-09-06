@@ -1,3 +1,5 @@
+import re
+
 from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -65,6 +67,11 @@ class PriceInputProcessor(IntNumberInputProcessor):
     """Процессор ввода цены в долларах"""
 
     attr_name = "exact_price"
+
+    def set_field(self, data):
+        tag = self.model.get_tag_by_price(self.get_field_value(data))
+        setattr(self.model, 'price_tag', tag)
+        super().set_field(data)
 
 
 class MileageInputProcessor(IntNumberInputProcessor):
@@ -178,6 +185,28 @@ class AlbumPhotoProcessor(BaseInputProcessor):
 
         else:
             raise ImageNotProvidedError
+
+
+class LocationKeyInputProcessor(TextInputProcessor):
+    """
+    Процессор ввода района, где пользователь продаёт машину.
+    """
+
+    attr_name = "location_desc"
+
+
+class LocationConfirmationProcessor(TextInputProcessor):
+    """Процессор подтверждения выбора локации."""
+
+    attr_name = "location_key"
+
+    def get_field_value(self, data):
+        if not data["text"]:
+            raise TextNotProvidedError
+        city, region = re.findall(r'([\w\s.]+) \((\w\s.+)\)', data["text"])
+        if not region:
+            return
+        return self.model._meta.get_field(self.attr_name).related_model.get(name=city)
 
 
 class SetCompleteInputProcessor(BaseInputProcessor):
