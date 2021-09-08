@@ -286,6 +286,9 @@ class WorkRequest(TrackableUpdateCreateModel):
     def __str__(self):
         return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
 
+    def set_dict_data(self, **kwargs):
+        pass
+
     @classmethod
     def get_or_create(cls, user, dialog):
         """

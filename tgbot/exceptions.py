@@ -70,6 +70,14 @@ class IncorrectChoiceError(BotProcessingError):
         super().__init__(f'Выбранное значение не существует: "{name}"')
 
 
+class LocationNotRecognizedError(BotProcessingError):
+    """Возникает, когда пользователь вводит неизвестное название города"""
+
+    def __init__(self, name):
+        super().__init__(f'Введено неизвестное название города: "{name}"\n\n'
+                         f'<pre>Постарайтесь указать город максимально кратко.</pre>')
+
+
 class CallbackNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь отправляет сообщение вместо нажатия кнопки"""
 

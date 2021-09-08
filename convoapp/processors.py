@@ -108,6 +108,12 @@ class NameInputProcessor(TextInputProcessor):
     def set_field(self, data):
         self.model = self.dialog.user
         super().set_field(data)
+        self.dialog.bound.set_dict_data(
+            user_pk=self.model.pk,
+            user_name=self.model.name,
+            user_tg_id=self.model.user_id,
+            request_pk=self.dialog.bound.pk,
+        )
 
 
 class TagInputProcessor(TextInputProcessor):
@@ -131,11 +137,23 @@ class CarTypeInputProcessor(TextInputProcessor):
 
     attr_name = "car_type"
 
+    def set_field(self, raw_text):
+        super().set_field(raw_text)
+        self.model.set_dict_data(
+            ad_desc=getattr(self.model, self.attr_name)
+        )
+
 
 class DescriptionInputProcessor(TextInputProcessor):
     """Процессор ввода описания заявки"""
 
     attr_name = "description"
+
+    def set_field(self, raw_text):
+        super().set_field(raw_text)
+        self.model.set_dict_data(
+            ad_desc=getattr(self.model, self.attr_name)
+        )
 
 
 class LocationInputProcessor(TextInputProcessor):
@@ -158,6 +176,9 @@ class PhoneNumberInputProcessor(TextInputProcessor):
     def set_field(self, data):
         self.model = self.dialog.user
         super().set_field(data)
+        self.dialog.bound.set_dict_data(
+            user_phone=getattr(self.model, self.attr_name),
+        )
 
     def get_field_value(self, data):
         text = super().get_field_value(data)
@@ -231,7 +252,11 @@ class FeedbackInputProcessor(TextInputProcessor):
     min_length = 3
 
     def get_step(self, data):
-        return 1
+        if data["text"] == "Отменить":
+            self.cancel_step()
+            return -1
+        else:
+            return 1
 
     def set_field(self, data):
         self.model = self.dialog.bound.registered

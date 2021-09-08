@@ -78,5 +78,8 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(
             set_low_high, migrations.RunPython.noop
-        )
+        ),
+        migrations.RunPython(
+            AddBazaarStage(11, 'confirm_location', 'LocationConfirmationProcessor'), DelBazaarStage(11)
+        ),
     ]

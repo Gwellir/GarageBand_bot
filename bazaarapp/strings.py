@@ -150,6 +150,20 @@ stages_info = [
             ],
         ],
     },
+    {  # confirm
+        "text": "📍 Вы указали местоположение:\n"
+        "<b>{ad_location}</b>\n\n"
+        "Подтвердите, нажав кнопку ниже.\n"
+        "<pre>При неожиданных результатах - укажите ближайший более крупный город.</pre>",
+        "confirm_choices": "location_key",
+        "text_buttons": [
+            [
+                {
+                    "text": "Отменить",
+                },
+            ],
+        ],
+    },
     {  # 12 stage confirmation
         "text": "Вы молодец! Смотрите, что у нас получилось:",
         "text_buttons": None,
@@ -207,7 +221,7 @@ summary = {
     "{ad_desc}\n\n"
     "🎛 Пробег {ad_mileage} тыс. км\n\n"
     "💸 Цена <b>${ad_price}</b> {ad_bargain_string}\n\n"
-    "📍 {ad_location}\n\n"
+    "📍 {ad_location} #{ad_region}\n\n"
     "🖋 {user_name} {user_phone}\n\n",
     "buttons": [
         [
@@ -231,7 +245,7 @@ summary_sold = {
     "{ad_desc}\n\n"
     "🎛 Пробег {ad_mileage} тыс. км\n\n"
     "<s>💸 Цена <b>${ad_price}</b> {ad_bargain_string}</s>\n\n"
-    "<s>📍 {ad_location}</s>\n\n"
+    "<s>📍 {ad_location} {ad_region}</s>\n\n"
     "📞 {user_name}\n\n",
     "text_buttons": None,
 }
