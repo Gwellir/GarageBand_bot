@@ -13,15 +13,15 @@ from bazaarapp.jobs import DeleteJob
 from bazaarapp.processors import (
     AlbumPhotoProcessor,
     BargainSelectProcessor,
+    LocationConfirmationProcessor,
+    LocationKeyInputProcessor,
     MileageInputProcessor,
     PriceInputProcessor,
-    PriceTagInputProcessor,
-    SetCompleteInputProcessor, LocationKeyInputProcessor, LocationConfirmationProcessor,
+    SetCompleteInputProcessor,
 )
 from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
-    LocationInputProcessor,
     NameInputProcessor,
     PhoneNumberInputProcessor,
     SetReadyInputProcessor,
@@ -67,10 +67,9 @@ class PriceTag(models.Model):
         return f"#{self.pk} {self.name}"
 
     @classmethod
-    def get_by_price(cls, price: int) -> 'PriceTag':
+    def get_by_price(cls, price: int) -> "PriceTag":
         return cls.objects.get(
-            Q(low__lte=price) | Q(low=None),
-            Q(high__gte=price) | Q(high=None)
+            Q(low__lte=price) | Q(low=None), Q(high__gte=price) | Q(high=None)
         )
 
 
@@ -215,26 +214,28 @@ class SaleAd(TrackableUpdateCreateModel):
             else:
                 photos_loaded = ""
             if self.location_key:
-                region_name = self.location_key.region.name.replace(" ", "_").replace("-", "_")
+                region_name = self.location_key.region.name.replace(" ", "_").replace(
+                    "-", "_"
+                )
             self._data_dict = dict(
-                channel_name=self.get_tg_instance().publish_name, #
-                request_pk=self.pk, #
-                ad_price_range=tag_name, #
-                ad_car_type=self.car_type, #
-                ad_desc=self.description, #
-                ad_mileage=self.mileage, #
-                ad_price=self.exact_price, #
-                ad_bargain_string=ad_bargain_string, #
-                ad_location=self.location_desc, #
-                ad_region=region_name, #
-                user_pk=self.user.pk, #
-                user_name=self.user.name, #
-                user_phone=self.user.phone, #
-                user_tg_id=self.user.user_id, #
-                photos_loaded=photos_loaded, #
-                registered_pk=registered_pk, #
-                registered_msg_id=registered_msg_id, #
-                registered_feedback=registered_feedback, #
+                channel_name=self.get_tg_instance().publish_name,  #
+                request_pk=self.pk,  #
+                ad_price_range=tag_name,  #
+                ad_car_type=self.car_type,  #
+                ad_desc=self.description,  #
+                ad_mileage=self.mileage,  #
+                ad_price=self.exact_price,  #
+                ad_bargain_string=ad_bargain_string,  #
+                ad_location=self.location_desc,  #
+                ad_region=region_name,  #
+                user_pk=self.user.pk,  #
+                user_name=self.user.name,  #
+                user_phone=self.user.phone,  #
+                user_tg_id=self.user.user_id,  #
+                photos_loaded=photos_loaded,  #
+                registered_pk=registered_pk,  #
+                registered_msg_id=registered_msg_id,  #
+                registered_feedback=registered_feedback,  #
             )
         return self._data_dict
 
@@ -302,8 +303,10 @@ class SaleAd(TrackableUpdateCreateModel):
         # selection = self.select_location_by_input(user_input, fk_model)
         selection = self.data_as_dict().get("location_selection")
         row_len = 1
-        names = [dict(text=f"{entry.name} ({entry.region.name})") for entry in selection]
-        buttons = [names[i:i + row_len] for i in range(0, len(names), row_len)]
+        names = [
+            dict(text=f"{entry.name} ({entry.region.name})") for entry in selection
+        ]
+        buttons = [names[i: i + row_len] for i in range(0, len(names), row_len)]
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:

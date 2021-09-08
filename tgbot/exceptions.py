@@ -74,8 +74,10 @@ class LocationNotRecognizedError(BotProcessingError):
     """Возникает, когда пользователь вводит неизвестное название города"""
 
     def __init__(self, name):
-        super().__init__(f'Введено неизвестное название города: "{name}"\n\n'
-                         f'<pre>Постарайтесь указать город максимально кратко.</pre>')
+        super().__init__(
+            f'Введено неизвестное название города: "{name}"\n\n'
+            f"<pre>Постарайтесь указать город максимально кратко.</pre>"
+        )
 
 
 class CallbackNotProvidedError(BotProcessingError):

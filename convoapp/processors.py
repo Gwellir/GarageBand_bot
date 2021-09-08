@@ -139,9 +139,7 @@ class CarTypeInputProcessor(TextInputProcessor):
 
     def set_field(self, raw_text):
         super().set_field(raw_text)
-        self.model.set_dict_data(
-            ad_desc=getattr(self.model, self.attr_name)
-        )
+        self.model.set_dict_data(ad_desc=getattr(self.model, self.attr_name))
 
 
 class DescriptionInputProcessor(TextInputProcessor):
@@ -151,9 +149,7 @@ class DescriptionInputProcessor(TextInputProcessor):
 
     def set_field(self, raw_text):
         super().set_field(raw_text)
-        self.model.set_dict_data(
-            ad_desc=getattr(self.model, self.attr_name)
-        )
+        self.model.set_dict_data(ad_desc=getattr(self.model, self.attr_name))
 
 
 class LocationInputProcessor(TextInputProcessor):

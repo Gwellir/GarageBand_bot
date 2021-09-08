@@ -9,8 +9,9 @@ from tgbot.exceptions import (
     ImageNotProvidedError,
     IncorrectChoiceError,
     IncorrectNumberError,
+    LocationNotRecognizedError,
     NotANumberError,
-    TextNotProvidedError, LocationNotRecognizedError,
+    TextNotProvidedError,
 )
 
 
@@ -32,7 +33,9 @@ class PriceTagInputProcessor(TextInputProcessor):
     def set_field(self, raw_text):
         super().set_field(raw_text)
         self.model.set_dict_data(
-            tag_name=getattr(self.model, self.attr_name).name.replace("$", "").replace(" ", "_")
+            tag_name=getattr(self.model, self.attr_name)
+            .name.replace("$", "")
+            .replace(" ", "_")
         )
 
 
@@ -76,11 +79,13 @@ class PriceInputProcessor(IntNumberInputProcessor):
 
     def set_field(self, data):
         tag = self.model.get_tag_by_price(self.get_field_value(data))
-        setattr(self.model, 'price_tag', tag)
+        setattr(self.model, "price_tag", tag)
         super().set_field(data)
         self.model.set_dict_data(
             ad_price=getattr(self.model, self.attr_name),
-            tag_name=getattr(self.model, 'price_tag').name.replace("$", "").replace(" ", "_")
+            tag_name=getattr(self.model, "price_tag")
+            .name.replace("$", "")
+            .replace(" ", "_"),
         )
 
 
@@ -92,9 +97,7 @@ class MileageInputProcessor(IntNumberInputProcessor):
 
     def set_field(self, data):
         super().set_field(data)
-        self.model.set_dict_data(
-            ad_mileage=getattr(self.model, self.attr_name)
-        )
+        self.model.set_dict_data(ad_mileage=getattr(self.model, self.attr_name))
 
 
 class BinarySelectProcessor(BaseInputProcessor):
@@ -153,9 +156,7 @@ class AlbumPhotoProcessor(BaseInputProcessor):
 
     def cancel_step(self):
         self.model.photos.all().delete()
-        self.model.set_dict_data(
-            photos_loaded=""
-        )
+        self.model.set_dict_data(photos_loaded="")
 
     def get_step(self, data):
         album_dict = self.__class__.album_dict
@@ -173,8 +174,7 @@ class AlbumPhotoProcessor(BaseInputProcessor):
         else:
             if (
                 data["media_group_id"]
-                and album_dict.get(user_id)
-                == data["media_group_id"]
+                and album_dict.get(user_id) == data["media_group_id"]
             ):
                 self.dialog.suppress_output = True
             else:
@@ -208,9 +208,7 @@ class AlbumPhotoProcessor(BaseInputProcessor):
                     data=data,
                 )
             )
-            self.model.set_dict_data(
-                photos_loaded="<pre>Фотографии загружены</pre>\n"
-            )
+            self.model.set_dict_data(photos_loaded="<pre>Фотографии загружены</pre>\n")
 
         else:
             raise ImageNotProvidedError
@@ -244,7 +242,7 @@ class LocationConfirmationProcessor(TextInputProcessor):
     def get_field_value(self, data):
         if not data["text"]:
             raise TextNotProvidedError
-        result = re.findall(r'([\w\s.\'-]+) \(([\w\s.-]+)\)', data["text"])
+        result = re.findall(r"([\w\s.\'-]+) \(([\w\s.-]+)\)", data["text"])
         if not result:
             raise IncorrectChoiceError(data["text"])
         else:
@@ -255,7 +253,9 @@ class LocationConfirmationProcessor(TextInputProcessor):
     def set_field(self, raw_text):
         super().set_field(raw_text)
         self.model.set_dict_data(
-            ad_region=getattr(self.model, self.attr_name).region.name.replace(" ", "_").replace("-", "_")
+            ad_region=getattr(self.model, self.attr_name)
+            .region.name.replace(" ", "_")
+            .replace("-", "_")
         )
 
 
