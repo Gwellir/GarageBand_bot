@@ -1,3 +1,5 @@
+from time import sleep
+
 from django.utils.timezone import now
 
 
@@ -16,4 +18,6 @@ class DeleteJob:
                 **i_,
             )
             selection = self.model.objects.filter(**filter_).order_by("-created_at")
-            print(selection)
+            for ad in selection:
+                ad.delete_post()
+                sleep(60)

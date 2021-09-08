@@ -306,7 +306,7 @@ class SaleAd(TrackableUpdateCreateModel):
         names = [
             dict(text=f"{entry.name} ({entry.region.name})") for entry in selection
         ]
-        buttons = [names[i: i + row_len] for i in range(0, len(names), row_len)]
+        buttons = [names[i : i + row_len] for i in range(0, len(names), row_len)]
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:
@@ -405,6 +405,8 @@ class SaleAd(TrackableUpdateCreateModel):
             pass
         finally:
             self.is_locked = True
+            self.registered.is_deleted = True
+            self.registered.save()
             self.save()
 
     @transaction.atomic
@@ -499,13 +501,13 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        delete_time = datetime.strptime("11:20 +0300", "%H:%M %z").time()
+        delete_time = datetime.strptime("02:00 +0300", "%H:%M %z").time()
         filters = [
-            dict(
-                before=timedelta(days=21),
-                after=timedelta(days=22, hours=1),
-                is_locked=False,
-            ),
+            # dict(
+            #     before=timedelta(days=21),
+            #     after=timedelta(days=22, hours=1),
+            #     is_locked=False,
+            # ),
             dict(
                 before=timedelta(days=14),
                 after=timedelta(days=15, hours=1),
@@ -543,6 +545,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
     )
     feedback = models.TextField(
         verbose_name="Отзыв пользователя", null=True, max_length=4000
+    )
+    is_deleted = models.BooleanField(
+        verbose_name="Сообщение удалено из канала", default=False, db_index=True
     )
 
     def __str__(self):
