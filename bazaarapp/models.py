@@ -303,9 +303,6 @@ class SaleAd(TrackableUpdateCreateModel):
         return selection
 
     def _get_choices_as_buttons(self, select_field):
-        # user_input = self.location_desc
-        # fk_model = self._meta.get_field(select_field).related_model
-        # selection = self.select_location_by_input(user_input, fk_model)
         selection = self.data_as_dict().get("location_selection")
         row_len = 1
         names = [

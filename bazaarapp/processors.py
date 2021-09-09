@@ -83,7 +83,7 @@ class PriceInputProcessor(IntNumberInputProcessor):
         super().set_field(data)
         self.model.set_dict_data(
             ad_price=getattr(self.model, self.attr_name),
-            tag_name=getattr(self.model, "price_tag")
+            ad_price_range=getattr(self.model, "price_tag")
             .name.replace("$", "")
             .replace(" ", "_"),
         )
