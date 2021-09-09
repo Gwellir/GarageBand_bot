@@ -570,6 +570,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
             bound=bound,
         )
         instance = bound.get_tg_instance()
+        bound.set_dict_data(
+            registered_pk=reg_request.pk,
+        )
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             instance.publish_id,
@@ -579,7 +582,6 @@ class RegisteredAd(TrackableUpdateCreateModel):
         reg_request.save()
         bound.save()
         bound.set_dict_data(
-            registered_pk=reg_request.pk,
             registered_msg_id=reg_request.channel_message_id,
         )
         sleep(1)
