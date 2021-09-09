@@ -242,7 +242,7 @@ class LocationConfirmationProcessor(TextInputProcessor):
     def get_field_value(self, data):
         if not data["text"]:
             raise TextNotProvidedError
-        result = re.findall(r"([\w\s.\'-]+) \(([\w\s.-]+)\)", data["text"])
+        result = re.findall(r"([\w\s.\'-]+) \(регион: ([\w\s.-]+)\)", data["text"])
         if not result:
             raise IncorrectChoiceError(data["text"])
         else:

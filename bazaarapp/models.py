@@ -196,7 +196,7 @@ class SaleAd(TrackableUpdateCreateModel):
         """
 
         if not self._data_dict:
-            registered_feedback = tag_name = region_name = None
+            registered_feedback = tag_name = region_name = locations = None
             if self.is_complete:
                 registered_pk = self.registered.pk
                 registered_msg_id = self.registered.channel_message_id
@@ -213,6 +213,10 @@ class SaleAd(TrackableUpdateCreateModel):
                 photos_loaded = "<pre>Фотографии загружены</pre>\n"
             else:
                 photos_loaded = ""
+            # todo probably the worst thing you've done so far, make ad object persist, user_data?
+            if self.location_desc:
+                loc_model = self._meta.get_field("location_key").related_model
+                locations = self.select_location_by_input(self.location_desc, loc_model)
             if self.location_key:
                 region_name = self.location_key.region.name.replace(" ", "_").replace(
                     "-", "_"
@@ -228,6 +232,7 @@ class SaleAd(TrackableUpdateCreateModel):
                 ad_bargain_string=ad_bargain_string,  #
                 ad_location=self.location_desc,  #
                 ad_region=region_name,  #
+                location_selection=locations,  #
                 user_pk=self.user.pk,  #
                 user_name=self.user.name,  #
                 user_phone=self.user.phone,  #
@@ -304,7 +309,7 @@ class SaleAd(TrackableUpdateCreateModel):
         selection = self.data_as_dict().get("location_selection")
         row_len = 1
         names = [
-            dict(text=f"{entry.name} ({entry.region.name})") for entry in selection
+            dict(text=f"{entry.name} (регион: {entry.region.name})") for entry in selection
         ]
         buttons = [names[i : i + row_len] for i in range(0, len(names), row_len)]
         return buttons
