@@ -31,14 +31,26 @@ class DialogProcessor:
     список сообщений, соответствующий стадии диалога и сообщению
     пользователя."""
 
+    users_cache = {}
+
     def __init__(self, user_data, message_data):
-        self.user, _ = BotUser.get_or_create(user_data)
-        self.dialog = Dialog.get_or_create(
-            message_data["bot"], self.user, load=get_bound_state(message_data)
-        )
+        self.user, self.dialog = self._load_models(user_data, message_data)
         self.bound = self.dialog.bound
         self.message_data = message_data
         self.suppress_output = False
+
+    def _load_models(self, user_data, message_data):
+        user_id = user_data.get("user_id")
+        cached_info = self.users_cache.get(user_id)
+        bound_state = get_bound_state(message_data)
+        if not cached_info or bound_state:
+            user, _ = BotUser.get_or_create(user_data)
+            dialog = Dialog.get_or_create(message_data["bot"], user, load=bound_state)
+            self.users_cache[user_id] = user, dialog
+        else:
+            user, dialog = cached_info
+
+        return user, dialog
 
     # todo довольно сложно понимать, так как часть событий за процессинг происходит
     #  в одной стадии, а часть - в другой
@@ -101,7 +113,8 @@ class DialogProcessor:
             messages.append(self.bound.get_summary())
 
         elif self.bound.is_done():
-            self.dialog.finish()
+            self._restart()
+            # self.dialog.finish()
 
         return messages
 
@@ -118,6 +131,7 @@ class DialogProcessor:
         )
 
         self.dialog.finish()
+        self.users_cache.pop(self.user.user_id)
         # this is not saved, just to assure correct messages are displayed
         self.bound.restart()
 
