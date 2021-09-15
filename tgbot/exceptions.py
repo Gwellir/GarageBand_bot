@@ -67,7 +67,9 @@ class IncorrectChoiceError(BotProcessingError):
     """Возникает, когда пользователь вводит неправильное имя для выборной опции"""
 
     def __init__(self, name):
-        super().__init__(f'Пожалуйста, нажмите на одну из кнопок, опция "{name}" не существует!')
+        super().__init__(
+            f'Пожалуйста, нажмите на одну из кнопок, опция "{name}" не существует!'
+        )
 
 
 class LocationNotRecognizedError(BotProcessingError):

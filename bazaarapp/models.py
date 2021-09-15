@@ -213,7 +213,8 @@ class SaleAd(TrackableUpdateCreateModel):
                 photos_loaded = "<pre>Фотографии загружены</pre>\n"
             else:
                 photos_loaded = ""
-            # todo probably the worst thing you've done so far, make ad object persist, user_data?
+            # todo probably the worst thing you've done so far,
+            #  make ad object persist, user_data?
             if self.location_desc:
                 loc_model = self._meta.get_field("location_key").related_model
                 locations = self.select_location_by_input(self.location_desc, loc_model)
@@ -306,9 +307,10 @@ class SaleAd(TrackableUpdateCreateModel):
         selection = self.data_as_dict().get(select_field)
         row_len = 1
         names = [
-            dict(text=f"{entry.name} (регион: {entry.region.name})") for entry in selection
+            dict(text=f"{entry.name} (регион: {entry.region.name})")
+            for entry in selection
         ]
-        buttons = [names[i: i + row_len] for i in range(0, len(names), row_len)]
+        buttons = [names[i : i + row_len] for i in range(0, len(names), row_len)]  # noqa E203
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:
