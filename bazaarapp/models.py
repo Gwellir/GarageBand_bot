@@ -303,12 +303,12 @@ class SaleAd(TrackableUpdateCreateModel):
         return selection
 
     def _get_choices_as_buttons(self, select_field):
-        selection = self.data_as_dict().get("location_selection")
+        selection = self.data_as_dict().get(select_field)
         row_len = 1
         names = [
             dict(text=f"{entry.name} (регион: {entry.region.name})") for entry in selection
         ]
-        buttons = [names[i : i + row_len] for i in range(0, len(names), row_len)]
+        buttons = [names[i: i + row_len] for i in range(0, len(names), row_len)]
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:
@@ -403,13 +403,16 @@ class SaleAd(TrackableUpdateCreateModel):
                     self.registered.album_start_id, self.registered.album_end_id + 1
                 ):
                     bot.delete_message(instance.publish_id, msg_id)
-        except BadRequest:
-            pass
+        except BadRequest as e:
+            print(e)
         finally:
-            self.is_locked = True
-            self.registered.is_deleted = True
-            self.registered.save()
-            self.save()
+            self._lock_post()
+
+    def _lock_post(self):
+        self.is_locked = True
+        self.registered.is_deleted = True
+        self.registered.save()
+        self.save()
 
     @transaction.atomic
     def set_sold(self):
@@ -503,18 +506,18 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        delete_time = datetime.strptime("02:00 +0300", "%H:%M %z").time()
+        delete_time = datetime.strptime("13:26:10 +0300", "%H:%M:%S %z").time()
         filters = [
-            # dict(
-            #     before=timedelta(days=21),
-            #     after=timedelta(days=22, hours=1),
-            #     is_locked=False,
-            # ),
             dict(
-                before=timedelta(days=14),
-                after=timedelta(days=15, hours=1),
-                is_locked=True,
+                before=timedelta(days=21),
+                after=timedelta(days=22, hours=1),
+                is_locked=False,
             ),
+            # dict(
+            #     before=timedelta(days=5),
+            #     after=timedelta(days=7, hours=1),
+            #     is_locked=True,
+            # ),
         ]
         jobs.run_daily(
             DeleteJob(cls, updater, filters),

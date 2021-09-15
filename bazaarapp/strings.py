@@ -156,7 +156,7 @@ stages_info = [
         "Подтвердите, нажав кнопку ниже.\n"
         "<pre>При неожиданных результатах - нажмите \"Отменить\" и"
         " укажите ближайший более крупный город.</pre>",
-        "confirm_choices": "location_key",
+        "confirm_choices": "location_selection",
         "text_buttons": [
             [
                 {
