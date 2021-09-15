@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from time import sleep
 
 from django.utils.html import escape
+from django.utils.timezone import now
 from telegram import ChatPermissions
 from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
@@ -67,24 +68,15 @@ def post_handler(update, context):
     if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == publish_id:
         model = msg_bot.get_bound_model()
         try:
-            reg_object = model.objects.get(registered__channel_message_id=fwd_msg_id)
+            reg_object = model.objects.get(
+                registered__channel_message_id=fwd_msg_id,
+                registered__created_at__gte=now() - timedelta(minutes=5),
+            )
             reg_object.registered.group_message_id = update.effective_message.message_id
             reg_object.registered.save()
 
             if msg_bot.get_bound_name() == "salead":
-                album = reg_object.get_media()
-                if len(album) > 1:
-                    context.bot.send_media_group(
-                        chat_id=msg_bot.telegram_instance.discussion_group_id,
-                        media=album,
-                        reply_to_message_id=reg_object.registered.group_message_id,
-                    )
-                elif len(album):
-                    context.bot.send_photo(
-                        photo=album[0].media,
-                        chat_id=msg_bot.telegram_instance.discussion_group_id,
-                        reply_to_message_id=reg_object.registered.group_message_id,
-                    )
+                reg_object.post_media()
 
         except model.DoesNotExist:
             pass

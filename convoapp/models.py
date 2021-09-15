@@ -88,7 +88,7 @@ class Message(TrackableUpdateCreateModel):
         Dialog, on_delete=models.CASCADE, related_name="messages", db_index=True
     )
     text = models.TextField(verbose_name="Текст сообщения")
-    stage = models.PositiveSmallIntegerField(verbose_name="Стадия диалога")
+    stage = models.PositiveSmallIntegerField(verbose_name="Стадия диалога", null=True)
     message_id = models.IntegerField(
         verbose_name="Номер сообщения", default=None, null=True
     )

@@ -67,7 +67,19 @@ class IncorrectChoiceError(BotProcessingError):
     """Возникает, когда пользователь вводит неправильное имя для выборной опции"""
 
     def __init__(self, name):
-        super().__init__(f'Выбранное значение не существует: "{name}"')
+        super().__init__(
+            f'Пожалуйста, нажмите на одну из кнопок, опция "{name}" не существует!'
+        )
+
+
+class LocationNotRecognizedError(BotProcessingError):
+    """Возникает, когда пользователь вводит неизвестное название города"""
+
+    def __init__(self, name):
+        super().__init__(
+            f'Введено неизвестное название города: "{name}"\n\n'
+            f"<pre>Постарайтесь указать город максимально кратко.</pre>"
+        )
 
 
 class CallbackNotProvidedError(BotProcessingError):
