@@ -6,7 +6,7 @@ import django.db.models.deletion
 from garage_band_bot.settings import BASE_DIR
 
 
-SQL_FILE = f"{BASE_DIR}\\tgbot\\sql\\locations.sql"
+SQL_FILE = f"{BASE_DIR}/tgbot/sql/locations.sql"
 
 
 def load_sql(filename):
