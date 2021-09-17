@@ -164,7 +164,6 @@ def post_ad(update, context):
         _, btn_name, btn_link, post_text = msg.text.split("\n", 3)
     elif msg.caption:
         _, btn_name, btn_link, post_text = msg.caption.split("\n", 3)
-        photo = msg.photo[-1]
     msg_data = {
         "text": post_text,
         "buttons": [
@@ -178,7 +177,10 @@ def post_ad(update, context):
     }
     if msg.caption:
         msg_data["caption"] = msg_data.pop("text")
-        msg_data["photo"] = photo
+        if msg.photo:
+            msg_data["photo"] = msg.photo[-1]
+        elif msg.video:
+            msg_data["video"] = msg.video
     bot = context.bot_data.get("msg_bot")
     send_messages_return_ids(msg_data, bot.telegram_instance.publish_id, bot)
 
