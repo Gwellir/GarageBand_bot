@@ -149,6 +149,40 @@ def show_user_requests_stats(update, context):
         )
 
 
+def post_ad(update, context):
+    """Создаёт и размещает в канале рекламное сообщение."""
+
+    user = extract_user_data_from_update(update)
+    try:
+        BotUser.objects.get(user_id=user["user_id"], is_staff=True)
+    except BotUser.DoesNotExist:
+        # todo unify callback and exception processing
+        return
+
+    msg = update.effective_message
+    if msg.text:
+        _, btn_name, btn_link, post_text = msg.text.split("\n", 3)
+    elif msg.caption:
+        _, btn_name, btn_link, post_text = msg.caption.split("\n", 3)
+        photo = msg.photo[-1]
+    msg_data = {
+        "text": post_text,
+        "buttons": [
+            [
+                {
+                    "text": btn_name,
+                    "url": btn_link,
+                },
+            ]
+        ],
+    }
+    if msg.caption:
+        msg_data["caption"] = msg_data.pop("text")
+        msg_data["photo"] = photo
+    bot = context.bot_data.get("msg_bot")
+    send_messages_return_ids(msg_data, bot.telegram_instance.publish_id, bot)
+
+
 def chat_ban_user(update, context):
     """Банит пользователя в чате по ответу на его сообщение."""
 
