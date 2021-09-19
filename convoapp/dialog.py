@@ -15,7 +15,10 @@ def get_bound_state(message_data):
     """
 
     cb = message_data.get("callback")
-    if cb and (cb.startswith("leave_feedback ") or cb.startswith("complete ")):
+    if not cb:
+        return
+    command = cb.split(" ")
+    if command[0] in ["leave_feedback", "complete", "renew"]:
         try:
             bound_num = int(cb.split()[1])
             return bound_num
@@ -41,12 +44,13 @@ class DialogProcessor:
 
     def _load_models(self, user_data, message_data):
         user_id = user_data.get("user_id")
-        cached_info = self.users_cache.get(user_id)
+        bot = message_data["bot"]
+        cached_info = self.users_cache.get((bot, user_id))
         bound_state = get_bound_state(message_data)
         if not cached_info or bound_state:
             user, _ = BotUser.get_or_create(user_data)
             dialog = Dialog.get_or_create(message_data["bot"], user, load=bound_state)
-            self.users_cache[user_id] = user, dialog
+            self.users_cache[(bot, user_id)] = user, dialog
         else:
             user, dialog = cached_info
 
