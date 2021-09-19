@@ -39,11 +39,15 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     if "caption" in message_data.keys():
         if "photo" in message_data.keys():
             msg = bot.send_photo(
-                caption=message_data["caption"], photo=message_data["photo"], **params_dict
+                caption=message_data["caption"],
+                photo=message_data["photo"],
+                **params_dict
             ).result()
         elif "video" in message_data.keys():
             msg = bot.send_video(
-                caption=message_data["caption"], video=message_data["video"], **params_dict
+                caption=message_data["caption"],
+                video=message_data["video"],
+                **params_dict
             ).result()
         ids = [msg.message_id]
 
