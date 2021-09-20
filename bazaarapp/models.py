@@ -29,7 +29,7 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
+from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE, BAZAAR_REMINDER_TIME
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.models import BotUser, TrackableUpdateCreateModel
@@ -520,7 +520,7 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        reminder_time = datetime.strptime("17:05:00 +0300", "%H:%M:%S %z").time()
+        reminder_time = datetime.strptime(BAZAAR_REMINDER_TIME, "%H:%M:%S %z").time()
         filters = [
             dict(
                 before=timedelta(days=21),
