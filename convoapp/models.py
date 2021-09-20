@@ -46,7 +46,7 @@ class Dialog(TrackableUpdateCreateModel):
             Model = apps.get_model(app_label=bot.bound_app, model_name=bot.bound_object)
             bound, b_created = Model.get_or_create(user, dialog)
         else:
-            load_filter = {f"bound_{bot.get_bound_name()}__registered__pk": load}
+            load_filter = {f"bound_{bot.get_bound_name()}__registered_posts__pk": load}
             dialog = Dialog.objects.get(bot=bot, user=user, **load_filter)
             if dialog.bound.is_locked:
                 raise ActionAlreadyCompletedError(bot.get_bound_name(), load)

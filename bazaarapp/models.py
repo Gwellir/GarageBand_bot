@@ -9,7 +9,7 @@ from telegram import InputMediaPhoto, ParseMode
 from telegram.error import BadRequest, TimedOut
 
 from bazaarapp import strings as bazaar_strings
-from bazaarapp.jobs import DeleteJob
+from bazaarapp.jobs import ReminderJob
 from bazaarapp.processors import (
     AlbumPhotoProcessor,
     BargainSelectProcessor,
@@ -31,7 +31,6 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
 from tgbot.bot.senders import send_messages_return_ids
-from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.models import BotUser, TrackableUpdateCreateModel
 
@@ -163,7 +162,7 @@ class SaleAd(TrackableUpdateCreateModel):
         SaleAdStage, on_delete=models.SET_NULL, null=True, default=1
     )
     # photos backref
-    # registered backref
+    # registered_posts backref
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -172,6 +171,10 @@ class SaleAd(TrackableUpdateCreateModel):
 
     def __str__(self):
         return f"#{self.pk} {self.user} {self.price_tag} {self.is_complete}"
+
+    @property
+    def registered(self) -> 'RegisteredAd':
+        return self.registered_posts.get(is_deleted=False)
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -196,11 +199,12 @@ class SaleAd(TrackableUpdateCreateModel):
         """
 
         if not self._data_dict:
-            registered_feedback = tag_name = region_name = locations = None
+            registered_feedback = tag_name = region_name = post = locations = None
             if self.is_complete:
-                registered_pk = self.registered.pk
-                registered_msg_id = self.registered.channel_message_id
-                registered_feedback = self.registered.feedback
+                post = self.registered
+                registered_pk = post.pk
+                registered_msg_id = post.channel_message_id
+                registered_feedback = post.feedback
             else:
                 registered_pk = registered_msg_id = "000"
             if self.can_bargain:
@@ -239,6 +243,7 @@ class SaleAd(TrackableUpdateCreateModel):
                 user_phone=self.user.phone,  #
                 user_tg_id=self.user.user_id,  #
                 photos_loaded=photos_loaded,  #
+                post_object=post,
                 registered_pk=registered_pk,  #
                 registered_msg_id=registered_msg_id,  #
                 registered_feedback=registered_feedback,  #
@@ -346,14 +351,14 @@ class SaleAd(TrackableUpdateCreateModel):
     def get_feedback_message(self):
         """Возвращает шаблон сообщения для отзыва."""
 
-        msg = fill_data(bazaar_strings.feedback, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.feedback)
 
         return msg
 
     def get_admin_message(self):
         """Возвращает шаблон сообщения для администрирования."""
 
-        msg = fill_data(bazaar_strings.admin, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.admin)
 
         return msg
 
@@ -374,8 +379,12 @@ class SaleAd(TrackableUpdateCreateModel):
         return msg
 
     def get_summary_sold(self):
-        msg = fill_data(bazaar_strings.summary_sold, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.summary_sold)
         return msg["text"]
+
+    def get_renewal(self):
+        msg = self.fill_data(bazaar_strings.renewal)
+        return msg
 
     def get_ready_stage(self):
         return AdFormingStage.DONE
@@ -412,8 +421,9 @@ class SaleAd(TrackableUpdateCreateModel):
 
     def _lock_post(self):
         self.is_locked = True
-        self.registered.is_deleted = True
-        self.registered.save()
+        post: RegisteredAd = self.registered
+        post.is_deleted = True
+        post.save()
         self.save()
 
     @transaction.atomic
@@ -508,12 +518,13 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        delete_time = datetime.strptime("13:26:10 +0300", "%H:%M:%S %z").time()
+        reminder_time = datetime.strptime("17:00:00 +0300", "%H:%M:%S %z").time()
         filters = [
             dict(
                 before=timedelta(days=21),
-                after=timedelta(days=22, hours=1),
+                after=timedelta(days=22),
                 is_locked=False,
+                registered_posts__is_deleted=False,
             ),
             # dict(
             #     before=timedelta(days=5),
@@ -522,8 +533,8 @@ class SaleAd(TrackableUpdateCreateModel):
             # ),
         ]
         jobs.run_daily(
-            DeleteJob(cls, updater, filters),
-            delete_time,
+            ReminderJob(cls, updater, filters),
+            reminder_time,
             name="cleanup",
         )
 
@@ -535,8 +546,8 @@ class RegisteredAd(TrackableUpdateCreateModel):
     Содержит связь с объявлением, а также информацию о посте в канале (номер сообщения)
     """
 
-    bound = models.OneToOneField(
-        SaleAd, on_delete=models.CASCADE, related_name="registered"
+    bound: SaleAd = models.ForeignKey(
+        SaleAd, on_delete=models.CASCADE, related_name="registered_posts"
     )
     album_start_id = models.PositiveIntegerField(
         verbose_name="Первое сообщение в альбоме", null=True
@@ -595,6 +606,20 @@ class RegisteredAd(TrackableUpdateCreateModel):
         send_messages_return_ids(
             bound.get_admin_message(),
             instance.admin_group_id,
+            instance.bot,
+        )
+
+    def repost(self):
+        bound = self.bound
+        self.is_deleted = True
+        self.save()
+        RegisteredAd.publish(bound)
+
+    def propose_renewal(self):
+        instance = self.bound.get_tg_instance()
+        send_messages_return_ids(
+            self.bound.get_renewal(),
+            self.bound.user.user_id,
             instance.bot,
         )
 
