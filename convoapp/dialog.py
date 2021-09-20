@@ -135,7 +135,8 @@ class DialogProcessor:
         )
 
         self.dialog.finish()
-        self.users_cache.pop(self.user.user_id)
+        bot = self.message_data["bot"]
+        self.users_cache.pop((bot, self.user.user_id))
         # this is not saved, just to assure correct messages are displayed
         self.bound.restart()
 
