@@ -287,7 +287,7 @@ class WorkRequest(TrackableUpdateCreateModel):
         return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
 
     @property
-    def registered(self) -> 'RegisteredRequest':
+    def registered(self) -> "RegisteredRequest":
         return self.registered_posts
 
     def set_dict_data(self, **kwargs):

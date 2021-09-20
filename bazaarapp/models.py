@@ -173,7 +173,7 @@ class SaleAd(TrackableUpdateCreateModel):
         return f"#{self.pk} {self.user} {self.price_tag} {self.is_complete}"
 
     @property
-    def registered(self) -> 'RegisteredAd':
+    def registered(self) -> "RegisteredAd":
         return self.registered_posts.get(is_deleted=False)
 
     @classmethod
@@ -315,7 +315,9 @@ class SaleAd(TrackableUpdateCreateModel):
             dict(text=f"{entry.name} (регион: {entry.region.name})")
             for entry in selection
         ]
-        buttons = [names[i : i + row_len] for i in range(0, len(names), row_len)]  # noqa E203
+        buttons = [
+            names[i : i + row_len] for i in range(0, len(names), row_len)   # noqa E203
+        ]
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:
