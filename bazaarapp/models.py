@@ -316,7 +316,7 @@ class SaleAd(TrackableUpdateCreateModel):
             for entry in selection
         ]
         buttons = [
-            names[i : i + row_len] for i in range(0, len(names), row_len)   # noqa E203
+            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa E203
         ]
         return buttons
 
