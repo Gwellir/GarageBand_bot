@@ -12,7 +12,7 @@ class ReminderJob:
         self.intervals = intervals
 
     def __call__(self, *args, **kwargs):
-        BOT_LOG.INFO("Reminders triggered")
+        BOT_LOG.info("Reminders triggered")
         for interval in self.intervals:
             i_ = interval.copy()
             day_start = now().replace(hour=0, minute=0, second=0, microsecond=0)

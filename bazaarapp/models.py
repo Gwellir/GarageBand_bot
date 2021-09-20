@@ -520,7 +520,7 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        reminder_time = datetime.strptime("17:00:00 +0300", "%H:%M:%S %z").time()
+        reminder_time = datetime.strptime("17:05:00 +0300", "%H:%M:%S %z").time()
         filters = [
             dict(
                 before=timedelta(days=21),
@@ -528,11 +528,6 @@ class SaleAd(TrackableUpdateCreateModel):
                 is_locked=False,
                 registered_posts__is_deleted=False,
             ),
-            # dict(
-            #     before=timedelta(days=5),
-            #     after=timedelta(days=7, hours=1),
-            #     is_locked=True,
-            # ),
         ]
         jobs.run_daily(
             ReminderJob(cls, updater, filters),
