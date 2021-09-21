@@ -29,7 +29,11 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE, BAZAAR_REMINDER_TIME
+from tgbot.bot.constants import (
+    BAZAAR_REMINDER_TIME,
+    DEFAULT_AD_LOGO_FILE,
+    DEFAULT_AD_SOLD_FILE,
+)
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.models import BotUser, TrackableUpdateCreateModel
