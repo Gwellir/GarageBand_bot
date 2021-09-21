@@ -49,7 +49,7 @@ class DialogProcessor:
         bound_state = get_bound_state(message_data)
         if not cached_info or bound_state:
             user, _ = BotUser.get_or_create(user_data)
-            dialog = Dialog.get_or_create(message_data["bot"], user, load=bound_state)
+            dialog = Dialog.get_or_create(bot, user, load=bound_state)
             self.users_cache[(bot, user_id)] = user, dialog
         else:
             user, dialog = cached_info

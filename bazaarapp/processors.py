@@ -273,8 +273,13 @@ class SetCompleteInputProcessor(BaseInputProcessor):
             raise CallbackNotProvidedError
         elif data["callback"] == "restart":
             return
-        elif data["callback"].split() == ["complete", str(dialog.bound.registered.pk)]:
+        command = data["callback"].split()
+        post_pk = dialog.bound.data_as_dict().get("registered_pk")
+        if command == ["complete", str(post_pk)]:
             dialog.bound.set_sold()
             dialog.bound.stage_id += 1
+            return
+        elif command == ["renew", str(post_pk)]:
+            dialog.bound.registered.repost()
             return
         raise ButtonIsLockedError

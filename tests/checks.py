@@ -41,7 +41,7 @@ def check_request_description(answer):
 def check_request_photo(answer):
     assert answer.button_count == 2
     assert "Добавьте фотографию, так будет" in answer.raw_text
-    assert answer.buttons[0][0].text == "Пропустить"
+    assert answer.buttons[0][0].text == "Далее"
     assert answer.buttons[1][0].text == "Отменить"
 
 

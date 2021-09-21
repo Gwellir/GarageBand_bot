@@ -46,7 +46,7 @@ def delete_channel_message_by_id(bot, message_id, callback=None):
 
     try:
         Model = bot.get_bound_model()
-        bound = Model.objects.get(registered__channel_message_id=message_id)
+        bound = Model.objects.get(registered_posts__channel_message_id=message_id)
         bound.delete_post()
     except BadRequest:
         raise MessageDoesNotExistError(message_id)

@@ -14,16 +14,10 @@ from convoapp.models import Message
 from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from tgbot import exceptions
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_text
-from tgbot.exceptions import (
-    ActionAlreadyCompletedError,
-    AdminActionError,
-    MessageIsAnEditError,
-    UnknownAdminCommandError,
-    UserIsBannedError,
-)
 from tgbot.models import BotUser
 
 
@@ -68,15 +62,17 @@ def post_handler(update, context):
     if fwd_msg_id and fwd_from_chat and fwd_from_chat.id == publish_id:
         model = msg_bot.get_bound_model()
         try:
-            reg_object = model.objects.get(
-                registered__channel_message_id=fwd_msg_id,
-                registered__created_at__gte=now() - timedelta(minutes=5),
+            object_ = model.objects.get(
+                registered_posts__channel_message_id=fwd_msg_id,
+                registered_posts__created_at__gte=now() - timedelta(minutes=5),
+                registered_posts__is_deleted=False,
             )
-            reg_object.registered.group_message_id = update.effective_message.message_id
-            reg_object.registered.save()
+            post_object = object_.registered
+            post_object.group_message_id = update.effective_message.message_id
+            post_object.save()
 
             if msg_bot.get_bound_name() == "salead":
-                reg_object.post_media()
+                object_.post_media()
 
         except model.DoesNotExist:
             pass
@@ -110,12 +106,12 @@ def admin_command_handler(update, context):
     try:
         action = ADMIN_ACTIONS[command]
     except KeyError:
-        raise UnknownAdminCommandError(command, key)
+        raise exceptions.UnknownAdminCommandError(command, key)
 
     bot = context.bot_data.get("msg_bot")
     try:
         action(bot, int(key), callback=update.callback_query)
-    except (AdminActionError, UserIsBannedError) as e:
+    except (exceptions.AdminActionError, exceptions.UserIsBannedError) as e:
         update.callback_query.answer(e.args[0])
 
     # todo should only work for destructive actions
@@ -242,7 +238,7 @@ def message_handler(update, context):
     try:
         user_data = extract_user_data_from_update(update)
     # todo think how to use edits?
-    except MessageIsAnEditError as e:
+    except exceptions.MessageIsAnEditError as e:
         BOT_LOG.warning(
             LogStrings.DIALOG_INPUT_ERROR.format(
                 user_id=update.effective_user.username,
@@ -272,7 +268,7 @@ def message_handler(update, context):
     try:
         dialog_processor = DialogProcessor(user_data, input_data)
         replies = dialog_processor.process()
-    except UserIsBannedError as e:
+    except exceptions.UserIsBannedError as e:
         BOT_LOG.warning(
             LogStrings.DIALOG_INPUT_ERROR.format(
                 user_id=user_data.get("username"),
@@ -281,7 +277,7 @@ def message_handler(update, context):
             )
         )
         return
-    except ActionAlreadyCompletedError as e:
+    except exceptions.ActionAlreadyCompletedError as e:
         BOT_LOG.warning(
             LogStrings.DIALOG_INPUT_ERROR.format(
                 user_id=user_data.get("username"),
