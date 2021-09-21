@@ -16,6 +16,12 @@ def setup_dispatcher(dp):
     dp.add_handler(
         CommandHandler(["user_request_stats"], handlers.show_user_requests_stats)
     )
+    dp.add_handler(
+        MessageHandler(
+            Filters.regex("/post_ad\n.*") | Filters.caption_regex("/post_ad\n.*"),
+            handlers.post_ad,
+        )
+    )
     dp.add_handler(MessageHandler(Filters.chat_type.private, handlers.message_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.channel, handlers.post_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.groups, handlers.post_handler))

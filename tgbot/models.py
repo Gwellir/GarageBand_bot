@@ -290,6 +290,13 @@ class WorkRequest(TrackableUpdateCreateModel):
     def __str__(self):
         return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
 
+    @property
+    def registered(self) -> "RegisteredRequest":
+        return self.registered_posts
+
+    def set_dict_data(self, **kwargs):
+        pass
+
     @classmethod
     def get_or_create(cls, user, dialog):
         """
@@ -309,12 +316,13 @@ class WorkRequest(TrackableUpdateCreateModel):
         """
 
         if self.is_complete:
-            registered_pk = self.registered.pk
-            registered_msg_id = self.registered.channel_message_id
-            registered_feedback = self.registered.feedback
+            post = self.registered
+            registered_pk = post.pk
+            registered_msg_id = post.channel_message_id
+            registered_feedback = post.feedback
         else:
             registered_pk = registered_msg_id = "000"
-            registered_feedback = None
+            registered_feedback = post = None
         if self.tag:
             tag_name = self.tag.name.replace("/", "_").replace(" ", "_")
         else:
@@ -328,6 +336,7 @@ class WorkRequest(TrackableUpdateCreateModel):
             user_pk=self.user.pk,
             user_name=self.user.name,
             user_tg_id=self.user.user_id,
+            post_object=post,
             registered_pk=registered_pk,
             registered_msg_id=registered_msg_id,
             registered_feedback=registered_feedback,
@@ -464,7 +473,7 @@ class RegisteredRequest(TrackableUpdateCreateModel):
     """
 
     bound = models.OneToOneField(
-        WorkRequest, on_delete=models.CASCADE, related_name="registered"
+        WorkRequest, on_delete=models.CASCADE, related_name="registered_posts"
     )
     channel_message_id = models.PositiveIntegerField(
         verbose_name="Идентификатор сообщения в канале", null=True, db_index=True
@@ -474,6 +483,9 @@ class RegisteredRequest(TrackableUpdateCreateModel):
     )
     feedback = models.TextField(
         verbose_name="Отзыв пользователя", null=True, max_length=4000
+    )
+    is_deleted = models.BooleanField(
+        verbose_name="Сообщение удалено из канала", default=False, db_index=True
     )
 
     def __str__(self):
@@ -559,3 +571,29 @@ class RequestFormingStage(models.IntegerChoices):
     DONE = 8, _("Работа завершена")
     LEAVE_FEEDBACK = 9, _("Оставить отзыв")
     FEEDBACK_DONE = 10, _("Отзыв получен")
+
+
+class Region(models.Model):
+    """Модель для описания региона (для разделения локаций)"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=20,
+        blank=False,
+        db_index=True,
+        unique=True,
+    )
+
+
+class Location(models.Model):
+    """Модель локации со всеми её версиями названий"""
+
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=50,
+        blank=False,
+        db_index=True,
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
+    )

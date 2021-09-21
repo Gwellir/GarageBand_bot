@@ -1,25 +1,27 @@
+import copy
 from datetime import datetime, timedelta
 from time import sleep
 
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from telegram import InputMediaPhoto, ParseMode
 from telegram.error import BadRequest, TimedOut
 
 from bazaarapp import strings as bazaar_strings
-from bazaarapp.jobs import DeleteJob
+from bazaarapp.jobs import ReminderJob
 from bazaarapp.processors import (
     AlbumPhotoProcessor,
     BargainSelectProcessor,
+    LocationConfirmationProcessor,
+    LocationKeyInputProcessor,
     MileageInputProcessor,
     PriceInputProcessor,
-    PriceTagInputProcessor,
     SetCompleteInputProcessor,
 )
 from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
-    LocationInputProcessor,
     NameInputProcessor,
     PhoneNumberInputProcessor,
     SetReadyInputProcessor,
@@ -27,9 +29,12 @@ from convoapp.processors import (
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.bot.constants import DEFAULT_AD_LOGO_FILE, DEFAULT_AD_SOLD_FILE
+from tgbot.bot.constants import (
+    BAZAAR_REMINDER_TIME,
+    DEFAULT_AD_LOGO_FILE,
+    DEFAULT_AD_SOLD_FILE,
+)
 from tgbot.bot.senders import send_messages_return_ids
-from tgbot.bot.utils import fill_data
 from tgbot.exceptions import IncorrectChoiceError
 from tgbot.models import BotUser, TrackableUpdateCreateModel
 
@@ -42,12 +47,12 @@ class AdFormingStage(models.IntegerChoices):
     GET_PHONE = 3, _("Получить телефон")
     GET_CAR_TYPE = 4, _("Получить тип автомобиля")
     GET_CAR_MILEAGE = 5, _("Получить пробег автомобиля")
-    GET_PRICE_TAG = 6, _("Получить ценовую категорию объявления")
-    GET_EXACT_PRICE = 7, _("Получить точную цену")
-    GET_BARGAIN = 8, _("Узнать возможность торга ")
-    GET_DESC = 9, _("Получить описание объявления")
-    REQUEST_PHOTOS = 10, _("Предложить отправить фотографии")
-    GET_LOCATION = 11, _("Получить местоположение")
+    GET_EXACT_PRICE = 6, _("Получить точную цену")
+    GET_BARGAIN = 7, _("Узнать возможность торга ")
+    GET_DESC = 8, _("Получить описание объявления")
+    REQUEST_PHOTOS = 9, _("Предложить отправить фотографии")
+    GET_LOCATION = 10, _("Получить местоположение")
+    CONFIRM_LOCATION = 11, _("Подтвердить местоположение")
     CHECK_DATA = 12, _("Проверить заявку")
     DONE = 13, _("Работа завершена")
     SALE_COMPLETE = 14, _("Заявка закрыта")
@@ -58,9 +63,17 @@ class PriceTag(models.Model):
 
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
     short_name = models.CharField(verbose_name="Краткое наименование", max_length=20)
+    low = models.PositiveIntegerField(verbose_name="Нижняя граница цены", null=True)
+    high = models.PositiveIntegerField(verbose_name="Верхняя граница цены", null=True)
 
     def __str__(self):
         return f"#{self.pk} {self.name}"
+
+    @classmethod
+    def get_by_price(cls, price: int) -> "PriceTag":
+        return cls.objects.get(
+            Q(low__lte=price) | Q(low=None), Q(high__gte=price) | Q(high=None)
+        )
 
     @classmethod
     def get_tag_by_text(cls, text):
@@ -88,12 +101,12 @@ class SaleAdStage(models.Model):
             AdFormingStage.GET_PHONE: PhoneNumberInputProcessor,
             AdFormingStage.GET_CAR_TYPE: CarTypeInputProcessor,
             AdFormingStage.GET_CAR_MILEAGE: MileageInputProcessor,
-            AdFormingStage.GET_PRICE_TAG: PriceTagInputProcessor,
             AdFormingStage.GET_EXACT_PRICE: PriceInputProcessor,
             AdFormingStage.GET_BARGAIN: BargainSelectProcessor,
             AdFormingStage.GET_DESC: DescriptionInputProcessor,
             AdFormingStage.REQUEST_PHOTOS: AlbumPhotoProcessor,
-            AdFormingStage.GET_LOCATION: LocationInputProcessor,
+            AdFormingStage.GET_LOCATION: LocationKeyInputProcessor,
+            AdFormingStage.CONFIRM_LOCATION: LocationConfirmationProcessor,
             AdFormingStage.CHECK_DATA: SetReadyInputProcessor,
             AdFormingStage.DONE: SetCompleteInputProcessor,
         }
@@ -128,8 +141,11 @@ class SaleAd(TrackableUpdateCreateModel):
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
     )
-    location = models.CharField(
+    location_desc = models.CharField(
         verbose_name="Местоположение для ремонта", blank=True, max_length=100
+    )
+    location_key = models.ForeignKey(
+        "tgbot.Location", on_delete=models.SET_NULL, null=True, related_name="sale_ads"
     )
     car_type = models.CharField(
         verbose_name="Тип автомобиля", blank=True, max_length=50
@@ -154,10 +170,19 @@ class SaleAd(TrackableUpdateCreateModel):
         SaleAdStage, on_delete=models.SET_NULL, null=True, default=1
     )
     # photos backref
-    # registered backref
+    # registered_posts backref
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._data_dict = dict()
+        self.data_as_dict()
 
     def __str__(self):
         return f"#{self.pk} {self.user} {self.price_tag} {self.is_complete}"
+
+    @property
+    def registered(self) -> "RegisteredAd":
+        return self.registered_posts.get(is_deleted=False)
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -170,6 +195,10 @@ class SaleAd(TrackableUpdateCreateModel):
 
         return cls.objects.get_or_create(user=user, dialog=dialog, is_discarded=False)
 
+    def set_dict_data(self, **kwargs):
+        for key, value in kwargs.items():
+            self._data_dict[key] = value
+
     # todo separate into a manager?
     def data_as_dict(self):
         """
@@ -177,46 +206,59 @@ class SaleAd(TrackableUpdateCreateModel):
         в виде словаря.
         """
 
-        if self.is_complete:
-            registered_pk = self.registered.pk
-            registered_msg_id = self.registered.channel_message_id
-            registered_feedback = self.registered.feedback
-        else:
-            registered_pk = registered_msg_id = "000"
-            registered_feedback = None
-        if self.can_bargain:
-            ad_bargain_string = "Торг!"
-        else:
-            ad_bargain_string = ""
-        if self.price_tag:
-            tag_name = self.price_tag.name.replace("$", "").replace(" ", "_")
-        else:
-            tag_name = None
-        if self.photos.count():
-            photos_loaded = "<pre>Фотографии загружены</pre>\n"
-        else:
-            photos_loaded = ""
-        return dict(
-            channel_name=self.get_tg_instance().publish_name,
-            request_pk=self.pk,
-            ad_price_range=tag_name,
-            ad_car_type=self.car_type,
-            ad_desc=self.description,
-            ad_mileage=self.mileage,
-            ad_price=self.exact_price,
-            ad_bargain_string=ad_bargain_string,
-            ad_location=self.location,
-            user_pk=self.user.pk,
-            user_name=self.user.name,
-            user_phone=self.user.phone,
-            user_tg_id=self.user.user_id,
-            photos_loaded=photos_loaded,
-            registered_pk=registered_pk,
-            registered_msg_id=registered_msg_id,
-            registered_feedback=registered_feedback,
-        )
+        if not self._data_dict:
+            registered_feedback = tag_name = region_name = post = locations = None
+            if self.is_complete:
+                post = self.registered
+                registered_pk = post.pk
+                registered_msg_id = post.channel_message_id
+                registered_feedback = post.feedback
+            else:
+                registered_pk = registered_msg_id = "000"
+            if self.can_bargain:
+                ad_bargain_string = "Торг!"
+            else:
+                ad_bargain_string = ""
+            if self.price_tag:
+                tag_name = self.price_tag.name.replace("$", "").replace(" ", "_")
+            if self.photos.count():
+                photos_loaded = "<pre>Фотографии загружены</pre>\n"
+            else:
+                photos_loaded = ""
+            # todo probably the worst thing you've done so far,
+            #  make ad object persist, user_data?
+            if self.location_desc:
+                loc_model = self._meta.get_field("location_key").related_model
+                locations = self.select_location_by_input(self.location_desc, loc_model)
+            if self.location_key:
+                region_name = self.location_key.region.name.replace(" ", "_").replace(
+                    "-", "_"
+                )
+            self._data_dict = dict(
+                channel_name=self.get_tg_instance().publish_name,  #
+                request_pk=self.pk,  #
+                ad_price_range=tag_name,  #
+                ad_car_type=self.car_type,  #
+                ad_desc=self.description,  #
+                ad_mileage=self.mileage,  #
+                ad_price=self.exact_price,  #
+                ad_bargain_string=ad_bargain_string,  #
+                ad_location=self.location_desc,  #
+                ad_region=region_name,  #
+                location_selection=locations,  #
+                user_pk=self.user.pk,  #
+                user_name=self.user.name,  #
+                user_phone=self.user.phone,  #
+                user_tg_id=self.user.user_id,  #
+                photos_loaded=photos_loaded,  #
+                post_object=post,
+                registered_pk=registered_pk,  #
+                registered_msg_id=registered_msg_id,  #
+                registered_feedback=registered_feedback,  #
+            )
+        return self._data_dict
 
-    def get_media(self):
+    def _get_media(self):
         """
         Возвращает объект фотографии, пригодный для передачи в Телеграм.
 
@@ -232,7 +274,7 @@ class SaleAd(TrackableUpdateCreateModel):
             return []
 
     def post_media(self):
-        album = self.get_media()[1:]
+        album = self._get_media()[1:]
         instance = self.get_tg_instance()
         bot = instance.tg_bot
         if len(album) > 1:
@@ -256,33 +298,85 @@ class SaleAd(TrackableUpdateCreateModel):
 
         return tag
 
+    def get_tag_by_price(self, price: int) -> PriceTag:
+        try:
+            tag = PriceTag.get_by_price(price)
+        except PriceTag.DoesNotExist:
+            raise IncorrectChoiceError(price)
+
+        return tag
+
+    def select_location_by_input(self, user_input, fk_model):
+        selection = fk_model.objects.filter(name__iexact=user_input)
+        if not selection:
+            selection = fk_model.objects.filter(name__icontains=user_input)
+        if not selection:
+            selection = fk_model.objects.filter(name__in=user_input.split(","))
+        if not selection:
+            selection = fk_model.objects.filter(name__in=user_input.split(" "))
+        return selection
+
+    def _get_choices_as_buttons(self, select_field):
+        selection = self.data_as_dict().get(select_field)
+        row_len = 1
+        names = [
+            dict(text=f"{entry.name} (регион: {entry.region.name})")
+            for entry in selection
+        ]
+        buttons = [
+            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa E203
+        ]
+        return buttons
+
+    def fill_data(self, message_data: dict) -> dict:
+        """Подставляет нужные данные в тело ответа и параметры кнопок."""
+
+        msg = copy.deepcopy(message_data)
+        msg["text"] = msg["text"].format(**self.data_as_dict())
+        field_name = msg.get("confirm_choices")
+        if field_name:
+            buttons_as_list = self._get_choices_as_buttons(field_name)
+            buttons_as_list.extend(msg.get("text_buttons"))
+            msg["text_buttons"] = buttons_as_list
+        if msg.get("buttons") or msg.get("text_buttons"):
+            for row in msg.get("buttons", []):
+                for button in row:
+                    for field in button.keys():
+                        button[field] = button[field].format(**self.data_as_dict())
+            for row in msg.get("text_buttons", []):
+                for button in row:
+                    for field in button.keys():
+                        button[field] = button[field].format(**self.data_as_dict())
+
+        return msg
+
     def get_reply_for_stage(self):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
 
         num = self.stage_id - 1
-        msg = fill_data(bazaar_strings.stages_info[num], self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.stages_info[num])
 
         return msg
 
     def get_feedback_message(self):
         """Возвращает шаблон сообщения для отзыва."""
 
-        msg = fill_data(bazaar_strings.feedback, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.feedback)
 
         return msg
 
     def get_admin_message(self):
         """Возвращает шаблон сообщения для администрирования."""
 
-        msg = fill_data(bazaar_strings.admin, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.admin)
 
         return msg
 
     def get_summary(self, ready=False):
         """Возвращает шаблон саммари"""
 
-        media = self.get_media()
-        msg = fill_data(bazaar_strings.summary, self.data_as_dict())
+        media = self._get_media()
+        msg = self.fill_data(bazaar_strings.summary)
         msg["caption"] = msg.pop("text")
         if media:
             msg["photo"] = media[0].media
@@ -295,8 +389,12 @@ class SaleAd(TrackableUpdateCreateModel):
         return msg
 
     def get_summary_sold(self):
-        msg = fill_data(bazaar_strings.summary_sold, self.data_as_dict())
+        msg = self.fill_data(bazaar_strings.summary_sold)
         return msg["text"]
+
+    def get_renewal(self):
+        msg = self.fill_data(bazaar_strings.renewal)
+        return msg
 
     def get_ready_stage(self):
         return AdFormingStage.DONE
@@ -326,11 +424,17 @@ class SaleAd(TrackableUpdateCreateModel):
                     self.registered.album_start_id, self.registered.album_end_id + 1
                 ):
                     bot.delete_message(instance.publish_id, msg_id)
-        except BadRequest:
-            pass
+        except BadRequest as e:
+            print(e)
         finally:
-            self.is_locked = True
-            self.save()
+            self._lock_post()
+
+    def _lock_post(self):
+        self.is_locked = True
+        post: RegisteredAd = self.registered
+        post.is_deleted = True
+        post.save()
+        self.save()
 
     @transaction.atomic
     def set_sold(self):
@@ -424,22 +528,18 @@ class SaleAd(TrackableUpdateCreateModel):
     @classmethod
     def setup_jobs(cls, updater):
         jobs = updater.job_queue
-        delete_time = datetime.strptime("11:20 +0300", "%H:%M %z").time()
+        reminder_time = datetime.strptime(BAZAAR_REMINDER_TIME, "%H:%M:%S %z").time()
         filters = [
             dict(
                 before=timedelta(days=21),
-                after=timedelta(days=22, hours=1),
+                after=timedelta(days=22),
                 is_locked=False,
-            ),
-            dict(
-                before=timedelta(days=14),
-                after=timedelta(days=15, hours=1),
-                is_locked=True,
+                registered_posts__is_deleted=False,
             ),
         ]
         jobs.run_daily(
-            DeleteJob(cls, updater, filters),
-            delete_time,
+            ReminderJob(cls, updater, filters),
+            reminder_time,
             name="cleanup",
         )
 
@@ -451,8 +551,8 @@ class RegisteredAd(TrackableUpdateCreateModel):
     Содержит связь с объявлением, а также информацию о посте в канале (номер сообщения)
     """
 
-    bound = models.OneToOneField(
-        SaleAd, on_delete=models.CASCADE, related_name="registered"
+    bound: SaleAd = models.ForeignKey(
+        SaleAd, on_delete=models.CASCADE, related_name="registered_posts"
     )
     album_start_id = models.PositiveIntegerField(
         verbose_name="Первое сообщение в альбоме", null=True
@@ -468,6 +568,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
     )
     feedback = models.TextField(
         verbose_name="Отзыв пользователя", null=True, max_length=4000
+    )
+    is_deleted = models.BooleanField(
+        verbose_name="Сообщение удалено из канала", default=False, db_index=True
     )
 
     def __str__(self):
@@ -492,6 +595,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
             bound=bound,
         )
         instance = bound.get_tg_instance()
+        bound.set_dict_data(
+            registered_pk=reg_ad.pk,
+        )
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             instance.publish_id,
@@ -500,6 +606,9 @@ class RegisteredAd(TrackableUpdateCreateModel):
         reg_ad.channel_message_id = message_ids[0]
         reg_ad.save()
         bound.save()
+        bound.set_dict_data(
+            registered_msg_id=reg_ad.channel_message_id,
+        )
         sleep(1)
         send_messages_return_ids(
             bound.get_admin_message(),
@@ -507,6 +616,20 @@ class RegisteredAd(TrackableUpdateCreateModel):
             instance.bot,
         )
         BazaarFilter.trigger_send(reg_ad)
+
+    def repost(self):
+        bound = self.bound
+        self.is_deleted = True
+        self.save()
+        RegisteredAd.publish(bound)
+
+    def propose_renewal(self):
+        instance = self.bound.get_tg_instance()
+        send_messages_return_ids(
+            self.bound.get_renewal(),
+            self.bound.user.user_id,
+            instance.bot,
+        )
 
 
 class AdPhoto(models.Model):
@@ -521,34 +644,4 @@ class AdPhoto(models.Model):
     image = models.ImageField(verbose_name="Фотография", upload_to="user_photos")
     ad = models.ForeignKey(
         SaleAd, on_delete=models.CASCADE, related_name="photos", db_index=True
-    )
-
-
-class Region(models.Model):
-    """Модель для описания региона (для разделения локаций)"""
-
-    name = models.CharField(
-        verbose_name="Наименование",
-        max_length=20,
-        blank=False,
-        db_index=True,
-        unique=True,
-    )
-
-    @classmethod
-    def get_tag_by_text(cls, text):
-        return cls.objects.get(name=text)
-
-
-class Location(models.Model):
-    """Модель локации со всеми её версиями названий"""
-
-    name = models.CharField(
-        verbose_name="Наименование",
-        max_length=50,
-        blank=False,
-        db_index=True,
-    )
-    region = models.ForeignKey(
-        Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
     )
