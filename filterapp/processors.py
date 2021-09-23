@@ -1,7 +1,7 @@
 from convoapp.processors import BaseInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.exceptions import TextNotProvidedError
+from tgbot.exceptions import TextNotProvidedError, IncorrectChoiceError
 
 
 class MultiSelectProcessor(BaseInputProcessor):
@@ -20,7 +20,11 @@ class MultiSelectProcessor(BaseInputProcessor):
             raise TextNotProvidedError
         text = data["text"][2:]
         rel_model = self.model._meta.get_field(self.attr_name).related_model
-        return rel_model.get_tag_by_text(text)
+        try:
+            value = rel_model.get_tag_by_name(text)
+        except rel_model.DoesNotExist:
+            raise IncorrectChoiceError(data["text"])
+        return value
 
     def set_field(self, data):
         if data["text"] == "Далее":

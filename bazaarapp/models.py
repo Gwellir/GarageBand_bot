@@ -76,7 +76,7 @@ class PriceTag(models.Model):
         )
 
     @classmethod
-    def get_tag_by_text(cls, text):
+    def get_tag_by_name(cls, text):
         return cls.objects.get(name=text)
 
 
@@ -372,11 +372,14 @@ class SaleAd(TrackableUpdateCreateModel):
 
         return msg
 
-    def get_summary(self, ready=False):
+    def get_summary(self, ready=False, forward=False):
         """Возвращает шаблон саммари"""
 
         media = self._get_media()
-        msg = self.fill_data(bazaar_strings.summary)
+        if not forward:
+            msg = self.fill_data(bazaar_strings.summary)
+        else:
+            msg = self.fill_data(bazaar_strings.summary_forward)
         msg["caption"] = msg.pop("text")
         if media:
             msg["photo"] = media[0].media

@@ -24,7 +24,7 @@ from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.exceptions import UserIsBannedError
+from tgbot.exceptions import UserIsBannedError, IncorrectChoiceError
 from tgbot.launcher import tg_bots
 
 
@@ -584,6 +584,13 @@ class Region(models.Model):
         unique=True,
     )
 
+    def __str__(self):
+        return f"{self.name} #{self.pk}"
+
+    @classmethod
+    def get_tag_by_name(cls, text):
+        return cls.objects.get(name=text)
+
 
 class Location(models.Model):
     """Модель локации со всеми её версиями названий"""
@@ -597,3 +604,6 @@ class Location(models.Model):
     region = models.ForeignKey(
         Region, on_delete=models.CASCADE, db_index=True, related_name="locations"
     )
+
+    def __str__(self):
+        return f"{self.name} #{self.pk} ({self.region})"

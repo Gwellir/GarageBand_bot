@@ -251,6 +251,25 @@ summary_sold = {
     "text_buttons": None,
 }
 
+summary_forward = {
+    "text": "<b>#{registered_pk}</b>\n\n"
+    "#{ad_price_range}\n\n"
+    "🚘 {ad_car_type}\n\n"
+    "{ad_desc}\n\n"
+    "🎛 Пробег {ad_mileage} тыс. км\n\n"
+    "💸 Цена <b>${ad_price}</b> {ad_bargain_string}\n\n"
+    "📍 {ad_location} #{ad_region}\n\n"
+    "🖋 {user_name} {user_phone}\n\n",
+    "buttons": [
+        [
+            {
+                "text": "Перейти в канал",
+                "url": "https://t.me/{channel_name}/{registered_msg_id}",
+            },
+        ],
+    ],
+}
+
 feedback = {
     "text": "<b>Отзыв клиента по заявке "
     '<a href="https://t.me/{channel_name}/{registered_msg_id}">'

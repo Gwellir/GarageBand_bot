@@ -5,7 +5,7 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from bazaarapp.models import PriceTag, Region, SaleAd
+from bazaarapp.models import PriceTag, SaleAd
 from convoapp.processors import StartInputProcessor, SetReadyInputProcessor
 from filterapp import strings_bazaar as bazaar_filter_strings
 from filterapp.processors import PriceMultiSelectProcessor, RegionMultiSelectProcessor
@@ -13,7 +13,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.models import TrackableUpdateCreateModel, BotUser, MessengerBot
+from tgbot.models import TrackableUpdateCreateModel, BotUser, MessengerBot, Region
 
 
 class FilterFormingStage(models.IntegerChoices):
@@ -103,12 +103,12 @@ class BazaarFilter(TrackableUpdateCreateModel):
         users = BotUser.objects.filter(
             filters__is_complete=True,
             filters__price_ranges=registered_ad.bound.price_tag,
-            # filters__regions=registered_ad.bound.region,
+            filters__regions=registered_ad.bound.location_key.region,
         ).distinct()
         msg_bot = MessengerBot.get_by_model_name(cls.__name__)
         for user in users:
             message_ids = send_messages_return_ids(
-                registered_ad.bound.get_summary(ready=True),
+                registered_ad.bound.get_summary(forward=True),
                 user.user_id,
                 msg_bot,
             )
@@ -194,11 +194,12 @@ class BazaarFilter(TrackableUpdateCreateModel):
 
     def get_results(self):
         return SaleAd.objects.filter(
-            # location__region__in=self.regions.all(),
+            location_key__region__in=self.regions.all(),
             price_tag__in=self.price_ranges.all(),
             is_complete=True,
             is_locked=False,
-            registered__created_at__gt=now() - timedelta(days=21),
+            registered_posts__created_at__gt=now() - timedelta(days=7),
+            registered_posts__is_deleted=False,
         )
 
     def results_as_text(self, results):
@@ -219,7 +220,6 @@ class BazaarFilter(TrackableUpdateCreateModel):
         """
 
         # todo implement a load queue
-        bot = self.get_tg_instance().tg_bot
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
