@@ -2,7 +2,7 @@ from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.exceptions import TextNotProvidedError, IncorrectChoiceError
+from tgbot.exceptions import IncorrectChoiceError, TextNotProvidedError
 
 
 class MultiSelectProcessor(BaseInputProcessor):
