@@ -55,6 +55,15 @@ class BotProcessingError(Exception):
     pass
 
 
+class UserNotInChannelError(BotProcessingError):
+    """Возникает, когда пользователь не является членом канала"""
+
+    def __init__(self, channel_name):
+        super(UserNotInChannelError, self).__init__(
+            f"Вы не подписаны на канал {channel_name}!"
+        )
+
+
 class TextNotProvidedError(BotProcessingError):
     """Возникает, когда пользователь отсылает не текст в ответ на запрос ввода"""
 

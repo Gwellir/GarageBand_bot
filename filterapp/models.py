@@ -13,6 +13,7 @@ from filterapp.processors import (
     HighPriceInputProcessor,
     LowPriceInputProcessor,
     RegionMultiSelectProcessor,
+    SubCheckProcessor,
 )
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -25,12 +26,12 @@ class FilterFormingStage(models.IntegerChoices):
     """Набор стадий анкеты фильтра."""
 
     WELCOME = 1, _("Приветствие")
-    # CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
-    GET_LOW_PRICE = 2, _("Узнать нижнюю границу цены")
-    GET_HIGH_PRICE = 3, _("Узнать верхнюю границу цены")
-    GET_REGIONS = 4, _("Узнать интересующие регионы")
-    CHECK_DATA = 5, _("Проверить данные")
-    DONE = 6, _("Фильтр сформирован")
+    CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
+    GET_LOW_PRICE = 3, _("Узнать нижнюю границу цены")
+    GET_HIGH_PRICE = 4, _("Узнать верхнюю границу цены")
+    GET_REGIONS = 5, _("Узнать интересующие регионы")
+    CHECK_DATA = 6, _("Проверить данные")
+    DONE = 7, _("Фильтр сформирован")
 
 
 class BazaarFilterStage(models.Model):
@@ -50,7 +51,7 @@ class BazaarFilterStage(models.Model):
     def get_processor(self):
         processors = {
             FilterFormingStage.WELCOME: StartInputProcessor,
-            # FilterFormingStage.CHECK_SUBSCRIPTION: SubCheckProcessor,
+            FilterFormingStage.CHECK_SUBSCRIPTION: SubCheckProcessor,
             FilterFormingStage.GET_LOW_PRICE: LowPriceInputProcessor,
             FilterFormingStage.GET_HIGH_PRICE: HighPriceInputProcessor,
             FilterFormingStage.GET_REGIONS: RegionMultiSelectProcessor,
@@ -61,7 +62,7 @@ class BazaarFilterStage(models.Model):
 
     def get_by_callback(self, callback):
         callback_to_stage = {
-            "new_request": FilterFormingStage.GET_LOW_PRICE,
+            "new_request": FilterFormingStage.CHECK_SUBSCRIPTION,
             "restart": FilterFormingStage.WELCOME,
         }
 
@@ -80,10 +81,14 @@ class BazaarFilter(TrackableUpdateCreateModel):
         related_name="filters",
     )
     low_price = models.PositiveIntegerField(
-        verbose_name="Нижний предел цены", null=True
+        verbose_name="Нижний предел цены",
+        null=True,
+        db_index=True,
     )
     high_price = models.PositiveIntegerField(
-        verbose_name="Верхний предел цены", null=True
+        verbose_name="Верхний предел цены",
+        null=True,
+        db_index=True,
     )
     regions = models.ManyToManyField(Region, verbose_name="Регионы")
     is_complete = models.BooleanField(
@@ -135,7 +140,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
             msg = registered_ad.bound.get_summary(forward=True)
             jobs.run_once(
                 PlanBroadcast(msg_bot, users, msg),
-                15,
+                10,
                 name="filter_broadcast",
             )
             BOT_LOG.info(f"Filters triggered, ad #{registered_ad.pk}.")
@@ -169,7 +174,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
             for entry in button_flags
         ]
         buttons = [
-            names[i : i + row_len] for i in range(0, len(names), row_len)   # noqa: E203
+            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa: E203
         ]
         return buttons
 
@@ -236,7 +241,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
             exact_price__lte=self.high_price,
             is_complete=True,
             is_locked=False,
-            registered_posts__created_at__gt=now() - timedelta(days=7),
+            registered_posts__created_at__gt=now() - timedelta(days=3),
             registered_posts__is_deleted=False,
         ).order_by("-created_at")[:10]
 

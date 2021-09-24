@@ -2,7 +2,33 @@ from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from tgbot.exceptions import IncorrectChoiceError, TextNotProvidedError
+from tgbot.exceptions import (
+    IncorrectChoiceError,
+    TextNotProvidedError,
+    UserNotInChannelError,
+)
+
+
+class SubCheckProcessor(BaseInputProcessor):
+    def _check_sub(self):
+        instance = self.model.get_tg_instance()
+        bot = instance.tg_bot
+        # todo make filterapp aware of which bot it works with
+        channel_id = instance.publish_id
+        user_id = self.dialog.user.user_id
+        member = bot.get_chat_member(channel_id, user_id)
+        if member.status in ["left", "kicked"]:
+            raise UserNotInChannelError(instance.publish_name)
+
+    def get_step(self, data):
+        if data["text"] == "Отменить":
+            self.cancel_step()
+            return -1
+        elif data["text"] == "Далее":
+            self._check_sub()
+            return 1
+        else:
+            return 0
 
 
 class MultiSelectProcessor(BaseInputProcessor):
