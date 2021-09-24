@@ -5,16 +5,20 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from bazaarapp.models import PriceTag, SaleAd
-from convoapp.processors import StartInputProcessor, SetReadyInputProcessor
+from bazaarapp.models import SaleAd
+from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp import strings_bazaar as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
-from filterapp.processors import RegionMultiSelectProcessor, LowPriceInputProcessor, HighPriceInputProcessor
+from filterapp.processors import (
+    HighPriceInputProcessor,
+    LowPriceInputProcessor,
+    RegionMultiSelectProcessor,
+)
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.models import TrackableUpdateCreateModel, BotUser, MessengerBot, Region
+from tgbot.models import BotUser, MessengerBot, Region, TrackableUpdateCreateModel
 
 
 class FilterFormingStage(models.IntegerChoices):
@@ -69,10 +73,18 @@ class BazaarFilter(TrackableUpdateCreateModel):
     Модель фильтра на базе заполнения анкеты
     """
 
-    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, verbose_name="Пользователь", related_name="filters")
-    low_price = models.PositiveIntegerField(verbose_name="Нижний предел цены", null=True)
-    high_price = models.PositiveIntegerField(verbose_name="Верхний предел цены", null=True)
-    price_ranges = models.ManyToManyField(PriceTag, verbose_name="Диапазоны цен")
+    user = models.ForeignKey(
+        BotUser,
+        on_delete=models.CASCADE,
+        verbose_name="Пользователь",
+        related_name="filters",
+    )
+    low_price = models.PositiveIntegerField(
+        verbose_name="Нижний предел цены", null=True
+    )
+    high_price = models.PositiveIntegerField(
+        verbose_name="Верхний предел цены", null=True
+    )
     regions = models.ManyToManyField(Region, verbose_name="Регионы")
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности фильтра", default=False, db_index=True
@@ -87,10 +99,15 @@ class BazaarFilter(TrackableUpdateCreateModel):
         related_name="bound_bazaarfilter",
         default=None,
     )
-    stage = models.ForeignKey(BazaarFilterStage, on_delete=models.SET_NULL, null=True, default=1)
+    stage = models.ForeignKey(
+        BazaarFilterStage, on_delete=models.SET_NULL, null=True, default=1
+    )
 
     def __str__(self):
-        return f"#{self.pk} {self.user} {self.low_price}-{self.high_price} {self.regions.all()} {self.is_complete}"
+        return (
+            f"#{self.pk} {self.user} {self.low_price}-{self.high_price} "
+            f"{self.regions.all()} {self.is_complete}"
+        )
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -143,10 +160,17 @@ class BazaarFilter(TrackableUpdateCreateModel):
     def get_m2m_choices_as_buttons(self, field_name):
         m2m_model = self._meta.get_field(field_name).related_model
         field = getattr(self, field_name)
-        button_flags = [(tag.name, tag in field.all()) for tag in m2m_model.objects.all()]
+        button_flags = [
+            (tag.name, tag in field.all()) for tag in m2m_model.objects.all()
+        ]
         row_len = 2
-        names = [dict(text=f"{'☑' if entry[1] else '☐'} {entry[0]}") for entry in button_flags]
-        buttons = [names[i:i + row_len] for i in range(0, len(names), row_len)]
+        names = [
+            dict(text=f"{'☑' if entry[1] else '☐'} {entry[0]}")
+            for entry in button_flags
+        ]
+        buttons = [
+            names[i : i + row_len] for i in range(0, len(names), row_len)   # noqa: E203
+        ]
         return buttons
 
     def fill_data(self, message_data: dict) -> dict:
@@ -214,7 +238,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
             is_locked=False,
             registered_posts__created_at__gt=now() - timedelta(days=7),
             registered_posts__is_deleted=False,
-        ).order_by('-created_at')[:10]
+        ).order_by("-created_at")[:10]
 
     def results_as_text(self, results):
         msg = fill_data(bazaar_filter_strings.results, self.data_as_dict())
@@ -263,9 +287,7 @@ class RegisteredBazaarFilter(TrackableUpdateCreateModel):
     @transaction.atomic
     def activate(cls, bound):
         cls.objects.filter(is_active=True).update(is_active=False)
-        reg_filter = cls.objects.create(
-            bound=bound
-        )
+        cls.objects.create(bound=bound)
         instance = bound.get_tg_instance()
         results = bound.get_results()
 
