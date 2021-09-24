@@ -8,7 +8,8 @@ from django.utils.translation import gettext_lazy as _
 from bazaarapp.models import PriceTag, SaleAd
 from convoapp.processors import StartInputProcessor, SetReadyInputProcessor
 from filterapp import strings_bazaar as bazaar_filter_strings
-from filterapp.processors import PriceMultiSelectProcessor, RegionMultiSelectProcessor
+from filterapp.jobs import PlanBroadcast
+from filterapp.processors import RegionMultiSelectProcessor, LowPriceInputProcessor, HighPriceInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
@@ -21,10 +22,11 @@ class FilterFormingStage(models.IntegerChoices):
 
     WELCOME = 1, _("Приветствие")
     # CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
-    GET_PRICE_RANGES = 2, _("Узнать интересующие диапазоны цен")
-    GET_REGIONS = 3, _("Узнать интересующие регионы")
-    CHECK_DATA = 4, _("Проверить данные")
-    DONE = 5, _("Фильтр сформирован")
+    GET_LOW_PRICE = 2, _("Узнать нижнюю границу цены")
+    GET_HIGH_PRICE = 3, _("Узнать верхнюю границу цены")
+    GET_REGIONS = 4, _("Узнать интересующие регионы")
+    CHECK_DATA = 5, _("Проверить данные")
+    DONE = 6, _("Фильтр сформирован")
 
 
 class BazaarFilterStage(models.Model):
@@ -45,7 +47,8 @@ class BazaarFilterStage(models.Model):
         processors = {
             FilterFormingStage.WELCOME: StartInputProcessor,
             # FilterFormingStage.CHECK_SUBSCRIPTION: SubCheckProcessor,
-            FilterFormingStage.GET_PRICE_RANGES: PriceMultiSelectProcessor,
+            FilterFormingStage.GET_LOW_PRICE: LowPriceInputProcessor,
+            FilterFormingStage.GET_HIGH_PRICE: HighPriceInputProcessor,
             FilterFormingStage.GET_REGIONS: RegionMultiSelectProcessor,
             FilterFormingStage.CHECK_DATA: SetReadyInputProcessor,
             FilterFormingStage.DONE: None,
@@ -54,7 +57,7 @@ class BazaarFilterStage(models.Model):
 
     def get_by_callback(self, callback):
         callback_to_stage = {
-            "new_request": FilterFormingStage.GET_PRICE_RANGES,
+            "new_request": FilterFormingStage.GET_LOW_PRICE,
             "restart": FilterFormingStage.WELCOME,
         }
 
@@ -67,8 +70,10 @@ class BazaarFilter(TrackableUpdateCreateModel):
     """
 
     user = models.ForeignKey(BotUser, on_delete=models.CASCADE, verbose_name="Пользователь", related_name="filters")
-    price_ranges = models.ManyToManyField(PriceTag, verbose_name="Диапазоны цен", null=True)
-    regions = models.ManyToManyField(Region, verbose_name="Регионы", null=True)
+    low_price = models.PositiveIntegerField(verbose_name="Нижний предел цены", null=True)
+    high_price = models.PositiveIntegerField(verbose_name="Верхний предел цены", null=True)
+    price_ranges = models.ManyToManyField(PriceTag, verbose_name="Диапазоны цен")
+    regions = models.ManyToManyField(Region, verbose_name="Регионы")
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности фильтра", default=False, db_index=True
     )
@@ -85,7 +90,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
     stage = models.ForeignKey(BazaarFilterStage, on_delete=models.SET_NULL, null=True, default=1)
 
     def __str__(self):
-        return f"#{self.pk} {self.user} {self.price_ranges.all()} {self.regions.all()} {self.is_complete}"
+        return f"#{self.pk} {self.user} {self.low_price}-{self.high_price} {self.regions.all()} {self.is_complete}"
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -102,16 +107,23 @@ class BazaarFilter(TrackableUpdateCreateModel):
     def trigger_send(cls, registered_ad):
         users = BotUser.objects.filter(
             filters__is_complete=True,
-            filters__price_ranges=registered_ad.bound.price_tag,
+            filters__registered__is_active=True,
+            filters__low_price__lte=registered_ad.bound.exact_price,
+            filters__high_price__gte=registered_ad.bound.exact_price,
             filters__regions=registered_ad.bound.location_key.region,
         ).distinct()
-        msg_bot = MessengerBot.get_by_model_name(cls.__name__)
-        for user in users:
-            message_ids = send_messages_return_ids(
-                registered_ad.bound.get_summary(forward=True),
-                user.user_id,
-                msg_bot,
+        if users:
+            msg_bot = MessengerBot.get_by_model_name(cls.__name__)
+            jobs = msg_bot.telegram_instance.job_queue
+            msg = registered_ad.bound.get_summary(forward=True)
+            jobs.run_once(
+                PlanBroadcast(msg_bot, users, msg),
+                15,
+                name="filter_broadcast",
             )
+            BOT_LOG.info(f"Filters triggered, ad #{registered_ad.pk}.")
+        else:
+            BOT_LOG.info(f"No Filters triggered, ad #{registered_ad.pk}.")
 
     def data_as_dict(self):
         """
@@ -123,8 +135,9 @@ class BazaarFilter(TrackableUpdateCreateModel):
             registered_pk=self.registered.pk if self.is_complete else None,
             filter_pk=self.pk,
             channel_name=self.get_tg_instance().publish_name,
-            filter_price_ranges=", ".join([r.name for r in self.price_ranges.all()]),
-            filter_regions=", ".join([r.name for r in self.regions.all()]),
+            low_price=self.low_price,
+            high_price=self.high_price,
+            regions=", ".join([r.name for r in self.regions.all()]),
         )
 
     def get_m2m_choices_as_buttons(self, field_name):
@@ -195,17 +208,18 @@ class BazaarFilter(TrackableUpdateCreateModel):
     def get_results(self):
         return SaleAd.objects.filter(
             location_key__region__in=self.regions.all(),
-            price_tag__in=self.price_ranges.all(),
+            exact_price__gte=self.low_price,
+            exact_price__lte=self.high_price,
             is_complete=True,
             is_locked=False,
             registered_posts__created_at__gt=now() - timedelta(days=7),
             registered_posts__is_deleted=False,
-        )
+        ).order_by('-created_at')[:10]
 
     def results_as_text(self, results):
         msg = fill_data(bazaar_filter_strings.results, self.data_as_dict())
         if results:
-            results_text = "\n".join([r.registered.as_tg_html() for r in results])
+            results_text = "\n\n".join([r.registered.as_tg_html() for r in results])
         else:
             results_text = "Ничего не найдено."
         msg["text"] = f'{msg.get("text")}\n{results_text}'
@@ -248,6 +262,7 @@ class RegisteredBazaarFilter(TrackableUpdateCreateModel):
     @classmethod
     @transaction.atomic
     def activate(cls, bound):
+        cls.objects.filter(is_active=True).update(is_active=False)
         reg_filter = cls.objects.create(
             bound=bound
         )

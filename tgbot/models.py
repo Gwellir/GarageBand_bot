@@ -25,7 +25,7 @@ from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError, IncorrectChoiceError
-from tgbot.launcher import tg_bots
+from tgbot.launcher import tg_updaters
 
 
 class TrackableUpdateCreateModel(models.Model):
@@ -66,7 +66,11 @@ class TGInstance(models.Model):
 
     @property
     def tg_bot(self):
-        return tg_bots.get(self.token)
+        return tg_updaters.get(self.token).bot
+
+    @property
+    def job_queue(self):
+        return tg_updaters.get(self.token).job_queue
 
 
 class MessengerBot(models.Model):

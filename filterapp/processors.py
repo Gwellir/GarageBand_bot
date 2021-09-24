@@ -1,3 +1,4 @@
+from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -47,8 +48,12 @@ class MultiSelectProcessor(BaseInputProcessor):
         self.model.save()
 
 
-class PriceMultiSelectProcessor(MultiSelectProcessor):
-    attr_name = "price_ranges"
+class LowPriceInputProcessor(IntNumberInputProcessor):
+    attr_name = "low_price"
+
+
+class HighPriceInputProcessor(IntNumberInputProcessor):
+    attr_name = "high_price"
 
 
 class RegionMultiSelectProcessor(MultiSelectProcessor):

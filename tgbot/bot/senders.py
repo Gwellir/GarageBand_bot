@@ -16,8 +16,6 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     Возвращает message_id сообщения в соответствующем чате TG.
     """
 
-    from tgbot.launcher import tg_bots
-
     BOT_LOG.debug(
         LogStrings.DIALOG_SEND_MESSAGE.format(
             user_id=user_id,
@@ -36,7 +34,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
         reply_to_message_id=reply_to,
     )
     # todo wrap in TRY EXCEPT (ChatMigrated, ...)
-    bot = tg_bots.get(msg_bot.telegram_instance.token)
+    bot = msg_bot.telegram_instance.tg_bot
     ids = []
     try:
         if "caption" in message_data.keys():

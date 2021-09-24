@@ -132,7 +132,7 @@ class SaleAd(TrackableUpdateCreateModel):
     price_tag = models.ForeignKey(
         PriceTag, on_delete=models.SET_NULL, db_index=True, null=True
     )
-    exact_price = models.CharField(verbose_name="Цена", max_length=30, null=True)
+    exact_price = models.PositiveIntegerField(verbose_name="Цена", null=True)
     can_bargain = models.BooleanField(verbose_name="Торг возможен", null=True)
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
@@ -583,7 +583,8 @@ class RegisteredAd(TrackableUpdateCreateModel):
         channel_name = self.bound.get_tg_instance().publish_name
         return (
             f'<a href="https://t.me/{channel_name}/'
-            f'{self.channel_message_id}">#{self.pk}</a>'
+            f'{self.channel_message_id}">#{self.pk}</a>\n'
+            f'🚘 {self.bound.car_type}\n💸 ${self.bound.exact_price}'
         )
 
     @classmethod
