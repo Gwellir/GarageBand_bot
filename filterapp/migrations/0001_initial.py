@@ -9,7 +9,7 @@ from garage_band_bot.settings import BAZAAR_FILTER_LIVE_TOKEN, BAZAAR_FILTER_TES
 
 def delete_bots(apps, schema_editor):
     BotTable = apps.get_model("tgbot", "MessengerBot")
-    TGITable = apps.get_model("tgbot", "TelegramInstance")
+    TGITable = apps.get_model("tgbot", "TGInstance")
     db_alias = schema_editor.connection.alias
     TGITable.objects.using(db_alias).delete(id__in=[5, 6])
     BotTable.objects.using(db_alias).delete(id__in=[5, 6])
@@ -17,7 +17,7 @@ def delete_bots(apps, schema_editor):
 
 def add_bots(apps, schema_editor):
     BotTable = apps.get_model("tgbot", "MessengerBot")
-    TGITable = apps.get_model("tgbot", "TelegramInstance")
+    TGITable = apps.get_model("tgbot", "TGInstance")
     db_alias = schema_editor.connection.alias
     TGITable.objects.using(db_alias).bulk_create([
         TGITable(
