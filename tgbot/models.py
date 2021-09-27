@@ -18,6 +18,7 @@ from convoapp.processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
+from garage_band_bot.settings import DEBUG
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from repairsapp import strings as repair_strings
@@ -110,7 +111,7 @@ class MessengerBot(models.Model):
 
     @classmethod
     def get_by_model_name(cls, name):
-        return cls.objects.get(bound_object=name)
+        return cls.objects.get(bound_object=name, is_debug=DEBUG, is_active=True)
 
 
 # todo merge with Django Auth User
