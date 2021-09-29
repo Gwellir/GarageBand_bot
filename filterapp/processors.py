@@ -54,7 +54,11 @@ class MultiSelectProcessor(BaseInputProcessor):
         return value
 
     def set_field(self, data):
+        field = getattr(self.model, self.attr_name)
         if data["text"] == "Далее":
+            if not field.all():
+                rel_model = self.model._meta.get_field(self.attr_name).related_model
+                field.add(*rel_model.objects.all())
             return
 
         value = self.get_field_value(data)
@@ -66,7 +70,6 @@ class MultiSelectProcessor(BaseInputProcessor):
                 data=value,
             )
         )
-        field = getattr(self.model, self.attr_name)
         if value not in field.all():
             field.add(value)
         else:
@@ -77,9 +80,21 @@ class MultiSelectProcessor(BaseInputProcessor):
 class LowPriceInputProcessor(IntNumberInputProcessor):
     attr_name = "low_price"
 
+    def set_field(self, data):
+        if data["text"] == "Пропустить":
+            data["text"] = self.min_value
+
+        super().set_field(data)
+
 
 class HighPriceInputProcessor(IntNumberInputProcessor):
     attr_name = "high_price"
+
+    def set_field(self, data):
+        if data["text"] == "Пропустить":
+            data["text"] = self.max_value
+
+        super().set_field(data)
 
 
 class RegionMultiSelectProcessor(MultiSelectProcessor):
