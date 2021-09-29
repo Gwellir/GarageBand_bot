@@ -1,7 +1,7 @@
 """Содержит функции отправки сообщений в telegram."""
 
 from telegram import ParseMode
-from telegram.error import BadRequest, ChatMigrated
+from telegram.error import BadRequest, ChatMigrated, Unauthorized
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -57,7 +57,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
                 text=message_data["text"], disable_web_page_preview=True, **params_dict
             ).result()
             ids = [msg.message_id]
-    except (BadRequest, ChatMigrated) as e:
+    except (BadRequest, ChatMigrated, Unauthorized) as e:
         BOT_LOG.warning(f"Could not reach {user_id} due to {e.args}")
 
     # todo change to queue implementation
