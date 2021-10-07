@@ -1,7 +1,7 @@
 """Содержит функции отправки сообщений в telegram."""
 
 from telegram import ParseMode
-from telegram.error import TelegramError, NetworkError
+from telegram.error import BadRequest, ChatMigrated, Unauthorized
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -15,8 +15,6 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     либо же фотографии с описанием.
     Возвращает message_id сообщения в соответствующем чате TG.
     """
-
-    from tgbot.launcher import tg_bots
 
     BOT_LOG.debug(
         LogStrings.DIALOG_SEND_MESSAGE.format(
@@ -36,7 +34,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
         reply_to_message_id=reply_to,
     )
     # todo wrap in TRY EXCEPT (ChatMigrated, ...)
-    bot = tg_bots.get(msg_bot.telegram_instance.token)
+    bot = msg_bot.telegram_instance.tg_bot
     ids = []
     try:
         if "caption" in message_data.keys():
@@ -59,7 +57,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
                 text=message_data["text"], disable_web_page_preview=True, **params_dict
             ).result()
             ids = [msg.message_id]
-    except (TelegramError, NetworkError) as e:
+    except (BadRequest, ChatMigrated, Unauthorized) as e:
         BOT_LOG.warning(f"Could not reach {user_id} due to {e.args}")
 
     # todo change to queue implementation

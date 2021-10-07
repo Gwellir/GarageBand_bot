@@ -333,5 +333,5 @@ def error_handler(update, context):
     )
     bot = context.bot_data.get("msg_bot")
     for dev_id in devs:
-        send_messages_return_ids({"text": text}, dev_id, bot)
+        send_messages_return_ids({"text": text[-4000:]}, dev_id, bot)
     raise

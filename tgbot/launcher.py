@@ -9,7 +9,7 @@ from garage_band_bot.settings import DEBUG
 from logger.log_config import BOT_LOG
 from tgbot.bot.queue_bot import MQBot
 
-tg_bots = {}
+tg_updaters = {}
 
 
 def run_polling():
@@ -19,7 +19,7 @@ def run_polling():
     from tgbot.models import MessengerBot
 
     updaters = []
-    global tg_bots
+    global tg_updaters
 
     q = mq.MessageQueue()
     request = Request(con_pool_size=8)
@@ -29,16 +29,18 @@ def run_polling():
     ).select_related():
         token = bot.telegram_instance.token
 
-        tg_bots[token] = MQBot(token, request=request, mqueue=q)
-        updater = Updater(bot=tg_bots.get(token), use_context=True)
+        tg_bot = MQBot(token, request=request, mqueue=q)
+        updater = Updater(bot=tg_bot, use_context=True)
+        tg_updaters[token] = updater
 
         bot.get_bound_model().setup_jobs(updater)
 
         dp = updater.dispatcher
         dp = setup_dispatcher(dp)
         dp.bot_data["msg_bot"] = bot
+        dp.bot_data["job_queue"] = updater.job_queue
 
-        bot_info = tg_bots.get(token).get_me()
+        bot_info = tg_bot.get_me()
         bot_link = f"https://t.me/{bot_info['username']}"
 
         BOT_LOG.info(f"Polling of '{bot_link}' started")

@@ -75,6 +75,10 @@ class PriceTag(models.Model):
             Q(low__lte=price) | Q(low=None), Q(high__gte=price) | Q(high=None)
         )
 
+    @classmethod
+    def get_tag_by_name(cls, text):
+        return cls.objects.get(name=text)
+
 
 class SaleAdStage(models.Model):
     """
@@ -128,7 +132,7 @@ class SaleAd(TrackableUpdateCreateModel):
     price_tag = models.ForeignKey(
         PriceTag, on_delete=models.SET_NULL, db_index=True, null=True
     )
-    exact_price = models.CharField(verbose_name="Цена", max_length=30, null=True)
+    exact_price = models.PositiveIntegerField(verbose_name="Цена", null=True)
     can_bargain = models.BooleanField(verbose_name="Торг возможен", null=True)
     mileage = models.PositiveIntegerField(verbose_name="Пробег", null=True)
     description = models.TextField(
@@ -368,11 +372,14 @@ class SaleAd(TrackableUpdateCreateModel):
 
         return msg
 
-    def get_summary(self, ready=False):
+    def get_summary(self, ready=False, forward=False):
         """Возвращает шаблон саммари"""
 
         media = self._get_media()
-        msg = self.fill_data(bazaar_strings.summary)
+        if not forward:
+            msg = self.fill_data(bazaar_strings.summary)
+        else:
+            msg = self.fill_data(bazaar_strings.summary_forward)
         msg["caption"] = msg.pop("text")
         if media:
             msg["photo"] = media[0].media
@@ -573,10 +580,11 @@ class RegisteredAd(TrackableUpdateCreateModel):
         return f"{self.pk} {self.bound.user} ({self.channel_message_id})"
 
     def as_tg_html(self):
-        channel_name = self.bound.dialog.bot.telegram_instance.publish_name
+        channel_name = self.bound.get_tg_instance().publish_name
         return (
             f'<a href="https://t.me/{channel_name}/'
-            f'{self.channel_message_id}">#{self.pk}</a>'
+            f'{self.channel_message_id}">#{self.pk}</a>\n'
+            f"🚘 {self.bound.car_type}\n💸 ${self.bound.exact_price}"
         )
 
     @classmethod
@@ -585,23 +593,25 @@ class RegisteredAd(TrackableUpdateCreateModel):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
-        reg_request = cls.objects.create(
+        from filterapp.models import BazaarFilter
+
+        reg_ad = cls.objects.create(
             bound=bound,
         )
         instance = bound.get_tg_instance()
         bound.set_dict_data(
-            registered_pk=reg_request.pk,
+            registered_pk=reg_ad.pk,
         )
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             instance.publish_id,
             instance.bot,
         )
-        reg_request.channel_message_id = message_ids[0]
-        reg_request.save()
+        reg_ad.channel_message_id = message_ids[0]
+        reg_ad.save()
         bound.save()
         bound.set_dict_data(
-            registered_msg_id=reg_request.channel_message_id,
+            registered_msg_id=reg_ad.channel_message_id,
         )
         sleep(1)
         send_messages_return_ids(
@@ -609,6 +619,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
             instance.admin_group_id,
             instance.bot,
         )
+        BazaarFilter.trigger_send(reg_ad)
 
     def repost(self):
         bound = self.bound
