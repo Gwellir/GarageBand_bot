@@ -1,7 +1,8 @@
 """Содержит функции отправки сообщений в telegram."""
+from time import sleep
 
 from telegram import ParseMode
-from telegram.error import BadRequest, ChatMigrated, Unauthorized
+from telegram.error import BadRequest, ChatMigrated, TimedOut, Unauthorized
 
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -36,29 +37,38 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
     # todo wrap in TRY EXCEPT (ChatMigrated, ...)
     bot = msg_bot.telegram_instance.tg_bot
     ids = []
-    try:
-        if "caption" in message_data.keys():
-            if "photo" in message_data.keys():
-                msg = bot.send_photo(
-                    caption=message_data["caption"],
-                    photo=message_data["photo"],
+    while True:
+        try:
+            if "caption" in message_data.keys():
+                if "photo" in message_data.keys():
+                    msg = bot.send_photo(
+                        caption=message_data["caption"],
+                        photo=message_data["photo"],
+                        **params_dict,
+                    ).result()
+                elif "video" in message_data.keys():
+                    msg = bot.send_video(
+                        caption=message_data["caption"],
+                        video=message_data["video"],
+                        **params_dict,
+                    )
+                ids = [msg.message_id]
+
+            else:
+                msg = bot.send_message(
+                    text=message_data["text"],
+                    disable_web_page_preview=True,
                     **params_dict,
                 ).result()
-            elif "video" in message_data.keys():
-                msg = bot.send_video(
-                    caption=message_data["caption"],
-                    video=message_data["video"],
-                    **params_dict,
-                )
-            ids = [msg.message_id]
+                ids = [msg.message_id]
 
-        else:
-            msg = bot.send_message(
-                text=message_data["text"], disable_web_page_preview=True, **params_dict
-            ).result()
-            ids = [msg.message_id]
-    except (BadRequest, ChatMigrated, Unauthorized) as e:
-        BOT_LOG.warning(f"Could not reach {user_id} due to {e.args}")
+            break
+        except (BadRequest, ChatMigrated, Unauthorized) as e:
+            BOT_LOG.warning(f"Could not reach {user_id} due to {e.args}")
+            break
+        except TimedOut as e:
+            BOT_LOG.warning(f"Timed out while sending to {user_id} due to {e.args}")
+            sleep(4)
 
     # todo change to queue implementation
     return ids
