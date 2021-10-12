@@ -3,8 +3,14 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-from garage_band_bot.settings import BAZAAR_FILTER_LIVE_TOKEN, BAZAAR_FILTER_TEST_TOKEN, TESTING_GROUP_ID, BAZAAR_TEST_PUBLISH_ID, \
-    BAZAAR_PUBLISH_ID, ADMIN_GROUP_ID
+from garage_band_bot.settings import (
+    BAZAAR_FILTER_LIVE_TOKEN,
+    BAZAAR_FILTER_TEST_TOKEN,
+    TESTING_GROUP_ID,
+    BAZAAR_TEST_PUBLISH_ID,
+    BAZAAR_PUBLISH_ID,
+    ADMIN_GROUP_ID
+)
 
 
 def delete_bots(apps, schema_editor):
@@ -71,10 +77,6 @@ def fill_stages(apps, schema_editor):
     ])
 
 
-def unmigrate(apps, schema_editor):
-    pass
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -96,22 +98,57 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(
             code=fill_stages,
-            reverse_code=unmigrate,
+            reverse_code=migrations.RunPython.noop,
         ),
         migrations.CreateModel(
             name='BazaarFilter',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Время создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, db_index=True, verbose_name='Время последней активности')),
-                ('low_price', models.PositiveIntegerField(db_index=True, null=True, verbose_name='Нижний предел цены')),
-                ('high_price', models.PositiveIntegerField(db_index=True, null=True, verbose_name='Верхний предел цены')),
-                ('is_complete', models.BooleanField(db_index=True, default=False, verbose_name='Флаг готовности фильтра')),
-                ('is_discarded', models.BooleanField(db_index=True, default=False, verbose_name='Флаг отказа от формирования фильтра')),
-                ('stage', models.ForeignKey(default=1, null=True, on_delete=django.db.models.deletion.SET_NULL, to='filterapp.bazaarfilterstage')),
-                ('dialog', models.OneToOneField(default=None, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='bound_bazaarfilter', to='convoapp.dialog')),
+                ('updated_at', models.DateTimeField(
+                    auto_now=True, db_index=True, verbose_name='Время последней активности')
+                 ),
+                ('low_price', models.PositiveIntegerField(
+                    db_index=True, null=True, verbose_name='Нижний предел цены')
+                 ),
+                ('high_price', models.PositiveIntegerField(
+                    db_index=True, null=True, verbose_name='Верхний предел цены')
+                 ),
+                ('is_complete', models.BooleanField(
+                    db_index=True, default=False, verbose_name='Флаг готовности фильтра')
+                 ),
+                ('is_discarded', models.BooleanField(
+                    db_index=True, default=False, verbose_name='Флаг отказа от формирования фильтра')
+                 ),
+                (
+                    'stage',
+                    models.ForeignKey(
+                        default=1,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to='filterapp.bazaarfilterstage'
+                    )
+                ),
+                (
+                    'dialog',
+                    models.OneToOneField(
+                        default=None,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='bound_bazaarfilter',
+                        to='convoapp.dialog'
+                    )
+                ),
                 ('regions', models.ManyToManyField(to='tgbot.Region', verbose_name='Регионы')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='filters', to='tgbot.botuser', verbose_name='Пользователь')),
+                (
+                    'user',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='filters',
+                        to='tgbot.botuser',
+                        verbose_name='Пользователь'
+                    )
+                ),
             ],
             options={
                 'abstract': False,

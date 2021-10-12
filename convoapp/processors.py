@@ -97,6 +97,7 @@ class TextInputProcessor(BaseInputProcessor):
         )
         setattr(self.model, self.attr_name, value)
         self.model.save()
+        return value
 
 
 class NameInputProcessor(TextInputProcessor):
@@ -131,6 +132,12 @@ class TagInputProcessor(TextInputProcessor):
         text = data["text"]
         return self.model.get_related_tag(text)
 
+    def set_field(self, raw_text):
+        tag = super().set_field(raw_text)
+        self.model.set_dict_data(
+            request_tag=tag.name.replace(" ", "_").replace("/", "_")
+        )
+
 
 class CarTypeInputProcessor(TextInputProcessor):
     """Процессор ввода типа авто"""
@@ -139,7 +146,7 @@ class CarTypeInputProcessor(TextInputProcessor):
 
     def set_field(self, raw_text):
         super().set_field(raw_text)
-        self.model.set_dict_data(ad_car_type=getattr(self.model, self.attr_name))
+        self.model.set_dict_data(car_type=getattr(self.model, self.attr_name))
 
 
 class DescriptionInputProcessor(TextInputProcessor):
@@ -149,7 +156,7 @@ class DescriptionInputProcessor(TextInputProcessor):
 
     def set_field(self, raw_text):
         super().set_field(raw_text)
-        self.model.set_dict_data(ad_desc=getattr(self.model, self.attr_name))
+        self.model.set_dict_data(desc=getattr(self.model, self.attr_name))
 
 
 class LocationInputProcessor(TextInputProcessor):
@@ -257,4 +264,7 @@ class FeedbackInputProcessor(TextInputProcessor):
     def set_field(self, data):
         self.model = self.dialog.bound.registered
         super().set_field(data)
+        self.dialog.bound.set_dict_data(
+            registered_feedback=getattr(self.model, self.attr_name),
+        )
         self.model.post_feedback()

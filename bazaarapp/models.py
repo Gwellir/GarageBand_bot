@@ -1,4 +1,3 @@
-import copy
 from datetime import datetime, timedelta
 from time import sleep
 
@@ -8,6 +7,11 @@ from django.utils.translation import gettext_lazy as _
 from telegram import InputMediaPhoto, ParseMode
 from telegram.error import BadRequest, TimedOut
 
+from abstract.models import (
+    CacheableFillDataModel,
+    LocationRegionBindModel,
+    TrackableUpdateCreateModel,
+)
 from bazaarapp import strings as bazaar_strings
 from bazaarapp.jobs import ReminderJob
 from bazaarapp.processors import (
@@ -36,7 +40,7 @@ from tgbot.bot.constants import (
 )
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.exceptions import IncorrectChoiceError
-from tgbot.models import BotUser, TrackableUpdateCreateModel
+from tgbot.models import BotUser
 
 
 class AdFormingStage(models.IntegerChoices):
@@ -121,7 +125,9 @@ class SaleAdStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class SaleAd(TrackableUpdateCreateModel):
+class SaleAd(
+    TrackableUpdateCreateModel, LocationRegionBindModel, CacheableFillDataModel
+):
     """
     Модель заявки
 
@@ -140,12 +146,6 @@ class SaleAd(TrackableUpdateCreateModel):
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="ads"
-    )
-    location_desc = models.CharField(
-        verbose_name="Местоположение для ремонта", blank=True, max_length=100
-    )
-    location_key = models.ForeignKey(
-        "tgbot.Location", on_delete=models.SET_NULL, null=True, related_name="sale_ads"
     )
     car_type = models.CharField(
         verbose_name="Тип автомобиля", blank=True, max_length=50
@@ -174,8 +174,6 @@ class SaleAd(TrackableUpdateCreateModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._data_dict = dict()
-        self.data_as_dict()
 
     def __str__(self):
         return f"#{self.pk} {self.user} {self.price_tag} {self.is_complete}"
@@ -206,15 +204,15 @@ class SaleAd(TrackableUpdateCreateModel):
         в виде словаря.
         """
 
+        data_dict = super().data_as_dict()
         if not self._data_dict:
-            registered_feedback = tag_name = region_name = post = locations = None
+            registered_feedback = tag_name = None
             if self.is_complete:
                 post = self.registered
-                registered_pk = post.pk
                 registered_msg_id = post.channel_message_id
                 registered_feedback = post.feedback
             else:
-                registered_pk = registered_msg_id = "000"
+                registered_msg_id = "000"
             if self.can_bargain:
                 ad_bargain_string = "Торг!"
             else:
@@ -225,37 +223,18 @@ class SaleAd(TrackableUpdateCreateModel):
                 photos_loaded = "<pre>Фотографии загружены</pre>\n"
             else:
                 photos_loaded = ""
-            # todo probably the worst thing you've done so far,
-            #  make ad object persist, user_data?
-            if self.location_desc:
-                loc_model = self._meta.get_field("location_key").related_model
-                locations = self.select_location_by_input(self.location_desc, loc_model)
-            if self.location_key:
-                region_name = self.location_key.region.name.replace(" ", "_").replace(
-                    "-", "_"
-                )
-            self._data_dict = dict(
-                channel_name=self.get_tg_instance().publish_name,  #
-                request_pk=self.pk,  #
+            bazaar_data = dict(
                 ad_price_range=tag_name,  #
-                ad_car_type=self.car_type,  #
-                ad_desc=self.description,  #
                 ad_mileage=self.mileage,  #
                 ad_price=self.exact_price,  #
                 ad_bargain_string=ad_bargain_string,  #
-                ad_location=self.location_desc,  #
-                ad_region=region_name,  #
-                location_selection=locations,  #
-                user_pk=self.user.pk,  #
-                user_name=self.user.name,  #
-                user_phone=self.user.phone,  #
-                user_tg_id=self.user.user_id,  #
                 photos_loaded=photos_loaded,  #
-                post_object=post,
-                registered_pk=registered_pk,  #
                 registered_msg_id=registered_msg_id,  #
                 registered_feedback=registered_feedback,  #
             )
+            self.set_dict_data(**data_dict)
+            self.set_dict_data(**bazaar_data)
+            self.set_dict_data(**self.location_as_dict())
         return self._data_dict
 
     def _get_media(self):
@@ -306,69 +285,26 @@ class SaleAd(TrackableUpdateCreateModel):
 
         return tag
 
-    def select_location_by_input(self, user_input, fk_model):
-        selection = fk_model.objects.filter(name__iexact=user_input)
-        if not selection:
-            selection = fk_model.objects.filter(name__icontains=user_input)
-        if not selection:
-            selection = fk_model.objects.filter(name__in=user_input.split(","))
-        if not selection:
-            selection = fk_model.objects.filter(name__in=user_input.split(" "))
-        return selection
-
-    def _get_choices_as_buttons(self, select_field):
-        selection = self.data_as_dict().get(select_field)
-        row_len = 1
-        names = [
-            dict(text=f"{entry.name} (регион: {entry.region.name})")
-            for entry in selection
-        ]
-        buttons = [
-            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa E203
-        ]
-        return buttons
-
-    def fill_data(self, message_data: dict) -> dict:
-        """Подставляет нужные данные в тело ответа и параметры кнопок."""
-
-        msg = copy.deepcopy(message_data)
-        msg["text"] = msg["text"].format(**self.data_as_dict())
-        field_name = msg.get("confirm_choices")
-        if field_name:
-            buttons_as_list = self._get_choices_as_buttons(field_name)
-            buttons_as_list.extend(msg.get("text_buttons"))
-            msg["text_buttons"] = buttons_as_list
-        if msg.get("buttons") or msg.get("text_buttons"):
-            for row in msg.get("buttons", []):
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-            for row in msg.get("text_buttons", []):
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-
-        return msg
-
     def get_reply_for_stage(self):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
 
         num = self.stage_id - 1
-        msg = self.fill_data(bazaar_strings.stages_info[num])
+        msg = self._fill_data(bazaar_strings.stages_info[num])
+        msg = self._add_location_choices(msg)
 
         return msg
 
     def get_feedback_message(self):
         """Возвращает шаблон сообщения для отзыва."""
 
-        msg = self.fill_data(bazaar_strings.feedback)
+        msg = self._fill_data(bazaar_strings.feedback)
 
         return msg
 
     def get_admin_message(self):
         """Возвращает шаблон сообщения для администрирования."""
 
-        msg = self.fill_data(bazaar_strings.admin)
+        msg = self._fill_data(bazaar_strings.admin)
 
         return msg
 
@@ -377,9 +313,9 @@ class SaleAd(TrackableUpdateCreateModel):
 
         media = self._get_media()
         if not forward:
-            msg = self.fill_data(bazaar_strings.summary)
+            msg = self._fill_data(bazaar_strings.summary)
         else:
-            msg = self.fill_data(bazaar_strings.summary_forward)
+            msg = self._fill_data(bazaar_strings.summary_forward)
         msg["caption"] = msg.pop("text")
         if media:
             msg["photo"] = media[0].media
@@ -392,11 +328,11 @@ class SaleAd(TrackableUpdateCreateModel):
         return msg
 
     def get_summary_sold(self):
-        msg = self.fill_data(bazaar_strings.summary_sold)
+        msg = self._fill_data(bazaar_strings.summary_sold)
         return msg["text"]
 
     def get_renewal(self):
-        msg = self.fill_data(bazaar_strings.renewal)
+        msg = self._fill_data(bazaar_strings.renewal)
         return msg
 
     def get_ready_stage(self):
@@ -468,28 +404,6 @@ class SaleAd(TrackableUpdateCreateModel):
         except (TimedOut, BadRequest):
             pass
 
-        # todo old post version compatibility DELETE SOON
-        try:
-            bot.edit_message_text(
-                chat_id=instance.publish_id,
-                message_id=self.registered.channel_message_id,
-                parse_mode=ParseMode.HTML,
-                text=self.get_summary_sold(),
-            )
-            sleep(2)
-        except (TimedOut, BadRequest):
-            pass
-        if self.registered.album_start_id:
-            try:
-                bot.edit_message_media(
-                    chat_id=instance.publish_id,
-                    message_id=self.registered.album_start_id,
-                    media=InputMediaPhoto(open(DEFAULT_AD_SOLD_FILE, "rb")),
-                )
-                sleep(2)
-            except (TimedOut, BadRequest):
-                pass
-
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_SOLD.format(
                 user_id=self.user.username,
@@ -497,7 +411,7 @@ class SaleAd(TrackableUpdateCreateModel):
             )
         )
 
-    def save_photos(self, bot):
+    def _save_photos(self, bot):
         pass
         # for photo in self.photos.all():
         #     file = bot.get_file(file_id=photo.tg_file_id)
@@ -516,7 +430,7 @@ class SaleAd(TrackableUpdateCreateModel):
         """
 
         bot = self.get_tg_instance().tg_bot
-        self.save_photos(bot)
+        self._save_photos(bot)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_READY.format(
                 user_id=self.user.username,
