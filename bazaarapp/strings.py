@@ -152,7 +152,7 @@ stages_info = [
     },
     {  # confirm
         "text": "📍 Вы указали местоположение:\n"
-        "<b>{ad_location}</b>\n\n"
+        "<b>{location}</b>\n\n"
         "Подтвердите, нажав кнопку ниже.\n"
         '<pre>При неожиданных результатах - нажмите "Отменить" и'
         " укажите ближайший более крупный город.</pre>",
@@ -218,11 +218,11 @@ stages_info = [
 summary = {
     "text": "<b>#{registered_pk}</b>\n\n"
     "#{ad_price_range}\n\n"
-    "🚘 {ad_car_type}\n\n"
-    "{ad_desc}\n\n"
+    "🚘 {car_type}\n\n"
+    "{desc}\n\n"
     "🎛 Пробег {ad_mileage} тыс. км\n\n"
     "💸 Цена <b>${ad_price}</b> {ad_bargain_string}\n\n"
-    "📍 {ad_location} #{ad_region}\n\n"
+    "📍 {location} #{region}\n\n"
     "🖋 {user_name} {user_phone}\n\n",
     "buttons": [
         [
@@ -242,11 +242,11 @@ summary_sold = {
     "text": "<b>[ ПРОДАНО ]</b>\n\n"
     "<b>#{registered_pk}</b>\n\n"
     "{ad_price_range}\n\n"
-    "🚘 {ad_car_type}\n\n"
-    "{ad_desc}\n\n"
+    "🚘 {car_type}\n\n"
+    "{desc}\n\n"
     "🎛 Пробег {ad_mileage} тыс. км\n\n"
     "<s>💸 Цена <b>${ad_price}</b> {ad_bargain_string}</s>\n\n"
-    "<s>📍 {ad_location} {ad_region}</s>\n\n"
+    "<s>📍 {location} {region}</s>\n\n"
     "📞 {user_name}\n\n",
     "text_buttons": None,
 }
@@ -254,11 +254,11 @@ summary_sold = {
 summary_forward = {
     "text": "<b>#{registered_pk}</b>\n\n"
     "#{ad_price_range}\n\n"
-    "🚘 {ad_car_type}\n\n"
-    "{ad_desc}\n\n"
+    "🚘 {car_type}\n\n"
+    "{desc}\n\n"
     "🎛 Пробег {ad_mileage} тыс. км\n\n"
     "💸 Цена <b>${ad_price}</b> {ad_bargain_string}\n\n"
-    "📍 {ad_location} #{ad_region}\n\n"
+    "📍 {location} #{region}\n\n"
     "🖋 {user_name} {user_phone}\n\n",
     "buttons": [
         [
@@ -303,7 +303,7 @@ renewal = {
     "было размещено три недели назад.\nЕсли требуется, отсюда Вы можете запостить его"
     " заново, либо отметить машину проданной.\n\n"
     "<b>Подробности:</b>\n"
-    "🚘 {ad_car_type}\n💸 Цена <b>${ad_price}</b>",
+    "🚘 {car_type}\n💸 Цена <b>${ad_price}</b>",
     "buttons": [
         [
             {

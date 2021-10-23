@@ -229,7 +229,7 @@ class LocationKeyInputProcessor(TextInputProcessor):
         if not locations:
             raise LocationNotRecognizedError(loc_name)
         self.model.set_dict_data(
-            ad_location=getattr(self.model, self.attr_name),
+            location=getattr(self.model, self.attr_name),
             location_selection=locations,
         )
 
@@ -253,7 +253,7 @@ class LocationConfirmationProcessor(TextInputProcessor):
     def set_field(self, raw_text):
         super().set_field(raw_text)
         self.model.set_dict_data(
-            ad_region=getattr(self.model, self.attr_name)
+            region=getattr(self.model, self.attr_name)
             .region.name.replace(" ", "_")
             .replace("-", "_")
         )

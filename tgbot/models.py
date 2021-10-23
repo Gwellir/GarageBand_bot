@@ -8,6 +8,15 @@ from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from telegram.error import BadRequest, TimedOut
 
+from abstract.models import (
+    CacheableFillDataModel,
+    LocationRegionBindModel,
+    TrackableUpdateCreateModel,
+)
+from bazaarapp.processors import (
+    LocationConfirmationProcessor,
+    LocationKeyInputProcessor,
+)
 from convoapp.processors import (
     CarTypeInputProcessor,
     DescriptionInputProcessor,
@@ -24,26 +33,8 @@ from logger.log_strings import LogStrings
 from repairsapp import strings as repair_strings
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_messages_return_ids
-from tgbot.bot.utils import fill_data
 from tgbot.exceptions import UserIsBannedError
 from tgbot.launcher import tg_updaters
-
-
-class TrackableUpdateCreateModel(models.Model):
-    """
-    Базовый компонент модели
-    с полями для отслеживания времени создания и обновления.
-    """
-
-    created_at = models.DateTimeField(
-        verbose_name="Время создания", auto_now_add=True, db_index=True
-    )
-    updated_at = models.DateTimeField(
-        verbose_name="Время последней активности", auto_now=True, db_index=True
-    )
-
-    class Meta:
-        abstract = True
 
 
 class TGInstance(models.Model):
@@ -218,8 +209,8 @@ class WorkRequestStage(models.Model):
     processor = models.CharField(
         verbose_name="Процессор обработки", max_length=50, null=True
     )
-    reply_pattern = models.TextField(verbose_name="Шаблон ответа")
-    buttons = models.JSONField(verbose_name="Набор кнопок")
+    reply_pattern = models.TextField(verbose_name="Шаблон ответа", null=True)
+    buttons = models.JSONField(verbose_name="Набор кнопок", null=True)
 
     def get_processor(self):
         processors = {
@@ -229,6 +220,8 @@ class WorkRequestStage(models.Model):
             RequestFormingStage.GET_CAR_TYPE: CarTypeInputProcessor,
             RequestFormingStage.GET_DESC: DescriptionInputProcessor,
             RequestFormingStage.REQUEST_PHOTOS: StorePhotoInputProcessor,
+            RequestFormingStage.GET_LOCATION: LocationKeyInputProcessor,
+            RequestFormingStage.CONFIRM_LOCATION: LocationConfirmationProcessor,
             RequestFormingStage.CHECK_DATA: SetReadyInputProcessor,
             RequestFormingStage.LEAVE_FEEDBACK: FeedbackInputProcessor,
         }
@@ -244,7 +237,9 @@ class WorkRequestStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class WorkRequest(TrackableUpdateCreateModel):
+class WorkRequest(
+    TrackableUpdateCreateModel, LocationRegionBindModel, CacheableFillDataModel
+):
     """
     Модель заявки
 
@@ -261,9 +256,6 @@ class WorkRequest(TrackableUpdateCreateModel):
     )
     user: BotUser = models.ForeignKey(
         BotUser, on_delete=models.CASCADE, db_index=True, related_name="requests"
-    )
-    location = models.CharField(
-        verbose_name="Местоположение для ремонта", blank=True, max_length=100
     )
     car_type = models.CharField(
         verbose_name="Тип автомобиля", blank=True, max_length=50
@@ -292,15 +284,15 @@ class WorkRequest(TrackableUpdateCreateModel):
     # photos backref
     # registered backref
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def __str__(self):
         return f"#{self.pk} {self.user} {self.tag} {self.is_complete}"
 
     @property
     def registered(self) -> "RegisteredRequest":
         return self.registered_posts
-
-    def set_dict_data(self, **kwargs):
-        pass
 
     @classmethod
     def get_or_create(cls, user, dialog):
@@ -320,32 +312,28 @@ class WorkRequest(TrackableUpdateCreateModel):
         в виде словаря.
         """
 
-        if self.is_complete:
-            post = self.registered
-            registered_pk = post.pk
-            registered_msg_id = post.channel_message_id
-            registered_feedback = post.feedback
-        else:
-            registered_pk = registered_msg_id = "000"
-            registered_feedback = post = None
-        if self.tag:
-            tag_name = self.tag.name.replace("/", "_").replace(" ", "_")
-        else:
-            tag_name = None
-        return dict(
-            channel_name=self.dialog.bot.telegram_instance.publish_name,
-            request_pk=self.pk,
-            request_tag=tag_name,
-            request_desc=self.description,
-            request_car_type=self.car_type,
-            user_pk=self.user.pk,
-            user_name=self.user.name,
-            user_tg_id=self.user.user_id,
-            post_object=post,
-            registered_pk=registered_pk,
-            registered_msg_id=registered_msg_id,
-            registered_feedback=registered_feedback,
-        )
+        data_dict = super().data_as_dict()
+        if not self._data_dict:
+            if self.is_complete:
+                post = self.registered
+                registered_msg_id = post.channel_message_id
+                registered_feedback = post.feedback
+            else:
+                registered_msg_id = "000"
+                registered_feedback = None
+            if self.tag:
+                tag_name = self.tag.name.replace("/", "_").replace(" ", "_")
+            else:
+                tag_name = None
+            repair_dict = dict(
+                request_tag=tag_name,
+                registered_msg_id=registered_msg_id,
+                registered_feedback=registered_feedback,
+            )
+            self.set_dict_data(**data_dict)
+            self.set_dict_data(**repair_dict)
+            self.set_dict_data(**self.location_as_dict())
+        return self._data_dict
 
     def get_media(self):
         """
@@ -372,28 +360,29 @@ class WorkRequest(TrackableUpdateCreateModel):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
 
         num = self.stage_id - 1
-        msg = fill_data(repair_strings.stages_info[num], self.data_as_dict())
+        msg = self._fill_data(repair_strings.stages_info[num])
+        msg = self._add_location_choices(msg)
 
         return msg
 
     def get_feedback_message(self):
         """Возвращает шаблон сообщения для отзыва."""
 
-        msg = fill_data(repair_strings.feedback, self.data_as_dict())
+        msg = self._fill_data(repair_strings.feedback)
 
         return msg
 
     def get_admin_message(self):
         """Возвращает шаблон сообщения для администрирования."""
 
-        msg = fill_data(repair_strings.admin, self.data_as_dict())
+        msg = self._fill_data(repair_strings.admin)
 
         return msg
 
     def get_summary(self, ready=False):
         """Возвращает шаблон саммари"""
 
-        msg = fill_data(repair_strings.summary, self.data_as_dict())
+        msg = self._fill_data(repair_strings.summary)
         msg["caption"] = msg.pop("text")
         msg["photo"] = self.get_media()
         if ready:
@@ -513,6 +502,9 @@ class RegisteredRequest(TrackableUpdateCreateModel):
             bound=bound,
         )
         instance = bound.get_tg_instance()
+        bound.set_dict_data(
+            registered_pk=reg_request.pk,
+        )
         message_ids = send_messages_return_ids(
             bound.get_summary(ready=True),
             instance.publish_id,
@@ -521,6 +513,9 @@ class RegisteredRequest(TrackableUpdateCreateModel):
         reg_request.channel_message_id = message_ids[0]
         reg_request.save()
         bound.save()
+        bound.set_dict_data(
+            registered_msg_id=reg_request.channel_message_id,
+        )
         send_messages_return_ids(
             bound.get_admin_message(),
             instance.admin_group_id,
@@ -572,10 +567,12 @@ class RequestFormingStage(models.IntegerChoices):
     GET_CAR_TYPE = 4, _("Получить тип автомобиля")
     GET_DESC = 5, _("Получить описание заявки")
     REQUEST_PHOTOS = 6, _("Предложить отправить фотографии")
-    CHECK_DATA = 7, _("Проверить заявку")
-    DONE = 8, _("Работа завершена")
-    LEAVE_FEEDBACK = 9, _("Оставить отзыв")
-    FEEDBACK_DONE = 10, _("Отзыв получен")
+    GET_LOCATION = 7, _("Получить местоположение")
+    CONFIRM_LOCATION = 8, _("Подтвердить местоположение")
+    CHECK_DATA = 9, _("Проверить заявку")
+    DONE = 10, _("Работа завершена")
+    LEAVE_FEEDBACK = 11, _("Оставить отзыв")
+    FEEDBACK_DONE = 12, _("Отзыв получен")
 
 
 class Region(models.Model):

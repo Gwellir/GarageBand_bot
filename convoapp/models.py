@@ -1,8 +1,9 @@
 from django.apps import apps
 from django.db import models, transaction
 
+from abstract.models import TrackableUpdateCreateModel
 from tgbot.exceptions import ActionAlreadyCompletedError
-from tgbot.models import BotUser, MessengerBot, TrackableUpdateCreateModel
+from tgbot.models import BotUser, MessengerBot
 
 
 class Dialog(TrackableUpdateCreateModel):

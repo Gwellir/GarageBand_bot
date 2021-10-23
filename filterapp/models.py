@@ -5,6 +5,7 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
+from abstract.models import TrackableUpdateCreateModel
 from bazaarapp.models import SaleAd
 from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp import strings_bazaar as bazaar_filter_strings
@@ -19,7 +20,7 @@ from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.models import BotUser, MessengerBot, Region, TrackableUpdateCreateModel
+from tgbot.models import BotUser, MessengerBot, Region
 
 
 class FilterFormingStage(models.IntegerChoices):
