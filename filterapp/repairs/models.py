@@ -6,38 +6,30 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 from abstract.models import TrackableUpdateCreateModel
-from bazaarapp.models import SaleAd
 from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
-from filterapp import strings_bazaar as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
-from filterapp.processors import (
-    HighPriceInputProcessor,
-    LowPriceInputProcessor,
-    RegionMultiSelectProcessor,
-    SubCheckProcessor,
-)
+from filterapp.processors import RegionMultiSelectProcessor, SubCheckProcessor, RepairsMultiSelectProcessor
+from filterapp.repairs import strings as repairs_filter_strings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
-from tgbot.bot.utils import fill_data
-from tgbot.models import BotUser, MessengerBot, Region
+from tgbot.models import BotUser, MessengerBot, WorkRequest, RepairsType, Region
 
 
-class FilterFormingStage(models.IntegerChoices):
+class RepairsFilterStageChoice(models.IntegerChoices):
     """Набор стадий анкеты фильтра."""
 
     WELCOME = 1, _("Приветствие")
     CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
-    GET_LOW_PRICE = 3, _("Узнать нижнюю границу цены")
-    GET_HIGH_PRICE = 4, _("Узнать верхнюю границу цены")
-    GET_REGIONS = 5, _("Узнать интересующие регионы")
-    CHECK_DATA = 6, _("Проверить данные")
-    DONE = 7, _("Фильтр сформирован")
+    GET_REPAIR_TYPES = 3, _("Узнать типы ремонтов")
+    GET_REGIONS = 4, _("Узнать интересующие регионы")
+    CHECK_DATA = 5, _("Проверить данные")
+    DONE = 6, _("Фильтр сформирован")
+    
 
-
-class BazaarFilterStage(models.Model):
+class RepairsFilterStage(models.Model):
     """
-    Модель стадии оформления фильтра
+    Модель стадии оформления фильтра для ремонтов
     """
 
     name = models.CharField(
@@ -51,26 +43,25 @@ class BazaarFilterStage(models.Model):
 
     def get_processor(self):
         processors = {
-            FilterFormingStage.WELCOME: StartInputProcessor,
-            FilterFormingStage.CHECK_SUBSCRIPTION: SubCheckProcessor,
-            FilterFormingStage.GET_LOW_PRICE: LowPriceInputProcessor,
-            FilterFormingStage.GET_HIGH_PRICE: HighPriceInputProcessor,
-            FilterFormingStage.GET_REGIONS: RegionMultiSelectProcessor,
-            FilterFormingStage.CHECK_DATA: SetReadyInputProcessor,
-            FilterFormingStage.DONE: None,
+            RepairsFilterStageChoice.WELCOME: StartInputProcessor,
+            RepairsFilterStageChoice.CHECK_SUBSCRIPTION: SubCheckProcessor,
+            RepairsFilterStageChoice.GET_REPAIR_TYPES: RepairsMultiSelectProcessor,
+            RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
+            RepairsFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
+            RepairsFilterStageChoice.DONE: None,
         }
         return processors.get(self.pk)
 
     def get_by_callback(self, callback):
         callback_to_stage = {
-            "new_request": FilterFormingStage.CHECK_SUBSCRIPTION,
-            "restart": FilterFormingStage.WELCOME,
+            "new_request": RepairsFilterStageChoice.CHECK_SUBSCRIPTION,
+            "restart": RepairsFilterStageChoice.WELCOME,
         }
 
         return callback_to_stage.get(callback)
+    
 
-
-class BazaarFilter(TrackableUpdateCreateModel):
+class RepairsFilter(TrackableUpdateCreateModel):
     """
     Модель фильтра на базе заполнения анкеты
     """
@@ -81,16 +72,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
         verbose_name="Пользователь",
         related_name="filters",
     )
-    low_price = models.PositiveIntegerField(
-        verbose_name="Нижний предел цены",
-        null=True,
-        db_index=True,
-    )
-    high_price = models.PositiveIntegerField(
-        verbose_name="Верхний предел цены",
-        null=True,
-        db_index=True,
-    )
+    repair_types = models.ManyToManyField(RepairsType, verbose_name="Виды ремонтов")
     regions = models.ManyToManyField(Region, verbose_name="Регионы")
     is_complete = models.BooleanField(
         verbose_name="Флаг готовности фильтра", default=False, db_index=True
@@ -102,16 +84,16 @@ class BazaarFilter(TrackableUpdateCreateModel):
         "convoapp.Dialog",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="bound_bazaarfilter",
+        related_name="bound_repairsfilter",
         default=None,
     )
     stage = models.ForeignKey(
-        BazaarFilterStage, on_delete=models.SET_NULL, null=True, default=1
+        RepairsFilterStage, on_delete=models.SET_NULL, null=True, default=1
     )
 
     def __str__(self):
         return (
-            f"#{self.pk} {self.user} {self.low_price}-{self.high_price} "
+            f"#{self.pk} {self.user} {self.repair_types.all()} "
             f"{self.regions.all()} {self.is_complete}"
         )
 
@@ -127,26 +109,25 @@ class BazaarFilter(TrackableUpdateCreateModel):
         return cls.objects.get_or_create(user=user, dialog=dialog, is_discarded=False)
 
     @classmethod
-    def trigger_send(cls, registered_ad):
+    def trigger_send(cls, reg_request):
         users = BotUser.objects.filter(
             filters__is_complete=True,
             filters__registered__is_active=True,
-            filters__low_price__lte=registered_ad.bound.exact_price,
-            filters__high_price__gte=registered_ad.bound.exact_price,
-            filters__regions=registered_ad.bound.location_key.region,
+            filters__repair_types=reg_request.bound.tag,
+            filters__regions=reg_request.bound.location_key.region,
         ).distinct()
         if users:
             msg_bot = MessengerBot.get_by_model_name(cls.__name__)
             jobs = msg_bot.telegram_instance.job_queue
-            msg = registered_ad.bound.get_summary(forward=True)
+            msg = reg_request.bound.get_summary(forward=True)
             jobs.run_once(
                 PlanBroadcast(msg_bot, users, msg),
                 10,
                 name="filter_broadcast",
             )
-            BOT_LOG.info(f"Filters triggered, ad #{registered_ad.pk}.")
+            BOT_LOG.info(f"Filters triggered, ad #{reg_request.pk}.")
         else:
-            BOT_LOG.info(f"No Filters triggered, ad #{registered_ad.pk}.")
+            BOT_LOG.info(f"No Filters triggered, ad #{reg_request.pk}.")
 
     def data_as_dict(self):
         """
@@ -158,8 +139,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
             registered_pk=self.registered.pk if self.is_complete else None,
             filter_pk=self.pk,
             channel_name=self.get_tg_instance().publish_name,
-            low_price=self.low_price,
-            high_price=self.high_price,
+            repair_types=", ".join([r.name for r in self.repair_types.all()]),
             regions=", ".join([r.name for r in self.regions.all()]),
         )
 
@@ -205,7 +185,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
 
         num = self.stage_id - 1
-        stages_info = bazaar_filter_strings.stages_info[num]
+        stages_info = repairs_filter_strings.stages_info[num]
 
         msg = self.fill_data(stages_info)
 
@@ -214,32 +194,31 @@ class BazaarFilter(TrackableUpdateCreateModel):
     def get_summary(self):
         """Возвращает шаблон саммари"""
 
-        msg = fill_data(bazaar_filter_strings.summary, self.data_as_dict())
+        msg = self.fill_data(repairs_filter_strings.summary)
 
         return msg
 
     def get_ready_stage(self):
-        return FilterFormingStage.DONE
+        return RepairsFilterStageChoice.DONE
 
     def check_data(self):
-        return self.stage_id == FilterFormingStage.CHECK_DATA
+        return self.stage_id == RepairsFilterStageChoice.CHECK_DATA
 
     def is_done(self):
         return self.stage_id in [
-            FilterFormingStage.DONE,
+            RepairsFilterStageChoice.DONE,
         ]
 
     def restart(self):
-        self.stage_id = FilterFormingStage.WELCOME
+        self.stage_id = RepairsFilterStageChoice.WELCOME
 
     def get_tg_instance(self):
         return self.dialog.bot.telegram_instance
 
     def get_results(self):
-        return SaleAd.objects.filter(
+        return WorkRequest.objects.filter(
             location_key__region__in=self.regions.all(),
-            exact_price__gte=self.low_price,
-            exact_price__lte=self.high_price,
+            tag__in=self.repair_types.all(),
             is_complete=True,
             is_locked=False,
             registered_posts__created_at__gt=now() - timedelta(days=3),
@@ -247,7 +226,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
         ).order_by("-created_at")[:10]
 
     def results_as_text(self, results):
-        msg = fill_data(bazaar_filter_strings.results, self.data_as_dict())
+        msg = self.fill_data(repairs_filter_strings.results)
         if results:
             results_text = "\n\n".join([r.registered.as_tg_html() for r in results])
         else:
@@ -273,19 +252,19 @@ class BazaarFilter(TrackableUpdateCreateModel):
         )
         self.is_complete = True
         self.save()
-        RegisteredBazaarFilter.activate(self)
+        RegisteredRepairsFilter.activate(self)
 
     def setup_jobs(self):
         pass
 
 
-class RegisteredBazaarFilter(TrackableUpdateCreateModel):
+class RegisteredRepairsFilter(TrackableUpdateCreateModel):
     """
     Модель сформированного фильтра
     """
 
     bound = models.OneToOneField(
-        BazaarFilter, on_delete=models.CASCADE, related_name="registered"
+        RepairsFilter, on_delete=models.CASCADE, related_name="registered"
     )
     is_active = models.BooleanField(verbose_name="Фильтр задействован", default=True)
 

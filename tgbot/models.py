@@ -27,6 +27,7 @@ from convoapp.processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
+from filterapp.repairs.models import RepairsFilter
 from garage_band_bot.settings import DEBUG
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -189,7 +190,7 @@ class BotUser(TrackableUpdateCreateModel):
         self.save()
 
 
-class Tag(models.Model):
+class RepairsType(models.Model):
     """Модель со списком разновидностей категорий заявок."""
 
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
@@ -247,7 +248,7 @@ class WorkRequest(
     связь с пользователем и диалогом, флаги состояния и время создания.
     """
 
-    tag = models.ForeignKey(Tag, on_delete=models.SET_NULL, db_index=True, null=True)
+    tag = models.ForeignKey(RepairsType, on_delete=models.SET_NULL, db_index=True, null=True)
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
@@ -350,9 +351,9 @@ class WorkRequest(
 
     def get_related_tag(self, text):
         try:
-            tag = Tag.objects.get(name=text)
-        except Tag.DoesNotExist:
-            tag = Tag.objects.get(pk=1)  # default "Другое"
+            tag = RepairsType.objects.get(name=text)
+        except RepairsType.DoesNotExist:
+            tag = RepairsType.objects.get(pk=1)  # default "Другое"
 
         return tag
 
@@ -521,6 +522,7 @@ class RegisteredRequest(TrackableUpdateCreateModel):
             instance.admin_group_id,
             instance.bot,
         )
+        RepairsFilter.trigger_send(reg_request)
 
     def post_feedback(self):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""
