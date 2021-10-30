@@ -189,13 +189,17 @@ class BotUser(TrackableUpdateCreateModel):
         self.save()
 
 
-class Tag(models.Model):
+class RepairsType(models.Model):
     """Модель со списком разновидностей категорий заявок."""
 
     name = models.CharField(verbose_name="Наименование", max_length=255, blank=False)
 
     def __str__(self):
         return f"#{self.pk} {self.name}"
+
+    @classmethod
+    def get_tag_by_name(cls, text):
+        return cls.objects.get(name=text)
 
 
 class WorkRequestStage(models.Model):
@@ -247,7 +251,9 @@ class WorkRequest(
     связь с пользователем и диалогом, флаги состояния и время создания.
     """
 
-    tag = models.ForeignKey(Tag, on_delete=models.SET_NULL, db_index=True, null=True)
+    tag = models.ForeignKey(
+        RepairsType, on_delete=models.SET_NULL, db_index=True, null=True
+    )
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
@@ -350,9 +356,9 @@ class WorkRequest(
 
     def get_related_tag(self, text):
         try:
-            tag = Tag.objects.get(name=text)
-        except Tag.DoesNotExist:
-            tag = Tag.objects.get(pk=1)  # default "Другое"
+            tag = RepairsType.objects.get(name=text)
+        except RepairsType.DoesNotExist:
+            tag = RepairsType.objects.get(pk=1)  # default "Другое"
 
         return tag
 
@@ -379,10 +385,13 @@ class WorkRequest(
 
         return msg
 
-    def get_summary(self, ready=False):
+    def get_summary(self, ready=False, forward=False):
         """Возвращает шаблон саммари"""
 
-        msg = self._fill_data(repair_strings.summary)
+        if not forward:
+            msg = self._fill_data(repair_strings.summary)
+        else:
+            msg = self._fill_data(repair_strings.summary_forward)
         msg["caption"] = msg.pop("text")
         msg["photo"] = self.get_media()
         if ready:
@@ -498,6 +507,8 @@ class RegisteredRequest(TrackableUpdateCreateModel):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
+        from filterapp.models import RepairsFilter
+
         reg_request = cls.objects.create(
             bound=bound,
         )
@@ -521,6 +532,7 @@ class RegisteredRequest(TrackableUpdateCreateModel):
             instance.admin_group_id,
             instance.bot,
         )
+        RepairsFilter.trigger_send(reg_request)
 
     def post_feedback(self):
         """Размещает отзыв в группе отзывов и под сообщением в канале"""

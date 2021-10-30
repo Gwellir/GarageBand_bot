@@ -99,3 +99,7 @@ class HighPriceInputProcessor(IntNumberInputProcessor):
 
 class RegionMultiSelectProcessor(MultiSelectProcessor):
     attr_name = "regions"
+
+
+class RepairsMultiSelectProcessor(MultiSelectProcessor):
+    attr_name = "repair_types"
