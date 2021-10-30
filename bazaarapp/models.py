@@ -507,7 +507,7 @@ class RegisteredAd(TrackableUpdateCreateModel):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
 
-        from filterapp.bazaar.models import BazaarFilter
+        from filterapp.models import BazaarFilter
 
         reg_ad = cls.objects.create(
             bound=bound,

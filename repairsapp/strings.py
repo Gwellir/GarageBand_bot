@@ -209,6 +209,22 @@ summary = {
     ],
 }
 
+summary_forward = {
+    "text": "<b>#{request_tag} #{registered_pk}</b>\n\n"
+    "🚘 {car_type}\n\n"
+    "🛠️ {desc}\n\n"
+    "📍 {location} #{region}\n\n"
+    "🖋 {user_name}\n\n",
+    "buttons": [
+        [
+            {
+                "text": "Перейти в канал",
+                "url": "https://t.me/{channel_name}/{registered_msg_id}",
+            },
+        ],
+    ],
+}
+
 feedback = {
     "text": "<b>Отзыв клиента по заявке "
     '<a href="https://t.me/{channel_name}/{registered_msg_id}">'

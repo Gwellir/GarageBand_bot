@@ -27,7 +27,6 @@ from convoapp.processors import (
     StorePhotoInputProcessor,
     TagInputProcessor,
 )
-from filterapp.repairs.models import RepairsFilter
 from garage_band_bot.settings import DEBUG
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -197,6 +196,10 @@ class RepairsType(models.Model):
 
     def __str__(self):
         return f"#{self.pk} {self.name}"
+
+    @classmethod
+    def get_tag_by_name(cls, text):
+        return cls.objects.get(name=text)
 
 
 class WorkRequestStage(models.Model):
@@ -380,10 +383,13 @@ class WorkRequest(
 
         return msg
 
-    def get_summary(self, ready=False):
+    def get_summary(self, ready=False, forward=False):
         """Возвращает шаблон саммари"""
 
-        msg = self._fill_data(repair_strings.summary)
+        if not forward:
+            msg = self._fill_data(repair_strings.summary)
+        else:
+            msg = self._fill_data(repair_strings.summary_forward)
         msg["caption"] = msg.pop("text")
         msg["photo"] = self.get_media()
         if ready:
@@ -498,6 +504,8 @@ class RegisteredRequest(TrackableUpdateCreateModel):
     def publish(cls, bound):
         """Публикует сообщение на базе заявки в основной канал,
         сохраняет номер сообщения."""
+
+        from filterapp.models import RepairsFilter
 
         reg_request = cls.objects.create(
             bound=bound,
