@@ -7,17 +7,22 @@ from django.utils.translation import gettext_lazy as _
 
 from abstract.models import TrackableUpdateCreateModel
 from bazaarapp.models import SaleAd
-from convoapp.processors import StartInputProcessor, SetReadyInputProcessor
+from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
-from filterapp.processors import SubCheckProcessor, LowPriceInputProcessor, HighPriceInputProcessor, \
-    RegionMultiSelectProcessor, RepairsMultiSelectProcessor
+from filterapp.processors import (
+    HighPriceInputProcessor,
+    LowPriceInputProcessor,
+    RegionMultiSelectProcessor,
+    RepairsMultiSelectProcessor,
+    SubCheckProcessor,
+)
 from filterapp.repairs import strings as repairs_filter_strings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
-from tgbot.models import BotUser, Region, MessengerBot, RepairsType, WorkRequest
+from tgbot.models import BotUser, MessengerBot, Region, RepairsType, WorkRequest
 
 
 class BazaarFilterStageChoice(models.IntegerChoices):

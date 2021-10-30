@@ -72,9 +72,7 @@ stages_info = [
         "text_buttons": None,
     },
     {  # stage done
-        "text": "Ваш фильтр настроен:\n\n"
-        "🛠️ {repair_types}\n\n"
-        "📍 {regions}\n\n",
+        "text": "Ваш фильтр настроен:\n\n" "🛠️ {repair_types}\n\n" "📍 {regions}\n\n",
         "buttons": [
             [
                 {
@@ -87,9 +85,7 @@ stages_info = [
 ]
 
 summary = {
-    "text": "<b>Фильтр</b>\n\n"
-    "🛠️ {repair_types} \n\n"
-    "📍 {regions}\n\n",
+    "text": "<b>Фильтр</b>\n\n" "🛠️ {repair_types} \n\n" "📍 {regions}\n\n",
     "buttons": [
         [
             {

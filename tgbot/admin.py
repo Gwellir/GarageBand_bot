@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from convoapp.models import Dialog, Message
 
-from .models import BotUser, RegisteredRequest, RequestPhoto, RepairsType, WorkRequest
+from .models import BotUser, RegisteredRequest, RepairsType, RequestPhoto, WorkRequest
 
 # todo rework admin interface to answer project's needs
 admin.site.register(BotUser)

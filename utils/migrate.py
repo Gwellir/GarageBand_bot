@@ -1,4 +1,3 @@
-
 def delete_bots(apps, schema_editor, names: list):
     BotTable = apps.get_model("tgbot", "MessengerBot")
     TGITable = apps.get_model("tgbot", "TGInstance")
@@ -35,9 +34,9 @@ def add_bots(apps, schema_editor, bots: list):
     db_alias = schema_editor.connection.alias
     for msg_bot in bots:
         instance = TGITable.objects.using(db_alias).create(
-                # token, publish_id, publish_name, admin_group_id
-                **msg_bot.pop("instance")
-            )
+            # token, publish_id, publish_name, admin_group_id
+            **msg_bot.pop("instance")
+        )
         BotTable.objects.using(db_alias).create(
             # name, bound_object, is_active, is_debug, bound_app
             **msg_bot,
@@ -49,7 +48,10 @@ def fill_stages(apps, schema_editor, model_name: str, stages: list):
     app, model = model_name.split(".")
     BFS = apps.get_model(app, model)
     db_alias = schema_editor.connection.alias
-    BFS.objects.using(db_alias).bulk_create([
-        # name, processor, reply_pattern, buttons
-        BFS(**stage) for stage in stages
-    ])
+    BFS.objects.using(db_alias).bulk_create(
+        [
+            # name, processor, reply_pattern, buttons
+            BFS(**stage)
+            for stage in stages
+        ]
+    )

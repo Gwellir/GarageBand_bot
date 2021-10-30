@@ -251,7 +251,9 @@ class WorkRequest(
     связь с пользователем и диалогом, флаги состояния и время создания.
     """
 
-    tag = models.ForeignKey(RepairsType, on_delete=models.SET_NULL, db_index=True, null=True)
+    tag = models.ForeignKey(
+        RepairsType, on_delete=models.SET_NULL, db_index=True, null=True
+    )
     title = models.CharField(
         verbose_name="Наименование задачи", max_length=70, blank=True
     )
