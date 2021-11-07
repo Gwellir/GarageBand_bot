@@ -5,7 +5,7 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from abstract.models import TrackableUpdateCreateModel
+from abstract.models import TrackableUpdateCreateModel, DialogProcessableEntity
 from bazaarapp.models import SaleAd
 from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
@@ -315,6 +315,7 @@ class RepairsFilterStageChoice(models.IntegerChoices):
     GET_REGIONS = 4, _("Узнать интересующие регионы")
     CHECK_DATA = 5, _("Проверить данные")
     DONE = 6, _("Фильтр сформирован")
+    INVOICE_REQUESTED = 7, _("Проведение оплаты")
 
 
 class RepairsFilterStage(models.Model):
@@ -339,6 +340,7 @@ class RepairsFilterStage(models.Model):
             RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
             RepairsFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
             RepairsFilterStageChoice.DONE: None,
+            # RepairsFilterStageChoice.INVOICE_REQUESTED: ConfirmPaymentProcessor,
         }
         return processors.get(self.pk)
 
@@ -351,7 +353,10 @@ class RepairsFilterStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class RepairsFilter(TrackableUpdateCreateModel):
+class RepairsFilter(
+    TrackableUpdateCreateModel,
+    DialogProcessableEntity
+):
     """
     Модель фильтра на базе заполнения анкеты
     """
@@ -498,6 +503,17 @@ class RepairsFilter(TrackableUpdateCreateModel):
         return self.stage_id in [
             RepairsFilterStageChoice.DONE,
         ]
+
+    def invoice_requested(self):
+        return self.stage_id == RepairsFilterStageChoice.INVOICE_REQUESTED
+
+    # def get_invoice(self):
+    #     if not self.user.subscribed_to(self.__class__.__name__):
+    #         msg = self.fill_data(repairs_filter_strings.payment)
+    #     else:
+    #         msg = self.fill_data(repairs_filter_strings.already_subscribed)
+    #
+    #     return msg
 
     def restart(self):
         self.stage_id = RepairsFilterStageChoice.WELCOME

@@ -25,6 +25,7 @@ class SubCheckProcessor(BaseInputProcessor):
             self.cancel_step()
             return -1
         elif data["text"] == "Далее":
+            self._check_payment()
             self._check_sub()
             return 1
         else:

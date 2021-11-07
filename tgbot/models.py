@@ -188,6 +188,8 @@ class BotUser(TrackableUpdateCreateModel):
         self.is_banned = True
         self.save()
 
+    # def subscribed_to(self, object_name):
+
 
 class RepairsType(models.Model):
     """Модель со списком разновидностей категорий заявок."""

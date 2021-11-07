@@ -163,3 +163,6 @@ DEV_TG_ID = os.getenv("DEV_TG_ID")
 # media
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
+
+# payments
+PROVIDER_TOKEN = os.getenv("STRIPE_TEST_TOKEN")

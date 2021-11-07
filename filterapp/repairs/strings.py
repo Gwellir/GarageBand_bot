@@ -1,4 +1,5 @@
 """Содержит строки шаблонов ответов бота."""
+from garage_band_bot import settings
 
 stages_info = [
     {  # stage 1
@@ -102,4 +103,13 @@ summary = {
 
 results = {
     "text": "<b>Десятка самых свежих результатов " "за последние три дня</b>:\n" ""
+}
+
+payment = {
+    "title": "Подписка на месяц",
+    "description": "Месячная оплата подписки на канал \"Автосервис Украина\"",
+    "payload": "Repairs-Filter-payment",
+    "provider_token": settings.PROVIDER_TOKEN,
+    "currency": "UAH",
+    "price": 10,
 }
