@@ -68,6 +68,37 @@ stages_info = [
             ],
         ],
     },
+    {
+        "text": "<b>Подписка</b>\nНа данный момент: {sub_active} до {expiry_date}",
+        "text_buttons": [
+            [
+                {
+                    "text": "Далее",
+                },
+            ],
+            [
+                {
+                    "text": "Оплатить",
+                }
+            ],
+            [
+                {
+                    "text": "Отменить",
+                }
+            ],
+        ],
+    },
+    {
+        "text": "Оплатите подписку по ссылке",
+        "buttons": [
+            [
+                {
+                    "text": "Оплатить",
+                    "url": "{checkout_url}",
+                },
+            ],
+        ],
+    },
     {  # stage confirmation
         "text": "Вы молодец! Смотрите, что у нас получилось:",
         "text_buttons": None,
@@ -107,7 +138,7 @@ results = {
 
 payment = {
     "title": "Подписка на месяц",
-    "description": "Месячная оплата подписки на канал \"Автосервис Украина\"",
+    "description": 'Месячная оплата подписки на канал "Автосервис Украина"',
     "payload": "Repairs-Filter-payment",
     "provider_token": settings.PROVIDER_TOKEN,
     "currency": "UAH",

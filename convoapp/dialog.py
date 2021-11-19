@@ -120,8 +120,8 @@ class DialogProcessor:
             self._restart()
             # self.dialog.finish()
 
-        elif self.bound.invoice_requested():
-            messages.append(self.bound.get_invoice())
+        # elif self.bound.invoice_requested():
+        #     messages.append(self.bound.get_invoice())
 
         return messages
 

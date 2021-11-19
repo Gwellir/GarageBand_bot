@@ -188,7 +188,16 @@ class BotUser(TrackableUpdateCreateModel):
         self.is_banned = True
         self.save()
 
-    # def subscribed_to(self, object_name):
+    def subscribed_to_service(self, service):
+        active_subs = [
+            sub
+            for sub in self.subscriptions.all()
+            if sub.service == service and not sub.is_expired()
+        ]
+        if active_subs:
+            return active_subs[0].expiry_date
+
+        return None
 
 
 class RepairsType(models.Model):

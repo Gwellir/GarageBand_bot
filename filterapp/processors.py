@@ -1,7 +1,14 @@
+from pprint import pprint
+
+from liqpay import LiqPay
+
 from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor
+from filterapp.exceptions import NotSubscribedError
+from garage_band_bot import settings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from paymentapp.models import ServiceChoice
 from tgbot.exceptions import (
     IncorrectChoiceError,
     TextNotProvidedError,
@@ -10,10 +17,9 @@ from tgbot.exceptions import (
 
 
 class SubCheckProcessor(BaseInputProcessor):
-    def _check_sub(self):
+    def _check_follow(self):
         instance = self.model.get_tg_instance()
         bot = instance.tg_bot
-        # todo make filterapp aware of which bot it works with
         channel_id = instance.publish_id
         user_id = self.dialog.user.user_id
         member = bot.get_chat_member(channel_id, user_id)
@@ -25,11 +31,47 @@ class SubCheckProcessor(BaseInputProcessor):
             self.cancel_step()
             return -1
         elif data["text"] == "Далее":
-            self._check_payment()
-            self._check_sub()
+            self._check_follow()
             return 1
         else:
             return 0
+
+
+class ConfirmPaymentProcessor(BaseInputProcessor):
+    def _check_sub(self):
+        # todo make filterapp aware of which bot it works with
+        if not self.dialog.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT):
+            raise NotSubscribedError
+
+    def _get_checkout_link(self):
+        liqpay = LiqPay(settings.LQ_TEST_PUBLIC_KEY, settings.LQ_TEST_PRIVATE_KEY)
+        res = liqpay.checkout_url(
+            dict(
+                action="auth",
+                version="3",
+                amount="10",
+                currency="UAH",
+                description="Test payment",
+                # order_id="order_id_2",
+                language='ru',
+                recurringbytoken='1',
+            )
+        )
+        self.model.set_dict_data(
+            checkout_url=res,
+        )
+        pprint(res)
+
+    def get_step(self, data):
+        if data["text"] == "Отменить":
+            self.cancel_step()
+            return -1
+        elif data["text"] == "Оплатить":
+            self._get_checkout_link()
+            return 1
+        else:
+            self._check_sub()
+            return 2
 
 
 class MultiSelectProcessor(BaseInputProcessor):
