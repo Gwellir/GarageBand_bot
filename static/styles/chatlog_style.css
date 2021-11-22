@@ -153,8 +153,9 @@ body {
     display: none;
 }
 
-footer {
-    clear:both;
+.footer {
+    /*clear:both;*/
+    display: none !important;
 }
 
 .clearfix:after {

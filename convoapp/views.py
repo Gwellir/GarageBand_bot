@@ -81,10 +81,10 @@ def logs_list_view(request, user_pk=None, dialog_pk=None):
             "username": user.username,
             "fullname": user.get_fullname,
             "chat_last_message": None,
-            "time": user.last_active,
+            "time": user.updated_at,
             "is_banned": user.is_banned,
         }
-        for user in BotUser.objects.all().order_by("-last_active").select_related()
+        for user in BotUser.objects.all().order_by("-updated_at").select_related()
     ]
 
     dialogs = []
@@ -97,10 +97,10 @@ def logs_list_view(request, user_pk=None, dialog_pk=None):
                 "tag": get_tag(dialog),
                 "is_complete": get_is_complete(dialog),
                 "is_discarded": get_is_discarded(dialog),
-                "time": dialog.last_active,
+                "time": dialog.updated_at,
             }
             for dialog in Dialog.objects.filter(user__pk=user_pk).order_by(
-                "-last_active", "-pk"
+                "-updated_at", "-pk"
             )
         ]
     messages = []

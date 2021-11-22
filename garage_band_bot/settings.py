@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "bazaarapp",
     "repairsapp",
     "filterapp",
+    "statsapp",
 ]
 
 MIDDLEWARE = [
