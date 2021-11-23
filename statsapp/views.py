@@ -49,8 +49,8 @@ def stats_main(request, debug=0):
 
         objs_q = model.objects.filter(dialog__bot=bot)
         dropped_objs_q = objs_q.filter(is_complete=False)
-        stages_stats = dropped_objs_q.values('stage__name')
-        count = Counter([stage.get('stage__name') for stage in stages_stats])
+        stages_stats = dropped_objs_q.values('stage__id', 'stage__name')
+        count = Counter([(stage.get('stage__id'), stage.get('stage__name')) for stage in stages_stats])
 
         bot_list.append(
             dict(
@@ -60,11 +60,9 @@ def stats_main(request, debug=0):
                 total_users=total_users,
                 users_with_posts=users_with_posts,
                 posts_per_user=posts_per_user,
-                stages_stats=list(count.items()),
+                stages_stats=sorted(list(count.items()), key=lambda item: item[0][0] if item[0][0] else 0),
             )
         )
-
-    print(bot_list)
 
     context = {
         "title_page": "Статистика",

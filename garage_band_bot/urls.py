@@ -21,6 +21,6 @@ from statsapp import urls as stats_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("log_viewer/", include(convo_urls, namespace="bot_admin")),
+    path("log_viewer/", include(convo_urls, namespace="log_view")),
     path("stats/", include(stats_urls, namespace="stats")),
 ]
