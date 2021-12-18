@@ -499,7 +499,7 @@ class RegisteredRequest(TrackableUpdateCreateModel):
         return (
             f'<a href="https://t.me/{channel_name}/'
             f'{self.channel_message_id}">#{self.pk}</a>\n'
-            f'🚘 {self.bound.car_type}\n{self.bound.tag.name}'
+            f"🚘 {self.bound.car_type}\n{self.bound.tag.name}"
         )
 
     @classmethod

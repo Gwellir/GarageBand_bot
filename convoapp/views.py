@@ -78,19 +78,19 @@ def logs_list_view(request, bot=None, user_pk=None, dialog_pk=None, stage=None):
 
     bot_object = MessengerBot.objects.get(id=bot)
     model = apps.get_model(bot_object.bound_app, bot_object.bound_object)
-    related_name = model._meta.get_field('dialog').related_query_name()
+    related_name = model._meta.get_field("dialog").related_query_name()
 
     if stage:
         stage = stage[6:-1]
 
     filter_dict = {
-        'dialog__bot': bot_object,
+        "dialog__bot": bot_object,
     }
 
     if stage:
         filter_dict.update(
             {
-                f'dialog__{related_name}__stage_id': stage,
+                f"dialog__{related_name}__stage_id": stage,
             }
         )
     users = [
@@ -103,7 +103,10 @@ def logs_list_view(request, bot=None, user_pk=None, dialog_pk=None, stage=None):
             "time": user.updated_at,
             "is_banned": user.is_banned,
         }
-        for user in BotUser.objects.filter(**filter_dict).distinct().order_by("-updated_at").select_related()
+        for user in BotUser.objects.filter(**filter_dict)
+        .distinct()
+        .order_by("-updated_at")
+        .select_related()
     ]
 
     dialogs = []
@@ -111,7 +114,7 @@ def logs_list_view(request, bot=None, user_pk=None, dialog_pk=None, stage=None):
     if stage:
         dialog_query = dialog_query.filter(
             **{
-                f'{related_name}__stage_id': stage,
+                f"{related_name}__stage_id": stage,
             }
         )
     if user_pk:
@@ -120,7 +123,7 @@ def logs_list_view(request, bot=None, user_pk=None, dialog_pk=None, stage=None):
                 "number": dialog.pk,
                 "registered_pk": get_registered_pk(dialog),
                 "message_id": get_message_id(dialog),
-                "tag": None, #get_tag(dialog),
+                "tag": None,  # get_tag(dialog),
                 "is_complete": get_is_complete(dialog),
                 "is_discarded": get_is_discarded(dialog),
                 "time": dialog.updated_at,
