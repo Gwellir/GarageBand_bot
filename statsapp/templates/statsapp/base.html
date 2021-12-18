@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>
+    {{ title_page|title }}
+  </title>
+  {% block css %}
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{% static 'styles/chatlog_style.css' %}">
+  {% endblock %}
+  {% block js %}
+  {% endblock %}
+</head>
+  <body>
+    <div class="container">
+      {% include 'convoapp/includes/inc_menu.html' %}
+      <div class="content">
+      {% block content %}
+      {% endblock %}
+      </div>
+<!--      <div class="footer">-->
+<!--        <p class="copyright">&copy; {% now "Y" %} GarageBand </p>-->
+<!--      </div>-->
+    </div>
+  </body>
+</html>
