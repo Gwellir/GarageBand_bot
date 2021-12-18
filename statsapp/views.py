@@ -5,7 +5,6 @@ from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count
 from django.shortcuts import render
 
-from convoapp.models import Dialog
 from tgbot.models import BotUser, MessengerBot
 
 
@@ -46,9 +45,6 @@ def stats_main(request, debug=0):
             .order_by("-count")
             .values("id", "name", "user_id", "count")[:10]
         )
-
-        stage_model = model._meta.get_field("stage").remote_field.model
-        stages = stage_model.objects.all()
 
         objs_q = model.objects.filter(dialog__bot=bot)
         dropped_objs_q = objs_q.filter(is_complete=False)
