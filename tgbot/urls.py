@@ -7,6 +7,6 @@ app_name = "tgbot"
 
 urlpatterns = [
     # TODO: make webhook more secure
-    path('', wh_views.index, name="index"),
-    path('<int:bot_id>', csrf_exempt(wh_views.TelegramBotWebhookView.as_view())),
+    path("", wh_views.index, name="index"),
+    path("<int:bot_id>", csrf_exempt(wh_views.TelegramBotWebhookView.as_view())),
 ]

@@ -1,12 +1,12 @@
 import os
 import platform
-
 from queue import Queue
 from threading import Thread
 
 from django.apps import AppConfig
 from telegram import ParseMode
-from telegram.ext import messagequeue as mq, Dispatcher, Updater
+from telegram.ext import Dispatcher, Updater
+from telegram.ext import messagequeue as mq
 from telegram.utils.request import Request
 
 from garage_band_bot import settings
@@ -82,7 +82,7 @@ def init_dispatchers():
     q = mq.MessageQueue()
     request = Request(con_pool_size=8)
     for bot in MessengerBot.objects.filter(
-            is_active=True, is_debug=DEBUG
+        is_active=True, is_debug=DEBUG
     ).select_related():
         token = bot.telegram_instance.token
         tg_bot = MQBot(token, request=request, mqueue=q)
@@ -109,7 +109,7 @@ def init_dispatchers():
             parse_mode=ParseMode.HTML,
         )
 
-        thread = Thread(target=dp.start, name=f'dispatcher_{bot.id}')
+        thread = Thread(target=dp.start, name=f"dispatcher_{bot.id}")
         thread.start()
 
 
@@ -118,7 +118,7 @@ class TgbotConfig(AppConfig):
     name = "tgbot"
 
     def ready(self):
-        if os.environ.get('RUN_MAIN', None) != 'true':
+        if os.environ.get("RUN_MAIN", None) != "true":
             return
         if settings.POLLING:
             run_polling()

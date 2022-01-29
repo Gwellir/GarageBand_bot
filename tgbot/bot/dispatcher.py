@@ -1,6 +1,12 @@
 """Содержит функции запуска и настройки telegram-бота."""
 from telegram import Update
-from telegram.ext import CallbackQueryHandler, CommandHandler, Dispatcher, Filters, MessageHandler
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    Dispatcher,
+    Filters,
+    MessageHandler,
+)
 
 from logger.log_config import BOT_LOG
 from tgbot.bot import handlers
