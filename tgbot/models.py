@@ -31,10 +31,11 @@ from garage_band_bot.settings import DEBUG
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
 from repairsapp import strings as repair_strings
+from tgbot.apps import tg_dispatchers
 from tgbot.bot.constants import DEFAULT_LOGO_FILE
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.exceptions import UserIsBannedError
-from tgbot.launcher import tg_updaters
+from tgbot.apps import tg_updaters
 
 
 class TGInstance(models.Model):
@@ -58,7 +59,10 @@ class TGInstance(models.Model):
 
     @property
     def tg_bot(self):
-        return tg_updaters.get(self.token).bot
+        try:
+            return tg_updaters.get(self.token).bot
+        except (NameError, KeyError):
+            return tg_dispatchers.get(self.token)
 
     @property
     def job_queue(self):

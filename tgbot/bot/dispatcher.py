@@ -1,12 +1,17 @@
 """Содержит функции запуска и настройки telegram-бота."""
-
-from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
+from telegram import Update
+from telegram.ext import CallbackQueryHandler, CommandHandler, Dispatcher, Filters, MessageHandler
 
 from logger.log_config import BOT_LOG
 from tgbot.bot import handlers
 
 
-def setup_dispatcher(dp):
+def process_telegram_event(update_json, dp):
+    update = Update.de_json(update_json, dp.bot)
+    dp.update_queue.put(update)
+
+
+def setup_dispatcher(dp: Dispatcher) -> Dispatcher:
     """Создаёт обработчики для приходящих от Telegram событий."""
 
     dp.add_handler(
