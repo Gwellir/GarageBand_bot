@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "repairsapp",
     "filterapp",
     "paymentapp",
+    "statsapp",
 ]
 
 MIDDLEWARE = [
@@ -160,6 +161,7 @@ REPAIRS_FILTER_LIVE_TOKEN = os.getenv("REPAIRS_FILTER_LIVE_TOKEN")
 REPAIRS_FILTER_TEST_TOKEN = os.getenv("REPAIRS_FILTER_TEST_TOKEN")
 
 DEV_TG_ID = os.getenv("DEV_TG_ID")
+POLLING = True
 
 # media
 MEDIA_ROOT = BASE_DIR / "media"

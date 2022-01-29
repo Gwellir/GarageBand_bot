@@ -1,7 +1,7 @@
 {% extends 'convoapp/base.html' %}
 
 {% block content %}
-<h3>Существующие чаты</h3>
+<h3>Существующие чаты (бот: {{bot.name}}) (этап: {{stage}})</h3>
 <div class="chat-view clearfix">
     <div class="select-list">
         {% for user in user_list %}
@@ -17,7 +17,7 @@
                     {% endif %}
                     <div class="user-time">{{ user.time|date:"d.m.Y" }}, {{ user.time|time:"H:i" }}</div>
                 </div>
-                <a href="/log_viewer/logs/{{user.number}}/" class="select-link">
+                <a href="/log_viewer/logs/{{url_prefix}}{{user.number}}/" class="select-link">
                     <div class="arrow"></div>
                 </a>
             </div>
@@ -39,7 +39,7 @@
                     <div class="chat-last-message">{{ chat.tag }}</div>
                     <div class="chat-time">{{ chat.time|date:"d.m.Y" }}, {{ chat.time|time:"H:i" }}</div>
                 </div>
-                <a href="/log_viewer/logs/{{selected_user}}/{{chat.number}}" class="select-link">
+                <a href="/log_viewer/logs/{{url_prefix}}{{selected_user}}/{{chat.number}}" class="select-link">
                     <div class="arrow"></div>
                 </a>
             </div>

@@ -153,8 +153,9 @@ body {
     display: none;
 }
 
-footer {
-    clear:both;
+.footer {
+    /*clear:both;*/
+    display: none !important;
 }
 
 .clearfix:after {
@@ -173,4 +174,20 @@ footer {
     border-left: 10px solid black;
     border-top: 10px solid transparent;
     border-bottom: 10px solid transparent;
+}
+
+.stat-block {
+    border: 1px solid black;
+}
+
+.column {
+    margin-top: 20px;
+    display: inline-block;
+    width: 49%;
+}
+
+.stat-subheader {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
 }

@@ -6,9 +6,8 @@ from logger.log_config import BOT_LOG
 
 
 class ReminderJob:
-    def __init__(self, model, updater, intervals):
+    def __init__(self, model, intervals):
         self.model = model
-        self.updater = updater
         self.intervals = intervals
 
     def __call__(self, *args, **kwargs):

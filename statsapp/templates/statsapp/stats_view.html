@@ -1,0 +1,30 @@
+{% extends 'statsapp/base.html' %}
+
+{% block content %}
+<h3>{{ title_page }}</h3>
+<div class="stat-view">
+    {% for bot in bot_list %}
+    <div class="stat-block">
+        <h4>{{bot.name}}</h4>
+        <p>Всего пользователей: {{ bot.total_users }}</p>
+        <p>Активных пользователей: {{ bot.users_with_posts }}</p>
+        <div class="column post-user">
+            <div class="stat-subheader">Топ постов по пользователям:</div>
+            {% for user in bot.posts_per_user %}
+                <p>{{ user.name }} ({{ user.user_id }}) : {{ user.count }}</p>
+            {% endfor %}
+        </div>
+        <div class="column ad-stage">
+            <div class="stat-subheader">Стадии незавершённых диалогов</div>
+            {% for stage in bot.stages_stats %}
+                <p>
+                    <a href="/log_viewer/logs/{{bot.number}}/{% if stage.0.0 %}stage-{{stage.0.0}}/{% endif %}
+                    ">{{stage.0}}</a>: {{stage.1}}
+                </p>
+            {% endfor %}
+        </div>
+    </div>
+    <br>
+    {% endfor %}
+</div>
+{% endblock %}
