@@ -13,7 +13,12 @@ tg_updaters = {}
 
 
 def run_polling():
-    """Запуск в режиме polling"""
+    """Запуск в режиме polling
+
+    В соответствии с набором параметров ботов из таблицы MessengerBot создаются
+    инстансы PTB MQBot, модифицированные для работы с очередью отправки сообщений (q).
+
+    Соответствующие апдейтеры помещаются в глобальный словарь tg_updaters"""
 
     from tgbot.bot.dispatcher import setup_dispatcher
     from tgbot.models import MessengerBot
@@ -33,10 +38,14 @@ def run_polling():
         updater = Updater(bot=tg_bot, use_context=True)
         tg_updaters[token] = updater
 
-        bot.get_bound_model().setup_jobs(updater)
+        # запуск действий по расписанию для соответствующей модели
+        bot.get_bound_model().setup_jobs(updater.job_queue)
 
         dp = updater.dispatcher
         dp = setup_dispatcher(dp)
+
+        # кросс-ссылки для удобного доступа к очереди и боту изнутри этапа обработки
+        # принятых сообщений помещаются в bot_data соответствующего диспетчера
         dp.bot_data["msg_bot"] = bot
         dp.bot_data["job_queue"] = updater.job_queue
 
@@ -51,6 +60,7 @@ def run_polling():
             parse_mode=ParseMode.HTML,
         )
 
+        # инициализация опроса серверов TG
         updater.start_polling()
         updaters.append(updater)
     # for updater in updaters:

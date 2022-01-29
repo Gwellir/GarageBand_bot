@@ -443,8 +443,7 @@ class SaleAd(
         RegisteredAd.publish(self)
 
     @classmethod
-    def setup_jobs(cls, updater):
-        jobs = updater.job_queue
+    def setup_jobs(cls, job_queue):
         reminder_time = datetime.strptime(BAZAAR_REMINDER_TIME, "%H:%M:%S %z").time()
         filters = [
             dict(
@@ -454,8 +453,8 @@ class SaleAd(
                 registered_posts__is_deleted=False,
             ),
         ]
-        jobs.run_daily(
-            ReminderJob(cls, updater, filters),
+        job_queue.run_daily(
+            ReminderJob(cls, filters),
             reminder_time,
             name="cleanup",
         )

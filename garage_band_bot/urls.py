@@ -18,9 +18,11 @@ from django.urls import include, path
 
 from convoapp import urls as convo_urls
 from statsapp import urls as stats_urls
+from tgbot import urls as webhook_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("log_viewer/", include(convo_urls, namespace="log_view")),
     path("stats/", include(stats_urls, namespace="stats")),
+    path("_catchers/", include(webhook_urls, namespace="webhooks")),
 ]
