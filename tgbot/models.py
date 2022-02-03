@@ -124,7 +124,7 @@ class BotUser(TrackableUpdateCreateModel):
     last_name = models.CharField(
         verbose_name="Фамилия в ТГ", max_length=100, blank=True
     )
-    user_id = models.PositiveIntegerField(
+    user_id = models.PositiveBigIntegerField(
         verbose_name="ID в ТГ", unique=True, null=False, db_index=True
     )
     username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=50)
