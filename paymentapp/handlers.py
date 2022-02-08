@@ -8,7 +8,7 @@ def precheckout_callback(update: Update, context: CallbackContext) -> None:
     """Answers the PreCheckoutQuery"""
     query = update.pre_checkout_query
     # check the payload, is this from your bot?
-    if query.invoice_payload != 'Repairs-Filter-payment':
+    if query.invoice_payload != "Repairs-Filter-payment":
         # answer False pre_checkout_query
         query.answer(ok=False, error_message="Something went wrong...")
     else:

@@ -42,7 +42,9 @@ def setup_dispatcher(dp: Dispatcher) -> Dispatcher:
     # Pre-checkout handler to final check
     dp.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     # Success! Notify your user!
-    dp.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
+    dp.add_handler(
+        MessageHandler(Filters.successful_payment, successful_payment_callback)
+    )
     dp.add_error_handler(handlers.error_handler)
 
     BOT_LOG.debug("Event handlers initialized.")
