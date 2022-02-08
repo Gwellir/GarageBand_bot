@@ -192,11 +192,7 @@ class BotUser(TrackableUpdateCreateModel):
         self.save()
 
     def subscribed_to_service(self, service):
-        active_subs = [
-            sub
-            for sub in self.subscriptions.all()
-            if sub.service == service and not sub.is_expired()
-        ]
+        active_subs = self.subscriptions.filter(service=service, is_expired=False)
         if active_subs:
             return active_subs[0].expiry_date
 
