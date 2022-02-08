@@ -5,22 +5,28 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from abstract.models import DialogProcessableEntity, TrackableUpdateCreateModel, CacheableFillDataModel
+from abstract.models import (
+    CacheableFillDataModel,
+    DialogProcessableEntity,
+    TrackableUpdateCreateModel,
+)
 from bazaarapp.models import SaleAd
 from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
 from filterapp.processors import (
+    ConfirmPaymentProcessor,
     HighPriceInputProcessor,
     LowPriceInputProcessor,
     RegionMultiSelectProcessor,
     RepairsMultiSelectProcessor,
-    SubCheckProcessor, ConfirmPaymentProcessor,
+    SubCheckProcessor,
 )
 from filterapp.repairs import strings as repairs_filter_strings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from paymentapp.models import ServiceChoice
+from paymentapp.abstract import SubscribableModel
+from subscribeapp.constants import ServiceChoice
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.models import BotUser, MessengerBot, Region, RepairsType, WorkRequest
@@ -341,7 +347,7 @@ class RepairsFilterStage(models.Model):
             RepairsFilterStageChoice.GET_REPAIR_TYPES: RepairsMultiSelectProcessor,
             RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
             RepairsFilterStageChoice.ASK_PAYMENT: ConfirmPaymentProcessor,
-            RepairsFilterStageChoice.INVOICE_REQUESTED: None, #ProcessPaymentProcessor,
+            RepairsFilterStageChoice.INVOICE_REQUESTED: None,  # ProcessPaymentProcessor,
             RepairsFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
             RepairsFilterStageChoice.DONE: None,
         }
@@ -356,7 +362,9 @@ class RepairsFilterStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class RepairsFilter(TrackableUpdateCreateModel, DialogProcessableEntity, CacheableFillDataModel):
+class RepairsFilter(
+    TrackableUpdateCreateModel, DialogProcessableEntity, CacheableFillDataModel, SubscribableModel
+):
     """
     Модель фильтра на базе заполнения анкеты
     """
@@ -388,8 +396,11 @@ class RepairsFilter(TrackableUpdateCreateModel, DialogProcessableEntity, Cacheab
 
     def __str__(self):
         return (
-            f"#{self.pk} {self.user} {self.repair_types.all()} "
-            f"{self.regions.all()} {self.is_complete}"
+            f"#{self.pk}"
+            f" {self.user} "
+            f"{self.repair_types.all()} "
+            f"{self.regions.all()}"
+            f" {self.is_complete}"
         )
 
     @classmethod
@@ -435,15 +446,16 @@ class RepairsFilter(TrackableUpdateCreateModel, DialogProcessableEntity, Cacheab
             expiry_date = self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT)
             if expiry_date:
                 sub_active = True
-
+            last_checkout = self.dialog.order.get_last_checkout()
             rep_filter_data = dict(
                 registered_pk=self.registered.pk if self.is_complete else None,
                 filter_pk=self.pk,
+                checkout_url=last_checkout.link if last_checkout else None,
                 channel_name=self.get_tg_instance().publish_name,
-                repair_types=", ".join([r.name for r in self.repair_types.all()]),
-                regions=", ".join([r.name for r in self.regions.all()]),
-                sub_active=sub_active,
-                expiry_date=expiry_date,
+                repair_types=", ".join([r.name for r in self.repair_types.all()]) if self.pk else None,
+                regions=", ".join([r.name for r in self.regions.all()]) if self.pk else None,
+                sub_active="Оформлена" if sub_active else "Нет",
+                expiry_date=expiry_date if expiry_date else "---",
             )
             self.set_dict_data(**rep_filter_data)
         return self._data_dict
@@ -501,6 +513,13 @@ class RepairsFilter(TrackableUpdateCreateModel, DialogProcessableEntity, Cacheab
         """Возвращает шаблон саммари"""
 
         msg = self.fill_data(repairs_filter_strings.summary)
+
+        return msg
+
+    def get_payment_confirmation_reply(self):
+        """Возвращает шаблон подтверждения оплаты"""
+
+        msg = self.fill_data(repairs_filter_strings.payment_confirmed)
 
         return msg
 

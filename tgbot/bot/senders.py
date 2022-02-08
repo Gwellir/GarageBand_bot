@@ -34,7 +34,6 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
         parse_mode=ParseMode.HTML,
         reply_to_message_id=reply_to,
     )
-    # todo wrap in TRY EXCEPT (ChatMigrated, ...)
     bot = msg_bot.telegram_instance.tg_bot
     ids = []
     while True:
@@ -56,7 +55,7 @@ def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
 
             else:
                 msg = bot.send_message(
-                    text=message_data["text"],
+                    text=message_data.get("text"),
                     disable_web_page_preview=True,
                     **params_dict,
                 ).result()

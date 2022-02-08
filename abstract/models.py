@@ -1,4 +1,3 @@
-import abc
 import copy
 
 from django.db import models

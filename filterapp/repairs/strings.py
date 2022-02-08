@@ -146,3 +146,19 @@ payment = {
     "currency": "UAH",
     "price": 10,
 }
+
+payment_confirmed = {
+    "text": "<b>Оплата подписки проведена.</b>",
+    "text_buttons": [
+        [
+            {
+                "text": "Далее"
+            }
+        ],
+        [
+            {
+                "text": "Отменить",
+            }
+        ]
+    ],
+}

@@ -26,7 +26,7 @@ def get_bound_state(message_data):
             pass
 
 
-class DialogProcessor:
+class DialogStateMachine:
     """Класс, отвечающий за ведение диалога с пользователем.
 
     Инициализируется инстансом диалога и данными пришедшего сообщения, передаёт

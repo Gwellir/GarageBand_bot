@@ -25,15 +25,15 @@ class BaseInputProcessor:
 
     attr_name = None
 
-    def __call__(self, dialog, data):
-        self.dialog = dialog
-        self.model = dialog.bound
+    def __call__(self, state_machine, data):
+        self.state_machine = state_machine
+        self.model = state_machine.bound
         self.messages = []
         step = self.get_step(data)
         if step >= 0:
             self.set_field(data)
 
-        self.dialog.bound.stage_id += step
+        self.state_machine.bound.stage_id += step
         return step
 
     def set_field(self, data):
@@ -89,8 +89,8 @@ class TextInputProcessor(BaseInputProcessor):
         value = self.get_field_value(raw_text)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
-                user_id=self.dialog.user.username,
-                stage=self.dialog.bound.stage,
+                user_id=self.state_machine.user.username,
+                stage=self.state_machine.bound.stage,
                 model=self.model,
                 data=value,
             )
@@ -107,13 +107,13 @@ class NameInputProcessor(TextInputProcessor):
     min_length = 2
 
     def set_field(self, data):
-        self.model = self.dialog.user
+        self.model = self.state_machine.user
         super().set_field(data)
-        self.dialog.bound.set_dict_data(
+        self.state_machine.bound.set_dict_data(
             user_pk=self.model.pk,
             user_name=self.model.name,
             user_tg_id=self.model.user_id,
-            request_pk=self.dialog.bound.pk,
+            request_pk=self.state_machine.bound.pk,
         )
 
 
@@ -177,9 +177,9 @@ class PhoneNumberInputProcessor(TextInputProcessor):
     attr_name = "phone"
 
     def set_field(self, data):
-        self.model = self.dialog.user
+        self.model = self.state_machine.user
         super().set_field(data)
-        self.dialog.bound.set_dict_data(
+        self.state_machine.bound.set_dict_data(
             user_phone=getattr(self.model, self.attr_name),
         )
 
@@ -216,7 +216,7 @@ class StorePhotoInputProcessor(BaseInputProcessor):
             )
             BOT_LOG.debug(
                 LogStrings.DIALOG_SET_FIELD.format(
-                    user_id=self.dialog.user.username,
+                    user_id=self.state_machine.user.username,
                     stage=self.model.stage,
                     model=photo,
                     data=data,
@@ -236,14 +236,14 @@ class SetReadyInputProcessor(BaseInputProcessor):
     данных вместо нажатия кнопки.
     """
 
-    def __call__(self, dialog, data):
+    def __call__(self, state_machine, data):
         if not data["callback"]:
             raise CallbackNotProvidedError
         elif data["callback"] == "restart":
             return
-        elif data["callback"].split() == ["final_confirm", str(dialog.bound.pk)]:
-            dialog.bound.set_ready()
-            dialog.bound.stage_id += 1
+        elif data["callback"].split() == ["final_confirm", str(state_machine.bound.pk)]:
+            state_machine.bound.set_ready()
+            state_machine.bound.stage_id += 1
             return
         raise ButtonIsLockedError
 
@@ -262,9 +262,9 @@ class FeedbackInputProcessor(TextInputProcessor):
             return 1
 
     def set_field(self, data):
-        self.model = self.dialog.bound.registered
+        self.model = self.state_machine.bound.registered
         super().set_field(data)
-        self.dialog.bound.set_dict_data(
+        self.state_machine.bound.set_dict_data(
             registered_feedback=getattr(self.model, self.attr_name),
         )
         self.model.post_feedback()
