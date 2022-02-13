@@ -5,6 +5,7 @@ import tempfile
 from django.apps import apps
 from django.core.files import File
 from django.db import models, transaction
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from telegram.error import BadRequest, TimedOut
 
@@ -192,9 +193,12 @@ class BotUser(TrackableUpdateCreateModel):
         self.save()
 
     def subscribed_to_service(self, service):
-        active_subs = self.subscriptions.filter(service=service, is_expired=False)
+        active_subs = self.subscriptions.filter(
+            service=service,
+            expiry_time__gte=now(),
+        )
         if active_subs:
-            return active_subs[0].expiry_date
+            return active_subs[0].expiry_time
 
         return None
 

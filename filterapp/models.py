@@ -446,7 +446,7 @@ class RepairsFilter(
             expiry_date = self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT)
             if expiry_date:
                 sub_active = True
-            last_checkout = self.dialog.order.get_last_checkout()
+            last_checkout = self.dialog.order.get_last_checkout() if hasattr(self.dialog, "order") else None
             rep_filter_data = dict(
                 registered_pk=self.registered.pk if self.is_complete else None,
                 filter_pk=self.pk,

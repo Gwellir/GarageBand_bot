@@ -8,7 +8,8 @@ import djmoney.models.fields
 
 class Migration(migrations.Migration):
 
-    replaces = [('paymentapp', '0001_initial'), ('paymentapp', '0002_auto_20220205_1829'), ('paymentapp', '0003_auto_20220207_0001'), ('paymentapp', '0004_alter_checkout_link'), ('paymentapp', '0005_checkout_system_id'), ('paymentapp', '0006_alter_order_dialog'), ('paymentapp', '0007_alter_checkout_order')]
+    initial = True
+    # replaces = [('paymentapp', '0001_initial'), ('paymentapp', '0002_auto_20220205_1829'), ('paymentapp', '0003_auto_20220207_0001'), ('paymentapp', '0004_alter_checkout_link'), ('paymentapp', '0005_checkout_system_id'), ('paymentapp', '0006_alter_order_dialog'), ('paymentapp', '0007_alter_checkout_order')]
 
     dependencies = [
         ('tgbot', '0010_rename_tag_repairstype'),

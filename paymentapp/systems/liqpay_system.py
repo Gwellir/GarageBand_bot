@@ -41,8 +41,7 @@ class LiqpayClient:
         sign = self.liqpay.str_to_sign(
             settings.LQ_TEST_PRIVATE_KEY + data + settings.LQ_TEST_PRIVATE_KEY
         )
-        response = self.liqpay.decode_data_from_str(data)
-        print("callback data", response)
+
         if sign == signature:
             return True
         return False
@@ -52,12 +51,14 @@ class LiqpayClient:
         c внутренним checkout.
         """
 
-        status = data.get(LiqPayResponseFields.STATUS)
+        response = self.liqpay.decode_data_from_str(data)
+        print("callback data", response)
+        status = response.get(LiqPayResponseFields.STATUS)
 
         from paymentapp.models import Checkout
 
-        order_id = data.get(LiqPayResponseFields.ORDER_ID)
-        system_order_id = data.get(LiqPayResponseFields.SYSTEM_ORDER_ID)
+        order_id = response.get(LiqPayResponseFields.ORDER_ID)
+        system_order_id = response.get(LiqPayResponseFields.SYSTEM_ORDER_ID)
         checkout = Checkout.objects.get(tracking_id=order_id)
         checkout.system_id = system_order_id
 

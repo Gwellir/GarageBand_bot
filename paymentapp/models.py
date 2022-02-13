@@ -71,7 +71,7 @@ class Checkout(TrackableUpdateCreateModel):
         except cls.DoesNotExist:
             lqp = LiqpayClient()
             link, tracking_id = lqp.check_out(order.total, order.description, order.pk)
-            obj = cls.objects.get_or_create(
+            obj, _ = cls.objects.get_or_create(
                 order=order,
                 system=system,
                 status="NEW",
@@ -105,6 +105,8 @@ class Order(TrackableUpdateCreateModel):
         verbose_name="Разговор",
         on_delete=models.RESTRICT,
         db_index=True,
+        null=True,
+        blank=True,
         related_name="order",
     )
     description = models.TextField('Comment', default='')
@@ -131,14 +133,17 @@ class Order(TrackableUpdateCreateModel):
 
     @classmethod
     def get_or_create(cls, dialog: 'Dialog', subscription):
-        obj, created = cls.objects.get_or_create(
-            dialog=dialog,
-            user=dialog.user,
-            subscription=subscription,
-            description=f'Sub: {subscription.tier} for #{dialog.user.pk}',
-            total=subscription.get_price()
-        )
-
+        if hasattr(dialog, "order"):
+            obj = dialog.order
+        else:
+            obj = cls(
+                dialog=dialog,
+                user=dialog.user,
+                subscription=subscription,
+                description=f'Sub: {subscription.tier} for #{dialog.user.pk}',
+                total=subscription.get_price()
+            )
+            obj.save()
         return obj
 
     def set_complete(self):
@@ -149,5 +154,5 @@ class Order(TrackableUpdateCreateModel):
         self.save()
 
     def get_last_checkout(self):
-        checkout = self.checkouts.get(status="NEW")
+        checkout = self.checkouts.filter(status="NEW").first()
         return checkout

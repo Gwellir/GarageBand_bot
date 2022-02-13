@@ -6,7 +6,8 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    replaces = [('subscribeapp', '0001_initial'), ('subscribeapp', '0002_auto_20220207_0001')]
+    initial = True
+    # replaces = [('subscribeapp', '0001_initial'), ('subscribeapp', '0002_auto_20220207_0001')]
 
     dependencies = [
         ('tgbot', '0011_alter_botuser_user_id'),
