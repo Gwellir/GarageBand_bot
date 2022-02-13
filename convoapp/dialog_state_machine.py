@@ -26,7 +26,7 @@ def get_bound_state(message_data):
             pass
 
 
-class DialogProcessor:
+class DialogStateMachine:
     """Класс, отвечающий за ведение диалога с пользователем.
 
     Инициализируется инстансом диалога и данными пришедшего сообщения, передаёт
@@ -119,6 +119,9 @@ class DialogProcessor:
         elif self.bound.is_done():
             self._restart()
             # self.dialog.finish()
+
+        # elif self.bound.invoice_requested():
+        #     messages.append(self.bound.get_invoice())
 
         return messages
 

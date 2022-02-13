@@ -148,3 +148,24 @@ class CacheableFillDataModel(models.Model):
                         button[field] = button[field].format(**self.data_as_dict())
 
         return msg
+
+
+class DialogProcessableEntity(models.Model):
+
+    dialog = None
+    stage = None
+
+    class Meta:
+        abstract = True
+
+    def get_reply_for_stage(self) -> dict:
+        pass
+
+    def is_done(self) -> bool:
+        pass
+
+    def check_data(self) -> bool:
+        pass
+
+    def invoice_requested(self) -> bool:
+        pass

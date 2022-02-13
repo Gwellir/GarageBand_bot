@@ -62,8 +62,8 @@ class IntNumberInputProcessor(BaseInputProcessor):
         value = self.get_field_value(data)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
-                user_id=self.dialog.user.username,
-                stage=self.dialog.bound.stage,
+                user_id=self.state_machine.user.username,
+                stage=self.state_machine.bound.stage,
                 model=self.model,
                 data=value,
             )
@@ -124,8 +124,8 @@ class BinarySelectProcessor(BaseInputProcessor):
         selection: bool = self.get_field_value(data)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
-                user_id=self.dialog.user.username,
-                stage=self.dialog.bound.stage,
+                user_id=self.state_machine.user.username,
+                stage=self.state_machine.bound.stage,
                 model=self.model,
                 data=selection,
             )
@@ -160,14 +160,14 @@ class AlbumPhotoProcessor(BaseInputProcessor):
 
     def get_step(self, data):
         album_dict = self.__class__.album_dict
-        user_id = self.dialog.user.user_id
+        user_id = self.state_machine.user.user_id
         if data["text"] == "Отменить":
             self.cancel_step()
             if album_dict.get(user_id):
                 album_dict.pop(user_id)
             return -1
         elif data["text"] == "Далее":
-            self.dialog.suppress_output = False
+            self.state_machine.suppress_output = False
             if album_dict.get(user_id):
                 album_dict.pop(user_id)
             return 1
@@ -176,9 +176,9 @@ class AlbumPhotoProcessor(BaseInputProcessor):
                 data["media_group_id"]
                 and album_dict.get(user_id) == data["media_group_id"]
             ):
-                self.dialog.suppress_output = True
+                self.state_machine.suppress_output = True
             else:
-                self.dialog.suppress_output = False
+                self.state_machine.suppress_output = False
             album_dict[user_id] = data["media_group_id"]
             return 0
 
@@ -202,7 +202,7 @@ class AlbumPhotoProcessor(BaseInputProcessor):
             )
             BOT_LOG.debug(
                 LogStrings.DIALOG_SET_FIELD.format(
-                    user_id=self.dialog.user.username,
+                    user_id=self.state_machine.user.username,
                     stage=self.model.stage,
                     model=photo,
                     data=data,
@@ -268,18 +268,18 @@ class SetCompleteInputProcessor(BaseInputProcessor):
     данных вместо нажатия кнопки.
     """
 
-    def __call__(self, dialog, data):
+    def __call__(self, state_machine, data):
         if not data["callback"]:
             raise CallbackNotProvidedError
         elif data["callback"] == "restart":
             return
         command = data["callback"].split()
-        post_pk = dialog.bound.data_as_dict().get("registered_pk")
+        post_pk = state_machine.bound.data_as_dict().get("registered_pk")
         if command == ["complete", str(post_pk)]:
-            dialog.bound.set_sold()
-            dialog.bound.stage_id += 1
+            state_machine.bound.set_sold()
+            state_machine.bound.stage_id += 1
             return
         elif command == ["renew", str(post_pk)]:
-            dialog.bound.registered.repost()
+            state_machine.bound.registered.repost()
             return
         raise ButtonIsLockedError

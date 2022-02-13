@@ -6,9 +6,11 @@ from telegram.ext import (
     Dispatcher,
     Filters,
     MessageHandler,
+    PreCheckoutQueryHandler,
 )
 
 from logger.log_config import BOT_LOG
+from paymentapp.handlers import precheckout_callback, successful_payment_callback
 from tgbot.bot import handlers
 
 
@@ -37,6 +39,12 @@ def setup_dispatcher(dp: Dispatcher) -> Dispatcher:
     dp.add_handler(MessageHandler(Filters.chat_type.channel, handlers.post_handler))
     dp.add_handler(MessageHandler(Filters.chat_type.groups, handlers.post_handler))
     dp.add_handler(CallbackQueryHandler(handlers.message_handler))
+    # Pre-checkout handler to final check
+    dp.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+    # Success! Notify your user!
+    dp.add_handler(
+        MessageHandler(Filters.successful_payment, successful_payment_callback)
+    )
     dp.add_error_handler(handlers.error_handler)
 
     BOT_LOG.debug("Event handlers initialized.")

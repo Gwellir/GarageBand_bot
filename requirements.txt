@@ -5,6 +5,7 @@ Django==3.2.3
   sqlparse==0.4.1
 Pillow==8.2.0
 psycopg2-binary==2.8.6
+python-dateutil
 python-dotenv==0.17.1
 python-telegram-bot==13.5
   APScheduler==3.6.3

@@ -5,6 +5,7 @@ import tempfile
 from django.apps import apps
 from django.core.files import File
 from django.db import models, transaction
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from telegram.error import BadRequest, TimedOut
 
@@ -124,7 +125,7 @@ class BotUser(TrackableUpdateCreateModel):
     last_name = models.CharField(
         verbose_name="Фамилия в ТГ", max_length=100, blank=True
     )
-    user_id = models.PositiveIntegerField(
+    user_id = models.PositiveBigIntegerField(
         verbose_name="ID в ТГ", unique=True, null=False, db_index=True
     )
     username = models.CharField(verbose_name="Ник в ТГ", null=True, max_length=50)
@@ -190,6 +191,16 @@ class BotUser(TrackableUpdateCreateModel):
             raise UserIsBannedError(self)
         self.is_banned = True
         self.save()
+
+    def subscribed_to_service(self, service):
+        active_subs = self.subscriptions.filter(
+            service=service,
+            expiry_time__gte=now(),
+        )
+        if active_subs:
+            return active_subs[0].expiry_time
+
+        return None
 
 
 class RepairsType(models.Model):

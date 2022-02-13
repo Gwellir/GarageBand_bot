@@ -5,12 +5,17 @@ from django.db import models, transaction
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from abstract.models import TrackableUpdateCreateModel
+from abstract.models import (
+    CacheableFillDataModel,
+    DialogProcessableEntity,
+    TrackableUpdateCreateModel,
+)
 from bazaarapp.models import SaleAd
 from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
 from filterapp.processors import (
+    ConfirmPaymentProcessor,
     HighPriceInputProcessor,
     LowPriceInputProcessor,
     RegionMultiSelectProcessor,
@@ -20,6 +25,8 @@ from filterapp.processors import (
 from filterapp.repairs import strings as repairs_filter_strings
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from paymentapp.abstract import SubscribableModel
+from subscribeapp.constants import ServiceChoice
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import fill_data
 from tgbot.models import BotUser, MessengerBot, Region, RepairsType, WorkRequest
@@ -313,8 +320,10 @@ class RepairsFilterStageChoice(models.IntegerChoices):
     CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
     GET_REPAIR_TYPES = 3, _("Узнать типы ремонтов")
     GET_REGIONS = 4, _("Узнать интересующие регионы")
-    CHECK_DATA = 5, _("Проверить данные")
-    DONE = 6, _("Фильтр сформирован")
+    ASK_PAYMENT = 5, _("Запросить оформление оплаты")
+    INVOICE_REQUESTED = 6, _("Проведение оплаты")
+    CHECK_DATA = 7, _("Проверить данные")
+    DONE = 8, _("Фильтр сформирован")
 
 
 class RepairsFilterStage(models.Model):
@@ -337,6 +346,8 @@ class RepairsFilterStage(models.Model):
             RepairsFilterStageChoice.CHECK_SUBSCRIPTION: SubCheckProcessor,
             RepairsFilterStageChoice.GET_REPAIR_TYPES: RepairsMultiSelectProcessor,
             RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
+            RepairsFilterStageChoice.ASK_PAYMENT: ConfirmPaymentProcessor,
+            RepairsFilterStageChoice.INVOICE_REQUESTED: None,  # ProcessPaymentProcessor
             RepairsFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
             RepairsFilterStageChoice.DONE: None,
         }
@@ -351,7 +362,12 @@ class RepairsFilterStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class RepairsFilter(TrackableUpdateCreateModel):
+class RepairsFilter(
+    TrackableUpdateCreateModel,
+    DialogProcessableEntity,
+    CacheableFillDataModel,
+    SubscribableModel,
+):
     """
     Модель фильтра на базе заполнения анкеты
     """
@@ -383,8 +399,11 @@ class RepairsFilter(TrackableUpdateCreateModel):
 
     def __str__(self):
         return (
-            f"#{self.pk} {self.user} {self.repair_types.all()} "
-            f"{self.regions.all()} {self.is_complete}"
+            f"#{self.pk}"
+            f" {self.user} "
+            f"{self.repair_types.all()} "
+            f"{self.regions.all()}"
+            f" {self.is_complete}"
         )
 
     @classmethod
@@ -425,13 +444,32 @@ class RepairsFilter(TrackableUpdateCreateModel):
         в виде словаря.
         """
 
-        return dict(
-            registered_pk=self.registered.pk if self.is_complete else None,
-            filter_pk=self.pk,
-            channel_name=self.get_tg_instance().publish_name,
-            repair_types=", ".join([r.name for r in self.repair_types.all()]),
-            regions=", ".join([r.name for r in self.regions.all()]),
-        )
+        if not self._data_dict:
+            sub_active = False
+            expiry_date = self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT)
+            if expiry_date:
+                sub_active = True
+            last_checkout = (
+                self.dialog.order.get_last_checkout()
+                if hasattr(self.dialog, "order")
+                else None
+            )
+            rep_filter_data = dict(
+                registered_pk=self.registered.pk if self.is_complete else None,
+                filter_pk=self.pk,
+                checkout_url=last_checkout.link if last_checkout else None,
+                channel_name=self.get_tg_instance().publish_name,
+                repair_types=", ".join([r.name for r in self.repair_types.all()])
+                if self.pk
+                else None,
+                regions=", ".join([r.name for r in self.regions.all()])
+                if self.pk
+                else None,
+                sub_active="Оформлена" if sub_active else "Нет",
+                expiry_date=expiry_date if expiry_date else "---",
+            )
+            self.set_dict_data(**rep_filter_data)
+        return self._data_dict
 
     def get_m2m_choices_as_buttons(self, field_name):
         m2m_model = self._meta.get_field(field_name).related_model
@@ -453,7 +491,8 @@ class RepairsFilter(TrackableUpdateCreateModel):
         """Подставляет нужные данные в тело ответа и параметры кнопок."""
 
         msg = copy.deepcopy(message_data)
-        msg["text"] = msg["text"].format(**self.data_as_dict())
+        if msg.get("text"):
+            msg["text"] = msg["text"].format(**self.data_as_dict())
         field_name = msg.get("attr_choices")
         if field_name:
             buttons_as_list = self.get_m2m_choices_as_buttons(field_name)
@@ -488,6 +527,13 @@ class RepairsFilter(TrackableUpdateCreateModel):
 
         return msg
 
+    def get_payment_confirmation_reply(self):
+        """Возвращает шаблон подтверждения оплаты"""
+
+        msg = self.fill_data(repairs_filter_strings.payment_confirmed)
+
+        return msg
+
     def get_ready_stage(self):
         return RepairsFilterStageChoice.DONE
 
@@ -498,6 +544,17 @@ class RepairsFilter(TrackableUpdateCreateModel):
         return self.stage_id in [
             RepairsFilterStageChoice.DONE,
         ]
+
+    def invoice_requested(self):
+        return self.stage_id == RepairsFilterStageChoice.INVOICE_REQUESTED
+
+    def get_invoice(self):
+        if not self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT):
+            msg = self.fill_data(repairs_filter_strings.payment)
+        else:
+            msg = self.fill_data(repairs_filter_strings.already_subscribed)
+
+        return msg
 
     def restart(self):
         self.stage_id = RepairsFilterStageChoice.WELCOME

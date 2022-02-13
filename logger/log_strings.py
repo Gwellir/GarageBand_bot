@@ -2,6 +2,7 @@
 class LogStrings:
     """Класс для работы с текстовыми строками логгера."""
 
+    USER_DATA_FROM_UPDATE = "[TG user data] >>> {user_data}"
     DIALOG_INCOMING_MESSAGE = (
         "<-- : User: {user_id}, stage: {stage}, data: {input_data}"
     )

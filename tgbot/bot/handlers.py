@@ -1,3 +1,4 @@
+import re
 import sys
 import traceback
 from datetime import datetime, timedelta
@@ -9,7 +10,7 @@ from telegram import ChatPermissions
 from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
-from convoapp.dialog import DialogProcessor
+from convoapp.dialog_state_machine import DialogStateMachine
 from convoapp.models import Message
 from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
@@ -237,6 +238,7 @@ def message_handler(update, context):
 
     try:
         user_data = extract_user_data_from_update(update)
+        BOT_LOG.info(LogStrings.USER_DATA_FROM_UPDATE.format(user_data=user_data))
     # todo think how to use edits?
     except exceptions.MessageIsAnEditError as e:
         BOT_LOG.warning(
@@ -266,7 +268,7 @@ def message_handler(update, context):
     }
 
     try:
-        dialog_processor = DialogProcessor(user_data, input_data)
+        dialog_processor = DialogStateMachine(user_data, input_data)
         replies = dialog_processor.process()
     except exceptions.UserIsBannedError as e:
         BOT_LOG.warning(
@@ -332,6 +334,10 @@ def error_handler(update, context):
         f"</code>"
     )
     bot = context.bot_data.get("msg_bot")
+    if len(text) > 4000:
+        text = re.sub(r"^.*/venv/.*$", "", text, flags=re.MULTILINE)
+    if len(text) > 4000:
+        text = f"{text[:3000]}\n\n...\n\n{text[-1000:]}"
     for dev_id in devs:
-        send_messages_return_ids({"text": text[-4000:]}, dev_id, bot)
+        send_messages_return_ids({"text": text}, dev_id, bot)
     raise

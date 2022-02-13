@@ -1,7 +1,9 @@
 from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor
+from filterapp.exceptions import NotSubscribedError
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from subscribeapp.constants import ServiceChoice
 from tgbot.exceptions import (
     IncorrectChoiceError,
     TextNotProvidedError,
@@ -10,12 +12,11 @@ from tgbot.exceptions import (
 
 
 class SubCheckProcessor(BaseInputProcessor):
-    def _check_sub(self):
+    def _check_follow(self):
         instance = self.model.get_tg_instance()
         bot = instance.tg_bot
-        # todo make filterapp aware of which bot it works with
         channel_id = instance.publish_id
-        user_id = self.dialog.user.user_id
+        user_id = self.state_machine.user.user_id
         member = bot.get_chat_member(channel_id, user_id)
         if member.status in ["left", "kicked"]:
             raise UserNotInChannelError(instance.publish_name)
@@ -25,10 +26,40 @@ class SubCheckProcessor(BaseInputProcessor):
             self.cancel_step()
             return -1
         elif data["text"] == "Далее":
-            self._check_sub()
+            self._check_follow()
             return 1
         else:
             return 0
+
+
+class ConfirmPaymentProcessor(BaseInputProcessor):
+    def _check_sub(self):
+        # todo make filterapp aware of which bot it works with
+        if not self.state_machine.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT):
+            raise NotSubscribedError
+
+    def _get_checkout_link(self):
+        checkout = self.model.make_subscription()
+        self.model.set_dict_data(
+            checkout_url=checkout.link,
+        )
+        del self.state_machine.users_cache[
+            (
+                self.state_machine.message_data.get("bot"),
+                self.state_machine.user.user_id,
+            )
+        ]
+
+    def get_step(self, data):
+        if data["text"] == "Отменить":
+            self.cancel_step()
+            return -1
+        elif data["text"] == "Оплатить":
+            self._get_checkout_link()
+            return 1
+        else:
+            self._check_sub()
+            return 2
 
 
 class MultiSelectProcessor(BaseInputProcessor):
@@ -64,8 +95,8 @@ class MultiSelectProcessor(BaseInputProcessor):
         value = self.get_field_value(data)
         BOT_LOG.debug(
             LogStrings.DIALOG_SET_FIELD.format(
-                user_id=self.dialog.user.username,
-                stage=self.dialog.bound.stage,
+                user_id=self.state_machine.user.username,
+                stage=self.state_machine.bound.stage,
                 model=self.model,
                 data=value,
             )

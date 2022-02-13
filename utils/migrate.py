@@ -1,3 +1,6 @@
+from django.db.models import F
+
+
 def delete_bots(apps, schema_editor, names: list):
     BotTable = apps.get_model("tgbot", "MessengerBot")
     TGITable = apps.get_model("tgbot", "TGInstance")
@@ -55,3 +58,34 @@ def fill_stages(apps, schema_editor, model_name: str, stages: list):
             for stage in stages
         ]
     )
+
+
+def add_stages(apps, schema_editor, model_name, stage_model_name, stages):
+    db_alias = schema_editor.connection.alias
+    app, model = model_name.split(".")
+    object_model_query = apps.get_model(app, model).objects.using(db_alias)
+    app, model = stage_model_name.split(".")
+    object_stage_model_query = apps.get_model(app, model).objects.using(db_alias)
+    for stage in stages:
+        id_ = stage.get("id")
+        for upper_stage in object_stage_model_query.filter(id__gte=id_).order_by("-id"):
+            upper_stage.id += 1
+            upper_stage.save()
+        object_stage_model_query.filter(id=id_).delete()
+        object_stage_model_query.create(**stage)
+        object_model_query.filter(stage_id__gte=id_).update(stage_id=F("stage_id") + 1)
+
+
+def del_stages(apps, schema_editor, model_name, stage_model_name, ids):
+    db_alias = schema_editor.connection.alias
+    app, model = model_name.split(".")
+    object_model_query = apps.get_model(app, model).objects.using(db_alias)
+    app, model = stage_model_name.split(".")
+    object_stage_model_query = apps.get_model(app, model).objects.using(db_alias)
+    last_id = object_stage_model_query.count()
+    for id_ in ids:
+        for upper_stage in object_stage_model_query.filter(id__gte=id_).order_by("-id"):
+            upper_stage.id -= 1
+            upper_stage.save()
+        object_stage_model_query.filter(id=last_id).delete()
+        object_model_query.filter(stage_id__gt=id_).update(stage_id=F("stage_id") - 1)
