@@ -17,55 +17,68 @@ class OrderItem(TrackableUpdateCreateModel):
     """
 
     # item =
-    name = models.CharField('Name', max_length=100, db_index=True)
-    price = MoneyField('Price', max_digits=10, decimal_places=2, blank=True, default=0.0, default_currency='UAH')
-    description = models.TextField('Description', blank=True, default='')
-    is_active = models.BooleanField('Active', default=True)
+    name = models.CharField("Name", max_length=100, db_index=True)
+    price = MoneyField(
+        "Price",
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        default=0.0,
+        default_currency="UAH",
+    )
+    description = models.TextField("Description", blank=True, default="")
+    is_active = models.BooleanField("Active", default=True)
     # objects = OrderItemManager()
 
     def get_categories(self) -> str:
-        return ', '.join(self.categories.values_list('name', flat=True))
+        return ", ".join(self.categories.values_list("name", flat=True))
 
     def __str__(self) -> str:
         return self.name
 
     class Meta:
-        verbose_name = 'OrderItem'
-        verbose_name_plural = 'OrderItems'
-        app_label = 'paymentapp'
-        ordering = ['name']
+        verbose_name = "OrderItem"
+        verbose_name_plural = "OrderItems"
+        app_label = "paymentapp"
+        ordering = ["name"]
 
 
 class Checkout(TrackableUpdateCreateModel):
 
     order = models.ForeignKey(
-        'Order',
+        "Order",
         verbose_name="Заказ",
         on_delete=models.CASCADE,
         db_index=True,
         related_name="checkouts",
     )
     system = models.IntegerField(
-        verbose_name='Billing system',
+        verbose_name="Billing system",
         choices=PaymentSystemChoice.choices,
-        default=PaymentSystemChoice.LIQPAY
+        default=PaymentSystemChoice.LIQPAY,
     )
-    tracking_id = models.CharField(verbose_name='Tracking id', max_length=255, db_index=True)
-    system_id = models.CharField(verbose_name='System tracking id', max_length=255, null=True)
-    link = models.URLField(verbose_name='Payment link', null=True, blank=True, max_length=1000)
-    capture_id = models.CharField('Capture id', max_length=255, null=True, blank=True)
+    tracking_id = models.CharField(
+        verbose_name="Tracking id", max_length=255, db_index=True
+    )
+    system_id = models.CharField(
+        verbose_name="System tracking id", max_length=255, null=True
+    )
+    link = models.URLField(
+        verbose_name="Payment link", null=True, blank=True, max_length=1000
+    )
+    capture_id = models.CharField("Capture id", max_length=255, null=True, blank=True)
     status = models.CharField(
         "Status", max_length=100, null=True, blank=True, db_index=True
     )
 
     class Meta:
-        verbose_name = 'Checkout'
-        verbose_name_plural = 'Checkouts'
-        app_label = 'paymentapp'
-        ordering = ['-created_at']
+        verbose_name = "Checkout"
+        verbose_name_plural = "Checkouts"
+        app_label = "paymentapp"
+        ordering = ["-created_at"]
 
     @classmethod
-    def get_or_create(cls, order: 'Order', system=PaymentSystemChoice.LIQPAY):
+    def get_or_create(cls, order: "Order", system=PaymentSystemChoice.LIQPAY):
         try:
             obj = cls.objects.get(order=order, system=system, status="NEW")
         except cls.DoesNotExist:
@@ -76,7 +89,7 @@ class Checkout(TrackableUpdateCreateModel):
                 system=system,
                 status="NEW",
                 tracking_id=tracking_id,
-                link=link
+                link=link,
             )
 
         return obj
@@ -109,30 +122,34 @@ class Order(TrackableUpdateCreateModel):
         blank=True,
         related_name="order",
     )
-    description = models.TextField('Comment', default='')
+    description = models.TextField("Comment", default="")
     subscription = models.OneToOneField(
         "subscribeapp.Subscription",
-        verbose_name='Subscription to a service',
+        verbose_name="Subscription to a service",
         on_delete=models.CASCADE,
         null=True,
         related_name="order",
     )
-    order_item = models.ForeignKey(OrderItem, verbose_name='OrderItem', on_delete=models.CASCADE, null=True)
-    total = MoneyField('Total', max_digits=10, decimal_places=2)
+    order_item = models.ForeignKey(
+        OrderItem, verbose_name="OrderItem", on_delete=models.CASCADE, null=True
+    )
+    total = MoneyField("Total", max_digits=10, decimal_places=2)
 
-    status = models.IntegerField('Status', choices=OrderStatusChoice.choices, default=OrderStatusChoice.NEW)
-    paid_date = models.DateTimeField('Paid date', null=True, blank=True)
-    cancel_date = models.DateTimeField('Cancel date', null=True, blank=True)
+    status = models.IntegerField(
+        "Status", choices=OrderStatusChoice.choices, default=OrderStatusChoice.NEW
+    )
+    paid_date = models.DateTimeField("Paid date", null=True, blank=True)
+    cancel_date = models.DateTimeField("Cancel date", null=True, blank=True)
     # objects = OrderManager()
 
     class Meta:
-        verbose_name = 'Order'
-        verbose_name_plural = 'Orders'
-        app_label = 'paymentapp'
-        ordering = ['-created_at']
+        verbose_name = "Order"
+        verbose_name_plural = "Orders"
+        app_label = "paymentapp"
+        ordering = ["-created_at"]
 
     @classmethod
-    def get_or_create(cls, dialog: 'Dialog', subscription):
+    def get_or_create(cls, dialog: "Dialog", subscription):
         if hasattr(dialog, "order"):
             obj = dialog.order
         else:
@@ -140,8 +157,8 @@ class Order(TrackableUpdateCreateModel):
                 dialog=dialog,
                 user=dialog.user,
                 subscription=subscription,
-                description=f'Sub: {subscription.tier} for #{dialog.user.pk}',
-                total=subscription.get_price()
+                description=f"Sub: {subscription.tier} for #{dialog.user.pk}",
+                total=subscription.get_price(),
             )
             obj.save()
         return obj

@@ -24,7 +24,9 @@ class Subscription(TrackableUpdateCreateModel):
         verbose_name="Сервис, на который оформлена подписка",
         choices=ServiceChoice.choices,
     )
-    is_active = models.BooleanField(verbose_name="Подписка активна", default=False, db_index=True)
+    is_active = models.BooleanField(
+        verbose_name="Подписка активна", default=False, db_index=True
+    )
     start_time = models.DateTimeField(
         verbose_name="Время начала подписки",
         db_index=True,
@@ -37,7 +39,7 @@ class Subscription(TrackableUpdateCreateModel):
     )
 
     @classmethod
-    def get_or_create(cls, user, tier, service_name: str) -> 'Subscription':
+    def get_or_create(cls, user, tier, service_name: str) -> "Subscription":
         service = dict(
             repairsfilter=ServiceChoice.REPAIRS_BOT,
             bazaarfilter=ServiceChoice.BAZAAR_BOT,

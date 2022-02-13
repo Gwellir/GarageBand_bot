@@ -4,7 +4,7 @@ from django.db import models, transaction
 
 from convoapp.models import Message
 from paymentapp.models import Checkout, Order
-from subscribeapp.constants import SubTierChoice, ServiceChoice
+from subscribeapp.constants import ServiceChoice, SubTierChoice
 from subscribeapp.models import Subscription
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import get_bot_message_as_text
@@ -17,19 +17,19 @@ if TYPE_CHECKING:
 
 class BindableProtocol(Protocol):
     @property
-    def dialog(self) -> 'Dialog':
+    def dialog(self) -> "Dialog":
         ...
 
     @property
-    def user(self) -> 'BotUser':
+    def user(self) -> "BotUser":
         ...
 
     @property
-    def stage_id(self) -> 'RepairsFilterStageChoice':
+    def stage_id(self) -> "RepairsFilterStageChoice":
         ...
 
     @stage_id.setter
-    def stage_id(self, value: 'RepairsFilterStageChoice'):
+    def stage_id(self, value: "RepairsFilterStageChoice"):
         ...
 
     def save(self):
@@ -44,7 +44,9 @@ class SubscribableModel(models.Model):
 
     @transaction.atomic
     def make_subscription(self: BindableProtocol, tier=SubTierChoice.MONTH):
-        sub = Subscription.get_or_create(self.dialog.user, tier, self.__class__.__name__)
+        sub = Subscription.get_or_create(
+            self.dialog.user, tier, self.__class__.__name__
+        )
         order = Order.get_or_create(self.dialog, sub)
         checkout = Checkout.get_or_create(order)
 

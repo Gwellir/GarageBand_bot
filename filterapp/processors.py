@@ -46,7 +46,7 @@ class ConfirmPaymentProcessor(BaseInputProcessor):
         del self.state_machine.users_cache[
             (
                 self.state_machine.message_data.get("bot"),
-                self.state_machine.user.user_id
+                self.state_machine.user.user_id,
             )
         ]
 

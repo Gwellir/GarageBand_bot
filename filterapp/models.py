@@ -347,7 +347,7 @@ class RepairsFilterStage(models.Model):
             RepairsFilterStageChoice.GET_REPAIR_TYPES: RepairsMultiSelectProcessor,
             RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
             RepairsFilterStageChoice.ASK_PAYMENT: ConfirmPaymentProcessor,
-            RepairsFilterStageChoice.INVOICE_REQUESTED: None,  # ProcessPaymentProcessor,
+            RepairsFilterStageChoice.INVOICE_REQUESTED: None,  # ProcessPaymentProcessor
             RepairsFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
             RepairsFilterStageChoice.DONE: None,
         }
@@ -363,7 +363,10 @@ class RepairsFilterStage(models.Model):
 
 
 class RepairsFilter(
-    TrackableUpdateCreateModel, DialogProcessableEntity, CacheableFillDataModel, SubscribableModel
+    TrackableUpdateCreateModel,
+    DialogProcessableEntity,
+    CacheableFillDataModel,
+    SubscribableModel,
 ):
     """
     Модель фильтра на базе заполнения анкеты
@@ -446,14 +449,22 @@ class RepairsFilter(
             expiry_date = self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT)
             if expiry_date:
                 sub_active = True
-            last_checkout = self.dialog.order.get_last_checkout() if hasattr(self.dialog, "order") else None
+            last_checkout = (
+                self.dialog.order.get_last_checkout()
+                if hasattr(self.dialog, "order")
+                else None
+            )
             rep_filter_data = dict(
                 registered_pk=self.registered.pk if self.is_complete else None,
                 filter_pk=self.pk,
                 checkout_url=last_checkout.link if last_checkout else None,
                 channel_name=self.get_tg_instance().publish_name,
-                repair_types=", ".join([r.name for r in self.repair_types.all()]) if self.pk else None,
-                regions=", ".join([r.name for r in self.regions.all()]) if self.pk else None,
+                repair_types=", ".join([r.name for r in self.repair_types.all()])
+                if self.pk
+                else None,
+                regions=", ".join([r.name for r in self.regions.all()])
+                if self.pk
+                else None,
                 sub_active="Оформлена" if sub_active else "Нет",
                 expiry_date=expiry_date if expiry_date else "---",
             )

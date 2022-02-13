@@ -13,7 +13,7 @@ class PaymentSystemClient(ABC):
         pass
 
     @abstractmethod
-    def verify(self, request: 'HttpRequest') -> bool:
+    def verify(self, request: "HttpRequest") -> bool:
         pass
 
     @abstractmethod
