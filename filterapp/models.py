@@ -15,12 +15,13 @@ from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
 from filterapp.processors import (
+    CompanyNameInputProcessor,
     ConfirmPaymentProcessor,
     HighPriceInputProcessor,
     LowPriceInputProcessor,
     RegionMultiSelectProcessor,
     RepairsMultiSelectProcessor,
-    SubCheckProcessor, CompanyNameInputProcessor,
+    SubCheckProcessor,
 )
 from filterapp.repairs import strings as repairs_filter_strings
 from logger.log_config import BOT_LOG
@@ -540,6 +541,8 @@ class RepairsFilter(
         """Возвращает шаблон отказа в проведении оплаты"""
 
         msg = self.fill_data(repairs_filter_strings.payment_denied)
+
+        return msg
 
     def get_ready_stage(self):
         return RepairsFilterStageChoice.DONE

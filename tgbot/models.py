@@ -139,7 +139,9 @@ class BotUser(TrackableUpdateCreateModel):
     is_staff = models.BooleanField(
         verbose_name="Админ", default=False, null=False, db_index=True
     )
-    company_name = models.CharField(verbose_name="Название компании (СТО)", null=True, max_length=255)
+    company_name = models.CharField(
+        verbose_name="Название компании (СТО)", null=True, max_length=255
+    )
 
     @property
     def get_fullname(self):
