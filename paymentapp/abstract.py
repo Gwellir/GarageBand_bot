@@ -68,10 +68,24 @@ class SubscribableModel(models.Model):
             is_incoming=False,
         )
         if not self.dialog.is_finished:
-            self.bound.set_dict_data(
+            self.set_dict_data(
                 sub_active="Оформлена",
                 # todo fix hardwired repairsbot
                 expiry_date=self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT),
             )
             self.stage_id += 1
+            self.save()
+
+    def send_payment_denied(self: BindableProtocol):
+        msg = self.get_payments_denied_reply()
+        ids = send_messages_return_ids(msg, self.user.user_id, self.dialog.bot)
+        Message.objects.create(
+            dialog=self.dialog,
+            stage=self.stage_id,
+            message_id=ids[0],
+            text=get_bot_message_as_text(msg),
+            is_incoming=False,
+        )
+        if not self.dialog.is_finished:
+            self.stage_id -= 1
             self.save()
