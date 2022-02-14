@@ -1,5 +1,5 @@
 from bazaarapp.processors import IntNumberInputProcessor
-from convoapp.processors import BaseInputProcessor
+from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from filterapp.exceptions import NotSubscribedError
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
@@ -43,10 +43,11 @@ class ConfirmPaymentProcessor(BaseInputProcessor):
         self.model.set_dict_data(
             checkout_url=checkout.link,
         )
-        del self.state_machine.users_cache[
+        sm = self.state_machine
+        del sm.users_cache[
             (
-                self.state_machine.message_data.get("bot"),
-                self.state_machine.user.user_id,
+                sm.message_data.get("bot"),
+                sm.user.user_id,
             )
         ]
 
@@ -134,3 +135,17 @@ class RegionMultiSelectProcessor(MultiSelectProcessor):
 
 class RepairsMultiSelectProcessor(MultiSelectProcessor):
     attr_name = "repair_types"
+
+
+class CompanyNameInputProcessor(TextInputProcessor):
+    """Процессор ввода имени компании (сохраняет имя в модели пользователя)."""
+
+    attr_name = "company_name"
+    min_length = 3
+
+    def set_field(self, data):
+        self.model = self.state_machine.user
+        super().set_field(data)
+        self.state_machine.bound.set_dict_data(
+            company_name=getattr(self.model, self.attr_name),
+        )

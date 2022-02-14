@@ -139,12 +139,15 @@ class BotUser(TrackableUpdateCreateModel):
     is_staff = models.BooleanField(
         verbose_name="Админ", default=False, null=False, db_index=True
     )
+    company_name = models.CharField(
+        verbose_name="Название компании (СТО)", null=True, max_length=255
+    )
 
     @property
     def get_fullname(self):
         """Возвращает полное имя пользователя, как оно указано в Телеграме."""
 
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name}".strip()
 
     def stats_as_tg_html(self):
         rrs = RegisteredRequest.objects.filter(request__user=self).order_by("pk")

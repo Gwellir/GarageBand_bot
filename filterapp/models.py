@@ -15,6 +15,7 @@ from convoapp.processors import SetReadyInputProcessor, StartInputProcessor
 from filterapp.bazaar import strings as bazaar_filter_strings
 from filterapp.jobs import PlanBroadcast
 from filterapp.processors import (
+    CompanyNameInputProcessor,
     ConfirmPaymentProcessor,
     HighPriceInputProcessor,
     LowPriceInputProcessor,
@@ -318,12 +319,13 @@ class RepairsFilterStageChoice(models.IntegerChoices):
 
     WELCOME = 1, _("Приветствие")
     CHECK_SUBSCRIPTION = 2, _("Проверка подписки")
-    GET_REPAIR_TYPES = 3, _("Узнать типы ремонтов")
-    GET_REGIONS = 4, _("Узнать интересующие регионы")
-    ASK_PAYMENT = 5, _("Запросить оформление оплаты")
-    INVOICE_REQUESTED = 6, _("Проведение оплаты")
-    CHECK_DATA = 7, _("Проверить данные")
-    DONE = 8, _("Фильтр сформирован")
+    GET_COMPANY_NAME = 3, _("Запрос названия компании")
+    GET_REPAIR_TYPES = 4, _("Узнать типы ремонтов")
+    GET_REGIONS = 5, _("Узнать интересующие регионы")
+    ASK_PAYMENT = 6, _("Запросить оформление оплаты")
+    INVOICE_REQUESTED = 7, _("Проведение оплаты")
+    CHECK_DATA = 8, _("Проверить данные")
+    DONE = 9, _("Фильтр сформирован")
 
 
 class RepairsFilterStage(models.Model):
@@ -344,6 +346,7 @@ class RepairsFilterStage(models.Model):
         processors = {
             RepairsFilterStageChoice.WELCOME: StartInputProcessor,
             RepairsFilterStageChoice.CHECK_SUBSCRIPTION: SubCheckProcessor,
+            RepairsFilterStageChoice.GET_COMPANY_NAME: CompanyNameInputProcessor,
             RepairsFilterStageChoice.GET_REPAIR_TYPES: RepairsMultiSelectProcessor,
             RepairsFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
             RepairsFilterStageChoice.ASK_PAYMENT: ConfirmPaymentProcessor,
@@ -531,6 +534,13 @@ class RepairsFilter(
         """Возвращает шаблон подтверждения оплаты"""
 
         msg = self.fill_data(repairs_filter_strings.payment_confirmed)
+
+        return msg
+
+    def get_payment_denied_reply(self):
+        """Возвращает шаблон отказа в проведении оплаты"""
+
+        msg = self.fill_data(repairs_filter_strings.payment_denied)
 
         return msg
 
