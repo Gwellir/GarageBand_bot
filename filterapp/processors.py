@@ -118,7 +118,7 @@ class MultiSelectProcessor(BaseInputProcessor):
         self.model.set_dict_data(
             **{
                 self.attr_name: ", ".join(
-                    [r.name for r in getattr(self.model, self.attr_name).all()]
+                    [r.name for r in field.all()]
                 )
             }
         )
