@@ -139,11 +139,8 @@ class TextTooShortError(BotProcessingError):
 class CallbackExpiredError(BotProcessingError):
     """Возникает, когда пользователь нажимает на кнопку от старого сообщения"""
 
-    def __init__(self, command, user_id):
-        super().__init__(
-            f"Нажата кнопка в старом сообщении!"
-            f"Пользователь: {user_id}, команда: {command}"
-        )
+    def __init__(self, command):
+        super().__init__(f"Нажата кнопка в старом сообщении!" f"команда: {command}")
 
 
 class NotANumberError(BotProcessingError):
