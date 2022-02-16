@@ -485,7 +485,7 @@ class RepairsFilter(
         names = [
             dict(
                 text=f"{'☑' if entry[1] else '☐'} {entry[0]}",
-                callback_data=f"button_{num}",
+                callback_data=f"button {num}",
             )
             for num, entry in enumerate(button_flags)
         ]
