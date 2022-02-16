@@ -20,6 +20,9 @@ class SubCheckProcessor(BaseInputProcessor):
         member = bot.get_chat_member(channel_id, user_id)
         if member.status in ["left", "kicked"]:
             raise UserNotInChannelError(instance.publish_name)
+        self.model.set_dict_data(
+            filter_pk=self.model.pk,
+        )
 
     def get_step(self, data):
         if data["text"] == "Отменить":
@@ -104,9 +107,32 @@ class MultiSelectProcessor(BaseInputProcessor):
         )
         if value not in field.all():
             field.add(value)
+            # hacks upon hacks
+            self._switch_keyboard_value(data, value.name)
         else:
             field.remove(value)
+            self._switch_keyboard_value(data, value.name, disable=True)
+
+        self.state_machine.suppress_output = True
         self.model.save()
+        self.model.set_dict_data(
+            **{
+                self.attr_name: ", ".join(
+                    [r.name for r in field.all()]
+                )
+            }
+        )
+
+    def _switch_keyboard_value(self, data: dict, name, disable=False):
+        mark = "☐" if disable else "☑"
+        msg = data["query"].message
+        keyboard = msg.reply_markup.inline_keyboard
+        for row in keyboard:
+            for button in row:
+                if button.text[2:] == name:
+                    button.text = f"{mark} {name}"
+                    break
+        msg.edit_reply_markup(reply_markup=msg.reply_markup)
 
 
 class LowPriceInputProcessor(IntNumberInputProcessor):

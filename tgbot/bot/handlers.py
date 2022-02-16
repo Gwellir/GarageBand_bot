@@ -22,18 +22,35 @@ from tgbot.bot.utils import extract_user_data_from_update, get_bot_message_as_te
 from tgbot.models import BotUser
 
 
+def get_text_from_inline_keyboard(keyboard, data):
+    for row in keyboard:
+        for button in row:
+            if button.callback_data == data:
+                return button.text
+    return None
+
+
 def get_and_verify_callback_data(callback_query, last_id):
     """Проверяет, что коллбек не пуст, и возвращает содержимое, иначе None"""
 
     if callback_query:
-        if callback_query.data:
+        if callback_query.data and (
+            last_id is None or callback_query.message.message_id == last_id
+        ):
             try:
                 callback_query.answer()
+                button_text = get_text_from_inline_keyboard(
+                    callback_query.message.reply_markup.inline_keyboard,
+                    callback_query.data,
+                )
+                return callback_query.data, button_text
             except BadRequest:
                 pass
-        return callback_query.data
+        elif callback_query.message.message_id != last_id:
+            callback_query.answer("Вы нажали на кнопку в старом сообщении!")
+            raise exceptions.CallbackExpiredError(callback_query.data)
     else:
-        return None
+        return None, None
 
 
 # todo make this prepare a file object?
@@ -253,17 +270,23 @@ def message_handler(update, context):
     msg = update.effective_message
     last_id = context.user_data.get("last_message_id", None)
 
-    command = get_and_verify_callback_data(update.callback_query, last_id)
+    try:
+        command, button_text = get_and_verify_callback_data(
+            update.callback_query, last_id
+        )
+    except exceptions.CallbackExpiredError:
+        return
 
     # todo привести к неспецифическому для телеграма виде
     bot = context.bot_data.get("msg_bot")
     input_data = {
         "bot": bot,
         "id": msg.message_id,
-        "text": msg.text,
+        "text": msg.text if not command else button_text,
         "caption": msg.caption,
         "photo": get_photo_data(msg),
         "callback": command,
+        "query": update.callback_query if command else None,
         "media_group_id": msg.media_group_id,
     }
 

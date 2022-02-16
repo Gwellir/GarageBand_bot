@@ -1,6 +1,7 @@
 """Процессоры данных из ввода пользователя."""
 
 import re
+from typing import TYPE_CHECKING
 
 from django.utils.html import strip_tags
 
@@ -16,6 +17,9 @@ from tgbot.exceptions import (
     TextTooShortError,
 )
 
+if TYPE_CHECKING:
+    from .dialog_state_machine import DialogStateMachine
+
 
 class BaseInputProcessor:
     """Базовый класс процессора пользовательского ввода.
@@ -25,7 +29,7 @@ class BaseInputProcessor:
 
     attr_name = None
 
-    def __call__(self, state_machine, data):
+    def __call__(self, state_machine: "DialogStateMachine", data):
         self.state_machine = state_machine
         self.model = state_machine.bound
         self.messages = []

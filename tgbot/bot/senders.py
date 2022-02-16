@@ -9,7 +9,7 @@ from logger.log_strings import LogStrings
 from tgbot.bot.utils import build_inline_button_markup, build_reply_button_markup
 
 
-def send_messages_return_ids(message_data, user_id, msg_bot, reply_to=None):
+def send_messages_return_ids(message_data: dict, user_id, msg_bot, reply_to=None):
     """Отправляет сообщение через телеграм бота.
 
     Формирует структуру кнопок, определяет, требуется ли отправка обычного сообщения,
