@@ -16,3 +16,9 @@ class OrderStatusChoice(models.IntegerChoices):
 class PaymentSystemChoice(models.IntegerChoices):
     TELEGRAM = 0, _("Телеграм")
     LIQPAY = 1, _("ЛикПей")
+
+
+class DonationParams:
+    PAYMENT_ID = "donation-payment-1-USD"
+    PAYMENT_CURRENCY = "UAH"
+    PAYMENT_AMOUNT = 1000

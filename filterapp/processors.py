@@ -116,11 +116,7 @@ class MultiSelectProcessor(BaseInputProcessor):
         self.state_machine.suppress_output = True
         self.model.save()
         self.model.set_dict_data(
-            **{
-                self.attr_name: ", ".join(
-                    [r.name for r in field.all()]
-                )
-            }
+            **{self.attr_name: ", ".join([r.name for r in field.all()])}
         )
 
     def _switch_keyboard_value(self, data: dict, name, disable=False):

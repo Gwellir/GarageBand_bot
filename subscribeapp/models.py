@@ -63,9 +63,12 @@ class Subscription(TrackableUpdateCreateModel):
 
         return price_dict.get(self.tier)
 
+    def notify_user(self):
+        self.order.dialog.bound.send_payment_confirmation()
+
     def activate(self):
         # todo continue HERE
-        self.order.dialog.bound.send_payment_confirmation()
+
         tiers_dict = {
             SubTierChoice.MONTH: relativedelta(months=1),
             SubTierChoice.YEAR: relativedelta(years=1),

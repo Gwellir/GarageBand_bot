@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.timezone import now
 from djmoney.models.fields import MoneyField
+from djmoney.money import Money
 
 from abstract.models import TrackableUpdateCreateModel
 from convoapp.models import Dialog
@@ -166,6 +167,7 @@ class Order(TrackableUpdateCreateModel):
     def set_complete(self):
         if self.subscription and not self.subscription.is_active:
             self.subscription.activate()
+            self.subscription.notify_user()
         self.status = OrderStatusChoice.COMPLETE
         self.paid_date = now()
         self.save()
@@ -173,3 +175,24 @@ class Order(TrackableUpdateCreateModel):
     def get_last_checkout(self):
         checkout = self.checkouts.filter(status="NEW").first()
         return checkout
+
+
+class Donation(TrackableUpdateCreateModel):
+    """Служит для хранения истории пожертвований на проект"""
+
+    user = models.ForeignKey(
+        BotUser,
+        verbose_name="Пользователь",
+        on_delete=models.RESTRICT,
+        db_index=True,
+        related_name="donations",
+    )
+    amount = MoneyField("Сумма", max_digits=10, decimal_places=2)
+
+    @classmethod
+    def create(cls, user_data, raw_amount, currency):
+        user, _ = BotUser.get_or_create(user_data)
+        amount = Money(raw_amount / 100, currency)
+        obj = cls.objects.create(user=user, amount=amount)
+
+        return obj
