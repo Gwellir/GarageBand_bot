@@ -6,15 +6,17 @@ from time import sleep
 
 from django.utils.html import escape
 from django.utils.timezone import now
-from telegram import ChatPermissions
+from telegram import ChatPermissions, LabeledPrice
 from telegram.error import BadRequest
 from telegram.utils.helpers import mention_html
 
 from convoapp.dialog_state_machine import DialogStateMachine
 from convoapp.models import Message
+from garage_band_bot import settings
 from garage_band_bot.settings import DEV_TG_ID
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
+from paymentapp.constants import DonationParams
 from tgbot import exceptions
 from tgbot.bot.admin_actions import ADMIN_ACTIONS
 from tgbot.bot.senders import send_messages_return_ids
@@ -161,6 +163,41 @@ def show_user_requests_stats(update, context):
         send_messages_return_ids(
             {"text": text}, bot.telegram_instance.admin_group_id, bot
         )
+
+
+def post_donation(update, context):
+    """Создаёт и размещает в канале сообщение c запросом на донаты."""
+
+    user = extract_user_data_from_update(update)
+    try:
+        BotUser.objects.get(user_id=user["user_id"], is_staff=True)
+    except BotUser.DoesNotExist:
+        # todo unify callback and exception processing
+        return
+
+    msg = update.effective_message
+    if msg.text:
+        _, donation_title, donation_text, prices_string = msg.text.split(
+            "\n", 3
+        )
+        amount, currency = prices_string[:-3].strip(), prices_string[-3:]
+        prices = [
+            LabeledPrice(label=f"{amount}{currency} donation", amount=int(amount) * 100)
+        ]
+        msg_data = {
+            "title": donation_title,
+            "description": donation_text,
+            "payload": DonationParams.PAYMENT_ID,
+            "provider_token": settings.PROVIDER_TOKEN,
+            "currency": currency,
+            "prices": prices,
+        }
+        bot = context.bot_data.get("msg_bot")
+        context.bot.send_invoice(
+            chat_id=bot.telegram_instance.publish_id,
+            **msg_data,
+        )
+        # send_messages_return_ids(msg_data, bot.telegram_instance.publish_id, bot)
 
 
 def post_ad(update, context):

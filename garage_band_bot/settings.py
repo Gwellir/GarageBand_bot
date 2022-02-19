@@ -169,7 +169,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
 
 # payments
-PROVIDER_TOKEN = os.getenv("STRIPE_TEST_TOKEN")
+PROVIDER_TOKEN = os.getenv("LQ_TEST_TOKEN")
 LQ_PUBLIC_KEY = os.getenv("LQ_PUBLIC_KEY")
 LQ_PRIVATE_KEY = os.getenv("LQ_PRIVATE_KEY")
 LQ_TEST_PUBLIC_KEY = os.getenv("LQ_TEST_PUBLIC_KEY")
