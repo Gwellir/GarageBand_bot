@@ -138,26 +138,6 @@ class MultiSelectProcessor(BaseInputProcessor):
             reply_markup=build_inline_button_markup(msg_data["buttons"])
         )
 
-    def _switch_keyboard_value(self, data: dict, name, disable=False):
-        mark = "☐" if disable else "☑"
-        msg = data["query"].message
-        keyboard = msg.reply_markup.inline_keyboard
-        for row in keyboard:
-            for button in row:
-                if button.text[2:] == name:
-                    button.text = f"{mark} {name}"
-                    break
-        try:
-            msg.edit_reply_markup(reply_markup=msg.reply_markup)
-        except BadRequest:
-            BOT_LOG.warn(
-                LogStrings.DIALOG_SAME_MESSAGE.format(
-                    user_id=self.state_machine.user.username,
-                    stage=self.model.stage,
-                    model=self.model,
-                )
-            )
-
 
 class LowPriceInputProcessor(IntNumberInputProcessor):
     attr_name = "low_price"
