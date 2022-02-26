@@ -39,17 +39,24 @@ class Subscription(TrackableUpdateCreateModel):
     )
 
     @classmethod
-    def get_or_create(cls, user, tier, service_name: str) -> "Subscription":
-        service = dict(
-            repairsfilter=ServiceChoice.REPAIRS_BOT,
-            bazaarfilter=ServiceChoice.BAZAAR_BOT,
-        ).get(service_name.lower())
+    def get_or_create(cls, user, tier, service: int) -> "Subscription":
 
         obj, created = cls.objects.get_or_create(
             user=user,
             tier=tier,
             service=service,
             is_active=False,
+        )
+
+        return obj
+
+    @classmethod
+    def get_active(cls, user, service: int) -> "Subscription":
+
+        obj = cls.objects.get(
+            user=user,
+            service=service,
+            is_active=True,
         )
 
         return obj

@@ -47,15 +47,15 @@ def add_bots(apps, schema_editor, bots: list):
         )
 
 
-def fill_stages(apps, schema_editor, model_name: str, stages: list):
+def fill_rows(apps, schema_editor, model_name: str, rows_data: list):
     app, model = model_name.split(".")
-    BFS = apps.get_model(app, model)
+    Model = apps.get_model(app, model)
     db_alias = schema_editor.connection.alias
-    BFS.objects.using(db_alias).bulk_create(
+    Model.objects.using(db_alias).bulk_create(
         [
             # name, processor, reply_pattern, buttons
-            BFS(**stage)
-            for stage in stages
+            Model(**row)
+            for row in rows_data
         ]
     )
 

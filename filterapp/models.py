@@ -1,5 +1,4 @@
-import copy
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db import models, transaction
 from django.utils.timezone import now
@@ -29,7 +28,6 @@ from logger.log_strings import LogStrings
 from paymentapp.abstract import SubscribableModel
 from subscribeapp.constants import ServiceChoice
 from tgbot.bot.senders import send_messages_return_ids
-from tgbot.bot.utils import fill_data
 from tgbot.models import BotUser, MessengerBot, Region, RepairsType, WorkRequest
 
 
@@ -41,8 +39,10 @@ class BazaarFilterStageChoice(models.IntegerChoices):
     GET_LOW_PRICE = 3, _("Узнать нижнюю границу цены")
     GET_HIGH_PRICE = 4, _("Узнать верхнюю границу цены")
     GET_REGIONS = 5, _("Узнать интересующие регионы")
-    CHECK_DATA = 6, _("Проверить данные")
-    DONE = 7, _("Фильтр сформирован")
+    ASK_PAYMENT = 6, _("Запросить оформление оплаты")
+    INVOICE_REQUESTED = 7, _("Проведение оплаты")
+    CHECK_DATA = 8, _("Проверить данные")
+    DONE = 9, _("Фильтр сформирован")
 
 
 class BazaarFilterStage(models.Model):
@@ -66,6 +66,8 @@ class BazaarFilterStage(models.Model):
             BazaarFilterStageChoice.GET_LOW_PRICE: LowPriceInputProcessor,
             BazaarFilterStageChoice.GET_HIGH_PRICE: HighPriceInputProcessor,
             BazaarFilterStageChoice.GET_REGIONS: RegionMultiSelectProcessor,
+            BazaarFilterStageChoice.ASK_PAYMENT: ConfirmPaymentProcessor,
+            BazaarFilterStageChoice.INVOICE_REQUESTED: None,
             BazaarFilterStageChoice.CHECK_DATA: SetReadyInputProcessor,
             BazaarFilterStageChoice.DONE: None,
         }
@@ -80,7 +82,12 @@ class BazaarFilterStage(models.Model):
         return callback_to_stage.get(callback)
 
 
-class BazaarFilter(TrackableUpdateCreateModel):
+class BazaarFilter(
+    TrackableUpdateCreateModel,
+    DialogProcessableEntity,
+    CacheableFillDataModel,
+    SubscribableModel,
+):
     """
     Модель фильтра на базе заполнения анкеты
     """
@@ -164,52 +171,41 @@ class BazaarFilter(TrackableUpdateCreateModel):
         в виде словаря.
         """
 
-        return dict(
-            registered_pk=self.registered.pk if self.is_complete else None,
-            filter_pk=self.pk,
-            channel_name=self.get_tg_instance().publish_name,
-            low_price=self.low_price,
-            high_price=self.high_price,
-            regions=", ".join([r.name for r in self.regions.all()]),
-        )
+        if not self._data_dict:
+            sub_active = False
+            expiry_date = self.user.subscribed_to_service(ServiceChoice.BAZAAR_BOT)
+            if expiry_date:
+                sub_active = True
+            last_checkout = (
+                self.dialog.order.get_last_checkout()
+                if hasattr(self.dialog, "order")
+                else None
+            )
+            if self.has_never_subbed():
+                payment_button = "Получить"
+                free_month_promo = "\n\n<pre>Доступен бесплатный месяц</pre>"
+            else:
+                payment_button = "Оплатить"
+                free_month_promo = ""
 
-    def get_m2m_choices_as_buttons(self, field_name):
-        m2m_model = self._meta.get_field(field_name).related_model
-        field = getattr(self, field_name)
-        button_flags = [
-            (tag.name, tag in field.all()) for tag in m2m_model.objects.all()
-        ]
-        row_len = 2
-        names = [
-            dict(text=f"{'☑' if entry[1] else '☐'} {entry[0]}")
-            for entry in button_flags
-        ]
-        buttons = [
-            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa: E203
-        ]
-        return buttons
-
-    def fill_data(self, message_data: dict) -> dict:
-        """Подставляет нужные данные в тело ответа и параметры кнопок."""
-
-        msg = copy.deepcopy(message_data)
-        msg["text"] = msg["text"].format(**self.data_as_dict())
-        field_name = msg.get("attr_choices")
-        if field_name:
-            buttons_as_list = self.get_m2m_choices_as_buttons(field_name)
-            buttons_as_list.extend(msg.get("text_buttons"))
-            msg["text_buttons"] = buttons_as_list
-        if msg.get("buttons") or msg.get("text_buttons"):
-            for row in msg.get("buttons", []):
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-            for row in msg.get("text_buttons", []):
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-
-        return msg
+            bazaar_dict = dict(
+                registered_pk=self.registered.pk if self.is_complete else None,
+                filter_pk=self.pk,
+                channel_name=self.get_tg_instance().publish_name,
+                low_price=self.low_price,
+                high_price=self.high_price,
+                regions=", ".join([r.name for r in self.regions.all()])
+                if self.pk
+                else None,
+                checkout_url=last_checkout.link if last_checkout else None,
+                sub_active="Оформлена" if sub_active else "Нет",
+                free_month_promo=free_month_promo,
+                payment_button=payment_button,
+                expiry_date=expiry_date.date() if expiry_date else "---",
+                company_name=self.user.company_name,
+            )
+            self.set_dict_data(**bazaar_dict)
+        return self._data_dict
 
     def get_reply_for_stage(self):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
@@ -217,14 +213,21 @@ class BazaarFilter(TrackableUpdateCreateModel):
         num = self.stage_id - 1
         stages_info = bazaar_filter_strings.stages_info[num]
 
-        msg = self.fill_data(stages_info)
+        msg = self._fill_data(stages_info)
 
         return msg
 
     def get_summary(self):
         """Возвращает шаблон саммари"""
 
-        msg = fill_data(bazaar_filter_strings.summary, self.data_as_dict())
+        msg = self._fill_data(bazaar_filter_strings.summary)
+
+        return msg
+
+    def get_payment_confirmation_reply(self):
+        """Возвращает шаблон подтверждения оплаты"""
+
+        msg = self._fill_data(bazaar_filter_strings.payment_confirmed)
 
         return msg
 
@@ -257,7 +260,7 @@ class BazaarFilter(TrackableUpdateCreateModel):
         ).order_by("-created_at")[:10]
 
     def results_as_text(self, results):
-        msg = fill_data(bazaar_filter_strings.results, self.data_as_dict())
+        msg = self._fill_data(bazaar_filter_strings.results)
         if results:
             results_text = "\n\n".join([r.registered.as_tg_html() for r in results])
         else:
@@ -399,6 +402,7 @@ class RepairsFilter(
     stage = models.ForeignKey(
         RepairsFilterStage, on_delete=models.SET_NULL, null=True, default=1
     )
+    strings_container = repairs_filter_strings
 
     def __str__(self):
         return (
@@ -449,7 +453,9 @@ class RepairsFilter(
 
         if not self._data_dict:
             sub_active = False
-            expiry_date = self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT)
+            expiry_date: datetime = self.user.subscribed_to_service(
+                ServiceChoice.REPAIRS_BOT
+            )
             if expiry_date:
                 sub_active = True
             last_checkout = (
@@ -457,6 +463,12 @@ class RepairsFilter(
                 if hasattr(self.dialog, "order")
                 else None
             )
+            if self.has_never_subbed():
+                payment_button = "Получить"
+                free_month_promo = "\n\n<pre>Доступен бесплатный месяц</pre>"
+            else:
+                payment_button = "Оплатить"
+                free_month_promo = ""
             rep_filter_data = dict(
                 registered_pk=self.registered.pk if self.is_complete else None,
                 filter_pk=self.pk,
@@ -469,79 +481,42 @@ class RepairsFilter(
                 if self.pk
                 else None,
                 sub_active="Оформлена" if sub_active else "Нет",
-                expiry_date=expiry_date if expiry_date else "---",
+                free_month_promo=free_month_promo,
+                payment_button=payment_button,
+                expiry_date=expiry_date.date() if expiry_date else "---",
                 company_name=self.user.company_name,
             )
             self.set_dict_data(**rep_filter_data)
         return self._data_dict
 
-    def get_m2m_choices_as_buttons(self, field_name):
-        m2m_model = self._meta.get_field(field_name).related_model
-        field = getattr(self, field_name)
-        button_flags = [
-            (tag.name, tag in field.all()) for tag in m2m_model.objects.all()
-        ]
-        row_len = 2
-        names = [
-            dict(
-                text=f"{'☑' if entry[1] else '☐'} {entry[0]}",
-                callback_data=f"button {num}",
-            )
-            for num, entry in enumerate(button_flags)
-        ]
-        buttons = [
-            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa: E203
-        ]
-        return buttons
-
-    def fill_data(self, message_data: dict) -> dict:
-        """Подставляет нужные данные в тело ответа и параметры кнопок."""
-
-        msg = copy.deepcopy(message_data)
-        if msg.get("text"):
-            msg["text"] = msg["text"].format(**self.data_as_dict())
-        field_name = msg.get("attr_choices")
-        button_type = "buttons" if msg.get("buttons") else "text_buttons"
-        if field_name:
-            buttons_as_list = self.get_m2m_choices_as_buttons(field_name)
-            buttons_as_list.extend(msg.get(button_type))
-            msg[button_type] = buttons_as_list
-        if keyboard := msg.get(button_type):
-            for row in keyboard:
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-
-        return msg
-
     def get_reply_for_stage(self):
         """Возвращает шаблон сообщения, соответствующего переданной стадии диалога"""
 
         num = self.stage_id - 1
-        stages_info = repairs_filter_strings.stages_info[num]
+        stages_info = self.strings_container.stages_info[num]
 
-        msg = self.fill_data(stages_info)
+        msg = self._fill_data(stages_info)
 
         return msg
 
     def get_summary(self):
         """Возвращает шаблон саммари"""
 
-        msg = self.fill_data(repairs_filter_strings.summary)
+        msg = self._fill_data(self.strings_container.summary)
 
         return msg
 
     def get_payment_confirmation_reply(self):
         """Возвращает шаблон подтверждения оплаты"""
 
-        msg = self.fill_data(repairs_filter_strings.payment_confirmed)
+        msg = self._fill_data(self.strings_container.payment_confirmed)
 
         return msg
 
     def get_payment_denied_reply(self):
         """Возвращает шаблон отказа в проведении оплаты"""
 
-        msg = self.fill_data(repairs_filter_strings.payment_denied)
+        msg = self._fill_data(self.strings_container.payment_denied)
 
         return msg
 
@@ -560,10 +535,10 @@ class RepairsFilter(
         return self.stage_id == RepairsFilterStageChoice.INVOICE_REQUESTED
 
     def get_invoice(self):
-        if not self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT):
-            msg = self.fill_data(repairs_filter_strings.payment)
+        if not self.user.subscribed_to_service(self.get_service_name()):
+            msg = self._fill_data(self.strings_container.payment)
         else:
-            msg = self.fill_data(repairs_filter_strings.already_subscribed)
+            msg = self._fill_data(self.strings_container.already_subscribed)
 
         return msg
 
@@ -584,7 +559,7 @@ class RepairsFilter(
         ).order_by("-created_at")[:10]
 
     def results_as_text(self, results):
-        msg = self.fill_data(repairs_filter_strings.results)
+        msg = self._fill_data(self.strings_container.results)
         if results:
             results_text = "\n\n".join([r.registered.as_tg_html() for r in results])
         else:

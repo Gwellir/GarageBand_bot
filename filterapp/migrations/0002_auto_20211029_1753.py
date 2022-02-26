@@ -5,7 +5,7 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 from garage_band_bot import settings
-from utils.migrate import add_bots, delete_bots, fill_stages
+from utils.migrate import add_bots, delete_bots, fill_rows
 
 BAZAAR_FILTER_BOTS = [
     dict(
@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='bazaar_filters', to='tgbot.botuser', verbose_name='Пользователь'),
         ),
         migrations.RunPython(
-            code=partial(fill_stages, model_name="filterapp.RepairsFilterStage", stages=STAGES),
+            code=partial(fill_rows, model_name="filterapp.RepairsFilterStage", rows_data=STAGES),
             reverse_code=migrations.RunPython.noop,
         ),
         migrations.CreateModel(

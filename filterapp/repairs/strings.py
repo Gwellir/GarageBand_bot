@@ -68,7 +68,8 @@ stages_info = [
         ],
     },
     {
-        "text": "<b>Подписка</b>\nНа данный момент: {sub_active} до {expiry_date}",
+        "text": "<b>Подписка</b>\nНа данный момент: {sub_active} до {expiry_date}"
+        "{free_month_promo}",
         "text_buttons": [
             [
                 {
@@ -77,7 +78,7 @@ stages_info = [
             ],
             [
                 {
-                    "text": "Оплатить",
+                    "text": "{payment_button}",
                 }
             ],
             [
