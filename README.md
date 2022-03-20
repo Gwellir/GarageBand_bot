@@ -27,6 +27,7 @@
 и веб-фреймворка Django. Django в основном применяется для работы с БД (PostgresQL).
 
 [более подробное описание (свежее)](https://github.com/Gwellir/GarageBand_bot/blob/origin/structure.md)
+
 [текущие проблемы (свежее)](https://github.com/Gwellir/GarageBand_bot/blob/origin/issues.md)
 
 ### Заметки по плану разработки
