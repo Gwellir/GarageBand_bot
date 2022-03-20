@@ -177,9 +177,7 @@ def post_donation(update, context):
 
     msg = update.effective_message
     if msg.text:
-        _, donation_title, donation_text, prices_string = msg.text.split(
-            "\n", 3
-        )
+        _, donation_title, donation_text, prices_string = msg.text.split("\n", 3)
         amount, currency = prices_string[:-3].strip(), prices_string[-3:]
         prices = [
             LabeledPrice(label=f"{amount}{currency} donation", amount=int(amount) * 100)

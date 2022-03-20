@@ -1,39 +1,12 @@
-from typing import TYPE_CHECKING, Protocol
-
 from django.db import models, transaction
 
+from abstract.protocols import BindableProtocol
 from convoapp.models import Message
 from paymentapp.models import Checkout, Order
 from subscribeapp.constants import ServiceChoice, SubTierChoice
 from subscribeapp.models import Subscription
 from tgbot.bot.senders import send_messages_return_ids
 from tgbot.bot.utils import get_bot_message_as_text
-
-if TYPE_CHECKING:
-    from convoapp.models import Dialog
-    from filterapp.models import RepairsFilterStageChoice
-    from tgbot.models import BotUser
-
-
-class BindableProtocol(Protocol):
-    @property
-    def dialog(self) -> "Dialog":
-        ...
-
-    @property
-    def user(self) -> "BotUser":
-        ...
-
-    @property
-    def stage_id(self) -> "RepairsFilterStageChoice":
-        ...
-
-    @stage_id.setter
-    def stage_id(self, value: "RepairsFilterStageChoice"):
-        ...
-
-    def save(self):
-        ...
 
 
 class SubscribableModel(models.Model):
@@ -42,15 +15,32 @@ class SubscribableModel(models.Model):
     class Meta:
         abstract = True
 
-    @transaction.atomic
-    def make_subscription(self: BindableProtocol, tier=SubTierChoice.MONTH):
-        sub = Subscription.get_or_create(
-            self.dialog.user, tier, self.__class__.__name__
+    def has_never_subbed(self: BindableProtocol):
+        subs = Subscription.objects.filter(
+            user=self.dialog.user,
+            service=self.get_service_name(),
         )
+        return not subs
+
+    @transaction.atomic
+    def make_subscription(self: BindableProtocol, tier=SubTierChoice.MONTH, free=False):
+        sub = Subscription.get_or_create(
+            self.dialog.user, tier, self.get_service_name()
+        )
+        if free:
+            sub.activate()
+            return
         order = Order.get_or_create(self.dialog, sub)
         checkout = Checkout.get_or_create(order)
 
         return checkout
+
+    # todo make this a proper factory
+    def get_service_name(self):
+        return dict(
+            repairsfilter=ServiceChoice.REPAIRS_BOT,
+            bazaarfilter=ServiceChoice.BAZAAR_BOT,
+        ).get(self.__class__.__name__.lower())
 
     def _get_payment_confirmation_reply(self):
         pass
@@ -70,8 +60,7 @@ class SubscribableModel(models.Model):
         if not self.dialog.is_finished:
             self.set_dict_data(
                 sub_active="Оформлена",
-                # todo fix hardwired repairsbot
-                expiry_date=self.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT),
+                expiry_date=self.user.subscribed_to_service(self.get_service_name()),
             )
             self.stage_id += 1
             self.save()

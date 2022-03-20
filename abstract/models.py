@@ -90,6 +90,8 @@ class CacheableFillDataModel(models.Model):
     и реализации их кеширования.
     """
 
+    strings_container = None
+
     class Meta:
         abstract = True
 
@@ -135,19 +137,40 @@ class CacheableFillDataModel(models.Model):
         """Подставляет нужные данные в тело ответа и параметры кнопок."""
 
         msg = copy.deepcopy(message_data)
-        msg["text"] = msg["text"].format(**self.data_as_dict())
-
-        if msg.get("buttons") or msg.get("text_buttons"):
-            for row in msg.get("buttons", []):
-                for button in row:
-                    for field in button.keys():
-                        button[field] = button[field].format(**self.data_as_dict())
-            for row in msg.get("text_buttons", []):
+        if msg.get("text"):
+            msg["text"] = msg["text"].format(**self.data_as_dict())
+        m2m_field_name = msg.get("attr_choices")
+        button_type = "buttons" if msg.get("buttons") else "text_buttons"
+        if m2m_field_name:
+            buttons_as_list = self._get_m2m_choices_as_buttons(m2m_field_name)
+            buttons_as_list.extend(msg.get(button_type))
+            msg[button_type] = buttons_as_list
+        if keyboard := msg.get(button_type):
+            for row in keyboard:
                 for button in row:
                     for field in button.keys():
                         button[field] = button[field].format(**self.data_as_dict())
 
         return msg
+
+    def _get_m2m_choices_as_buttons(self, field_name):
+        m2m_model = self._meta.get_field(field_name).related_model
+        field = getattr(self, field_name)
+        button_flags = [
+            (tag.name, tag in field.all()) for tag in m2m_model.objects.all()
+        ]
+        row_len = 2
+        names = [
+            dict(
+                text=f"{'☑' if entry[1] else '☐'} {entry[0]}",
+                callback_data=f"button {num}",
+            )
+            for num, entry in enumerate(button_flags)
+        ]
+        buttons = [
+            names[i : i + row_len] for i in range(0, len(names), row_len)  # noqa: E203
+        ]
+        return buttons
 
 
 class DialogProcessableEntity(models.Model):

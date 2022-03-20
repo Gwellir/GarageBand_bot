@@ -24,4 +24,8 @@ class LogStrings:
     )
     DIALOG_SET_SOLD = "SOLD: User: {user_id}, ad: {request_id}"
 
+    DIALOG_SAME_MESSAGE = (
+        "SAME KEYBOARD: user: {user_id}, model: {model}, stage: {stage}"
+    )
+
     CHANNEL_POST = "POST: channel: {channel_id}"
