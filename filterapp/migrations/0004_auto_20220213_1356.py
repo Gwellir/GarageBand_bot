@@ -3,7 +3,7 @@ from functools import partial
 
 from django.db import migrations
 
-from utils.migrate import add_stages, del_stages
+from utils.migrate import add_foreign_keys, del_foreign_keys
 
 
 class Migration(migrations.Migration):
@@ -15,18 +15,20 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(
             partial(
-                add_stages,
+                add_foreign_keys,
                 model_name="filterapp.RepairsFilter",
-                stage_model_name="filterapp.RepairsFilterStage",
-                stages=[
+                key_model_name="filterapp.RepairsFilterStage",
+                keys=[
                     dict(id=3, name="GET_COMPANY_NAME", processor="CompanyNameInputProcessor"),
-                ]
+                ],
+                relation_name="stage",
             ),
             reverse_code=partial(
-                del_stages,
+                del_foreign_keys,
                 model_name="filterapp.RepairsFilter",
-                stage_model_name="filterapp.RepairsFilterStage",
+                key_model_name="filterapp.RepairsFilterStage",
                 ids=[3],
+                relation_name="stage",
             )
         )
     ]

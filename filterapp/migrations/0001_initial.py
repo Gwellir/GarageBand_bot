@@ -12,7 +12,7 @@ from garage_band_bot.settings import (
     BAZAAR_PUBLISH_ID,
     ADMIN_GROUP_ID
 )
-from utils.migrate import fill_stages, add_bots, delete_bots
+from utils.migrate import fill_rows, add_bots, delete_bots
 
 BAZAAR_FILTER_BOTS = [
     dict(
@@ -75,7 +75,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.RunPython(
-            code=partial(fill_stages, model_name="filterapp.BazaarFilterStage", stages=STAGES),
+            code=partial(fill_rows, model_name="filterapp.BazaarFilterStage", rows_data=STAGES),
             reverse_code=migrations.RunPython.noop,
         ),
         migrations.CreateModel(
