@@ -61,7 +61,7 @@ class TGInstance(models.Model):
     def tg_bot(self):
         try:
             return tg_updaters.get(self.token).bot
-        except (NameError, KeyError):
+        except (NameError, KeyError, AttributeError):
             return tg_dispatchers.get(self.token)
 
     @property
