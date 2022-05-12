@@ -118,7 +118,7 @@ class TgbotConfig(AppConfig):
     name = "tgbot"
 
     def ready(self):
-        if os.environ.get("RUN_MAIN", None) != "true":
+        if os.environ.get("RUN_MAIN", None) != "true" and settings.PRODUCTION is not True:
             return
         if settings.POLLING:
             run_polling()

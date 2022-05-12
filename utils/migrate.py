@@ -43,7 +43,7 @@ def add_bots(apps, schema_editor, bots: list):
         BotTable.objects.using(db_alias).create(
             # name, bound_object, is_active, is_debug, bound_app
             **msg_bot,
-            telegram_instance=instance
+            telegram_instance=instance,
         )
 
 
@@ -60,32 +60,40 @@ def fill_rows(apps, schema_editor, model_name: str, rows_data: list):
     )
 
 
-def add_stages(apps, schema_editor, model_name, stage_model_name, stages):
+def add_foreign_keys(
+    apps, schema_editor, model_name, key_model_name, keys, relation_name
+):
     db_alias = schema_editor.connection.alias
     app, model = model_name.split(".")
     object_model_query = apps.get_model(app, model).objects.using(db_alias)
-    app, model = stage_model_name.split(".")
-    object_stage_model_query = apps.get_model(app, model).objects.using(db_alias)
-    for stage in stages:
-        id_ = stage.get("id")
-        for upper_stage in object_stage_model_query.filter(id__gte=id_).order_by("-id"):
-            upper_stage.id += 1
-            upper_stage.save()
-        object_stage_model_query.filter(id=id_).delete()
-        object_stage_model_query.create(**stage)
-        object_model_query.filter(stage_id__gte=id_).update(stage_id=F("stage_id") + 1)
+    app, model = key_model_name.split(".")
+    object_key_model_query = apps.get_model(app, model).objects.using(db_alias)
+    for key in keys:
+        id_ = key.get("id")
+        for key_above in object_key_model_query.filter(id__gte=id_).order_by("-id"):
+            key_above.id += 1
+            key_above.save()
+        object_key_model_query.filter(id=id_).delete()
+        object_key_model_query.create(**key)
+        object_model_query.filter(**{f"{relation_name}_id__gte": id_}).update(
+            **{f"{relation_name}_id": F(f"{relation_name}_id") + 1}
+        )
 
 
-def del_stages(apps, schema_editor, model_name, stage_model_name, ids):
+def del_foreign_keys(
+    apps, schema_editor, model_name, key_model_name, ids, relation_name
+):
     db_alias = schema_editor.connection.alias
     app, model = model_name.split(".")
     object_model_query = apps.get_model(app, model).objects.using(db_alias)
-    app, model = stage_model_name.split(".")
-    object_stage_model_query = apps.get_model(app, model).objects.using(db_alias)
-    last_id = object_stage_model_query.count()
+    app, model = key_model_name.split(".")
+    object_key_model_query = apps.get_model(app, model).objects.using(db_alias)
+    last_id = object_key_model_query.count()
     for id_ in ids:
-        for upper_stage in object_stage_model_query.filter(id__gte=id_).order_by("-id"):
-            upper_stage.id -= 1
-            upper_stage.save()
-        object_stage_model_query.filter(id=last_id).delete()
-        object_model_query.filter(stage_id__gt=id_).update(stage_id=F("stage_id") - 1)
+        for key_above in object_key_model_query.filter(id__gte=id_).order_by("-id"):
+            key_above.id -= 1
+            key_above.save()
+        object_key_model_query.filter(id=last_id).delete()
+        object_model_query.filter(**{f"{relation_name}_id__gt": id_}).update(
+            **{f"{relation_name}_id": F(f"{relation_name}_id") - 1}
+        )
