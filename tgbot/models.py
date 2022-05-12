@@ -62,7 +62,7 @@ class TGInstance(models.Model):
         try:
             return tg_updaters.get(self.token).bot
         except (NameError, KeyError, AttributeError):
-            return tg_dispatchers.get(self.token)
+            return tg_dispatchers.get(self.token).bot
 
     @property
     def job_queue(self):
