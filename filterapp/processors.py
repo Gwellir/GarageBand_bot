@@ -1,3 +1,5 @@
+from telegram.error import BadRequest
+
 from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from filterapp.exceptions import NotSubscribedError
@@ -119,6 +121,7 @@ class MultiSelectProcessor(BaseInputProcessor):
             field.add(value)
         else:
             field.remove(value)
+
         self._update_keyboard(data["query"].message)
 
         self.state_machine.suppress_output = True
