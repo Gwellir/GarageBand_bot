@@ -37,7 +37,7 @@ class SubCheckProcessor(BaseInputProcessor):
 
 class ConfirmPaymentProcessor(BaseInputProcessor):
     def _check_sub(self):
-        # todo make filterapp aware of which bot it works with
+        # todo make filter app aware of which bot it works with
         service = self.state_machine.bound.get_service_name()
         if not self.state_machine.user.subscribed_to_service(service):
             raise NotSubscribedError
