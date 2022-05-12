@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views import View
 
+from tgbot.apps import tg_dispatchers
 from tgbot.bot.dispatcher import process_telegram_event
 from tgbot.models import MessengerBot
 
@@ -17,7 +18,7 @@ class TelegramBotWebhookView(View):
     # Can be fixed with async celery task execution
     def post(self, request, *args, **kwargs):
         msg_bot = get_object_or_404(MessengerBot, id=self.kwargs["bot_id"])
-        dp = msg_bot.telegram_instance.tg_bot
+        dp = tg_dispatchers.get(msg_bot.telegram_instance.token)
         process_telegram_event(json.loads(request.body), dp)
         # Process Telegram event in Celery worker (async)
         # Don't forget to run it and & Redis (message broker for Celery)!

@@ -5,7 +5,7 @@ from threading import Thread
 
 from django.apps import AppConfig
 from telegram import ParseMode
-from telegram.ext import Dispatcher, Updater
+from telegram.ext import Dispatcher, JobQueue, Updater
 from telegram.ext import messagequeue as mq
 from telegram.utils.request import Request
 
@@ -90,26 +90,31 @@ def init_dispatchers():
         dp = Dispatcher(tg_bot, update_queue)
         dp = setup_dispatcher(dp)
         tg_dispatchers[token] = dp
+        job_queue = JobQueue()
+        job_queue.set_dispatcher(dp)
+        dp.job_queue = job_queue
 
-        bot.get_bound_model().setup_jobs(dp.job_queue)
+        bot.get_bound_model().setup_jobs(job_queue)
         # кросс-ссылки для удобного доступа к очереди и боту изнутри этапа обработки
         # принятых сообщений помещаются в bot_data соответствующего диспетчера
         dp.bot_data["msg_bot"] = bot
-        dp.bot_data["job_queue"] = dp.job_queue
+        dp.bot_data["job_queue"] = job_queue
 
         bot_info = tg_bot.get_me()
         bot_link = f"https://t.me/{bot_info['username']}"
-        tg_bot.set_webhook()
 
-        BOT_LOG.info(f"Polling of '{bot_link}' started")
+        tg_bot.set_webhook(f"{settings.BASE_WEBHOOK_URL}_catchers/{bot.id}")
 
-        dp.bot.send_message(
-            chat_id=bot.telegram_instance.admin_group_id,
-            text=f"Бот перезапущен 😉\n<b>{platform.system()} @ {platform.node()}</b>",
-            parse_mode=ParseMode.HTML,
-        )
+        BOT_LOG.info(f"Webhook for '{bot_link}' set")
+
+        # dp.bot.send_message(
+        #     chat_id=bot.telegram_instance.admin_group_id,
+        #     text=f"Бот перезапущен 😉\n<b>{platform.system()} @ {platform.node()}</b>",
+        #     parse_mode=ParseMode.HTML,
+        # )
 
         thread = Thread(target=dp.start, name=f"dispatcher_{bot.id}")
+        thread.daemon = True
         thread.start()
 
 
@@ -118,7 +123,10 @@ class TgbotConfig(AppConfig):
     name = "tgbot"
 
     def ready(self):
-        if os.environ.get("RUN_MAIN", None) != "true" and settings.PRODUCTION is not True:
+        if (
+            settings.PRODUCTION is not True
+            and os.environ.get("RUN_MAIN", None) != "true"
+        ):
             return
         if settings.POLLING:
             run_polling()
