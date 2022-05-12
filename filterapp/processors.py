@@ -1,5 +1,3 @@
-from telegram.error import BadRequest
-
 from bazaarapp.processors import IntNumberInputProcessor
 from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from filterapp.exceptions import NotSubscribedError
