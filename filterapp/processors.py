@@ -3,7 +3,7 @@ from convoapp.processors import BaseInputProcessor, TextInputProcessor
 from filterapp.exceptions import NotSubscribedError
 from logger.log_config import BOT_LOG
 from logger.log_strings import LogStrings
-from subscribeapp.constants import ServiceChoice
+from tgbot.bot.utils import build_inline_button_markup
 from tgbot.exceptions import (
     IncorrectChoiceError,
     TextNotProvidedError,
@@ -38,7 +38,8 @@ class SubCheckProcessor(BaseInputProcessor):
 class ConfirmPaymentProcessor(BaseInputProcessor):
     def _check_sub(self):
         # todo make filterapp aware of which bot it works with
-        if not self.state_machine.user.subscribed_to_service(ServiceChoice.REPAIRS_BOT):
+        service = self.state_machine.bound.get_service_name()
+        if not self.state_machine.user.subscribed_to_service(service):
             raise NotSubscribedError
 
     def _get_checkout_link(self):
@@ -54,6 +55,12 @@ class ConfirmPaymentProcessor(BaseInputProcessor):
             )
         ]
 
+    def _check_free_sub(self):
+        return self.model.has_never_subbed()
+
+    def _make_free_sub(self):
+        self.model.make_subscription(free=True)
+
     def get_step(self, data):
         if data["text"] == "Отменить":
             self.cancel_step()
@@ -62,7 +69,10 @@ class ConfirmPaymentProcessor(BaseInputProcessor):
             self._get_checkout_link()
             return 1
         else:
-            self._check_sub()
+            if self._check_free_sub():
+                self._make_free_sub()
+            else:
+                self._check_sub()
             return 2
 
 
@@ -107,11 +117,9 @@ class MultiSelectProcessor(BaseInputProcessor):
         )
         if value not in field.all():
             field.add(value)
-            # hacks upon hacks
-            self._switch_keyboard_value(data, value.name)
         else:
             field.remove(value)
-            self._switch_keyboard_value(data, value.name, disable=True)
+        self._update_keyboard(data["query"].message)
 
         self.state_machine.suppress_output = True
         self.model.save()
@@ -119,16 +127,11 @@ class MultiSelectProcessor(BaseInputProcessor):
             **{self.attr_name: ", ".join([r.name for r in field.all()])}
         )
 
-    def _switch_keyboard_value(self, data: dict, name, disable=False):
-        mark = "☐" if disable else "☑"
-        msg = data["query"].message
-        keyboard = msg.reply_markup.inline_keyboard
-        for row in keyboard:
-            for button in row:
-                if button.text[2:] == name:
-                    button.text = f"{mark} {name}"
-                    break
-        msg.edit_reply_markup(reply_markup=msg.reply_markup)
+    def _update_keyboard(self, message):
+        msg_data: dict = self.model.get_reply_for_stage()
+        message.edit_reply_markup(
+            reply_markup=build_inline_button_markup(msg_data["buttons"])
+        )
 
 
 class LowPriceInputProcessor(IntNumberInputProcessor):
@@ -139,6 +142,9 @@ class LowPriceInputProcessor(IntNumberInputProcessor):
             data["text"] = self.min_value
 
         super().set_field(data)
+        self.state_machine.bound.set_dict_data(
+            **{self.attr_name: getattr(self.model, self.attr_name)},
+        )
 
 
 class HighPriceInputProcessor(IntNumberInputProcessor):
@@ -149,6 +155,9 @@ class HighPriceInputProcessor(IntNumberInputProcessor):
             data["text"] = self.max_value
 
         super().set_field(data)
+        self.state_machine.bound.set_dict_data(
+            **{self.attr_name: getattr(self.model, self.attr_name)},
+        )
 
 
 class RegionMultiSelectProcessor(MultiSelectProcessor):
