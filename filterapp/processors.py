@@ -119,11 +119,9 @@ class MultiSelectProcessor(BaseInputProcessor):
         )
         if value not in field.all():
             field.add(value)
-            # hacks upon hacks
-            # self._switch_keyboard_value(data, value.name)
         else:
             field.remove(value)
-            # self._switch_keyboard_value(data, value.name, disable=True)
+
         self._update_keyboard(data["query"].message)
 
         self.state_machine.suppress_output = True
