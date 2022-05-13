@@ -123,6 +123,7 @@ class TgbotConfig(AppConfig):
     name = "tgbot"
 
     def ready(self):
+        BOT_LOG.info(f"APPS READY {settings.PRODUCTION} {os.environ.get('RUN_MAIN', None)}")
         if (
             settings.PRODUCTION is not True
             and os.environ.get("RUN_MAIN", None) != "true"
@@ -131,4 +132,5 @@ class TgbotConfig(AppConfig):
         if settings.POLLING:
             run_polling()
         else:
+            BOT_LOG.info("dispatchers init")
             init_dispatchers()
