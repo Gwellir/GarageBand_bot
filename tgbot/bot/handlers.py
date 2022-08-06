@@ -312,6 +312,10 @@ def message_handler(update, context):
     except exceptions.CallbackExpiredError:
         return
 
+    # обработка ошибки Query too old от Telegram
+    except BadRequest:
+        command, button_text = "restart", ""
+
     # todo привести к неспецифическому для телеграма виде
     bot = context.bot_data.get("msg_bot")
     input_data = {
